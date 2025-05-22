@@ -1,0 +1,62 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id           Int           @id @default(autoincrement())
+  username     String        @unique
+  password     String
+  name         String
+  role         String
+  createdAt    DateTime      @default(now())
+
+  // Relación de vuelta a TurnRequest
+  turnRequests TurnRequest[] @relation("UserTurnRequests")
+}
+
+model TurnRequest {
+  id              Int       @id @default(autoincrement())
+  patientName     String
+  age             Int
+  gender          String
+  contactInfo     String?
+  studies         String
+  tubesRequired   Int
+  observations    String?
+  clinicalInfo    String?
+  status          String    @default("Pending")
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  assignedTurn    Int?
+  tipoAtencion    String    @default("General")
+  calledAt        DateTime?
+  attendedAt      DateTime? // Fecha y hora de inicio de la atención
+  finishedAt      DateTime? // Fecha y hora de fin de la atención
+  attendedBy      Int?      // Foreign key to User
+  user            User?     @relation("UserTurnRequests", fields: [attendedBy], references: [id])
+
+  cubicleId       Int?
+  cubicle         Cubicle?  @relation("TurnRequestToCubicle", fields: [cubicleId], references: [id])
+  isCalled        Boolean   @default(false) // Indica si el paciente ha sido llamado
+}
+
+enum CubicleType {
+  GENERAL
+  SPECIAL
+}
+
+model Cubicle {
+  id           Int           @id @default(autoincrement())
+  name         String        @unique
+  isSpecial    Boolean       @default(false)
+  type         CubicleType
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  turnRequests TurnRequest[] @relation("TurnRequestToCubicle")
+}
