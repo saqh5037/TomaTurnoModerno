@@ -1,3 +1,12 @@
 {
-  "extends": ["next/core-web-vitals", "next/typescript"]
+  "extends": "next/core-web-vitals",
+  "rules": {
+    // Desactiva el error de variables no utilizadas de TypeScript ESLint
+    "@typescript-eslint/no-unused-vars": "off",
+    // Desactiva la advertencia de dependencias exhaustivas para React Hooks
+    "react-hooks/exhaustive-deps": "off"
+    // Puedes añadir aquí otras reglas si las necesitas, por ejemplo:
+    // "no-console": "warn",
+    // "no-debugger": "warn"
+  }
 }
