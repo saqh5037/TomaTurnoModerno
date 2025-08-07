@@ -1,6 +1,4 @@
-import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import prisma from '../../../../../lib/prisma.js';
 
 export async function POST(req) {
   try {
@@ -17,7 +15,7 @@ export async function POST(req) {
     const data = await prisma.turnRequest.groupBy({
       by: ["createdAt"],
       where: {
-        status: "Attended",
+        status: "Completed",
         ...filters,
       },
       _count: {

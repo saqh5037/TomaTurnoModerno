@@ -1,6 +1,4 @@
-import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import prisma from '../../../../../lib/prisma.js';
 
 export async function POST(req) {
   try {
@@ -25,6 +23,7 @@ export async function POST(req) {
         COUNT(*)::INT AS "count" -- Convertir a INT explícitamente
       FROM "TurnRequest"
       WHERE "attendedBy" = ${parseInt(phlebotomistId)}
+        AND "status" = 'Completed'
         AND "createdAt" BETWEEN ${startDate} AND ${endDate}
       GROUP BY DATE("createdAt")
       ORDER BY DATE("createdAt");

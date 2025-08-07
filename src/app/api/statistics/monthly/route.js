@@ -1,6 +1,4 @@
-import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import prisma from '../../../../../lib/prisma.js';
 
 const monthNames = [
   "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
@@ -26,7 +24,7 @@ export async function POST(req) {
     const data = await prisma.turnRequest.groupBy({
       by: ["createdAt"],
       where: {
-        status: "Attended",
+        status: "Completed",
         ...filters,
       },
       _count: {

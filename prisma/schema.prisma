@@ -43,6 +43,16 @@ model TurnRequest {
   cubicleId       Int?
   cubicle         Cubicle?  @relation("TurnRequestToCubicle", fields: [cubicleId], references: [id])
   isCalled        Boolean   @default(false) // Indica si el paciente ha sido llamado
+
+  // Índices para mejorar rendimiento de consultas frecuentes
+  @@index([status])
+  @@index([isCalled])
+  @@index([status, isCalled])
+  @@index([attendedBy])
+  @@index([createdAt])
+  @@index([finishedAt])
+  @@index([assignedTurn])
+  @@index([status, assignedTurn])
 }
 
 enum CubicleType {
