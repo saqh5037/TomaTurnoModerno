@@ -25,19 +25,32 @@ import {
   Th,
   Td
 } from "@chakra-ui/react";
+import { Bar } from 'react-chartjs-2';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+  Tooltip as ChartTooltip,
+  Legend,
+} from 'chart.js';
+
+ChartJS.register(CategoryScale, LinearScale, BarElement, Title, ChartTooltip, Legend);
 import { 
   FaCalendarAlt, 
   FaChartBar, 
   FaUsers, 
   FaClock, 
-  FaTrendingUp, 
+  FaArrowUp, 
   FaDownload, 
   FaEye, 
   FaStar,
   FaCheckCircle,
   FaExclamationTriangle,
   FaChevronRight,
-  FaUserMd
+  FaUserMd,
+  FaArrowLeft
 } from 'react-icons/fa';
 import { useRouter } from 'next/router';
 import { useAuth } from '../../context/AuthContext';
@@ -199,7 +212,8 @@ const StatisticsDashboard = memo(function StatisticsDashboard() {
   }, []);
 
   // Componente de gráfica de barras simple - Optimizado
-  const SimpleBarChart = useMemo(() => ({ data, dataKey, height = "200px", color = "#4F7DF3" }) => {
+  const SimpleBarChart = useMemo(() => {
+    const BarChart = ({ data, dataKey, height = "200px", color = "#4F7DF3" }) => {
     const maxValue = Math.max(...data.map(item => item[dataKey]));
     
     return (
@@ -226,10 +240,14 @@ const StatisticsDashboard = memo(function StatisticsDashboard() {
         ))}
       </HStack>
     );
+    };
+    BarChart.displayName = 'SimpleBarChart';
+    return BarChart;
   }, []);
 
   // Componente de progreso circular - Optimizado
-  const SimpleProgressRing = useMemo(() => ({ value, size = 80, strokeWidth = 8, color = "#4F7DF3" }) => {
+  const SimpleProgressRing = useMemo(() => {
+    const ProgressRing = ({ value, size = 80, strokeWidth = 8, color = "#4F7DF3" }) => {
     const radius = (size - strokeWidth) / 2;
     const circumference = radius * 2 * Math.PI;
     const offset = circumference - (value / 100) * circumference;
@@ -270,6 +288,9 @@ const StatisticsDashboard = memo(function StatisticsDashboard() {
         </Box>
       </Box>
     );
+    };
+    ProgressRing.displayName = 'SimpleProgressRing';
+    return ProgressRing;
   }, []);
 
   // No renderizar hasta que esté montado para evitar errores de hidratación
@@ -359,11 +380,29 @@ const StatisticsDashboard = memo(function StatisticsDashboard() {
             </Tooltip>
           </Flex>
         </ModernHeader>
+        
+        {/* Botón de Volver */}
+        <Flex align="center" gap={4} justify="flex-start" mb={6}>
+          <Button
+            leftIcon={<FaArrowLeft />}
+            onClick={() => router.push("/")}
+            variant="outline"
+            colorScheme="gray"
+            size="sm"
+            _hover={{
+              transform: 'translateY(-2px)',
+              boxShadow: 'md'
+            }}
+          >
+            Volver
+          </Button>
+        </Flex>
+        
         {/* Métricas Principales */}
-        <SimpleGrid columns={{ base: 1, md: 2, lg: 4 }} spacing={6} mb={8}>
+        <SimpleGrid columns={{ base: 1, sm: 2, md: 2, lg: 4 }} spacing={{ base: 4, md: 6 }} mb={4}>
           {/* Total de Pacientes */}
           <GlassCard
-            p={6}
+            p={4}
             cursor="pointer"
             onClick={() => navigateToDetail('monthly')}
             _hover={{ 
@@ -389,8 +428,8 @@ const StatisticsDashboard = memo(function StatisticsDashboard() {
             
             <Flex justify="space-between" align="center" mb={4}>
               <Box
-                w={12}
-                h={12}
+                w={{ base: 10, md: 12 }}
+                h={{ base: 10, md: 12 }}
                 borderRadius="xl"
                 background="linear-gradient(135deg, #4F7DF3 0%, #6B73FF 100%)"
                 display="flex"
@@ -399,7 +438,7 @@ const StatisticsDashboard = memo(function StatisticsDashboard() {
                 color="white"
                 boxShadow="lg"
               >
-                <Box as={FaCalendarAlt} fontSize="xl" />
+                <Box as={FaCalendarAlt} fontSize={{ base: "lg", md: "xl" }} />
               </Box>
               <Box as={FaChevronRight} color="secondary.400" fontSize="lg" />
             </Flex>
@@ -408,12 +447,12 @@ const StatisticsDashboard = memo(function StatisticsDashboard() {
               <Text fontSize="sm" color="secondary.600" fontWeight="medium">
                 Total Pacientes
               </Text>
-              <Text fontSize="3xl" fontWeight="extrabold" color="secondary.800" lineHeight="1">
+              <Text fontSize={{ base: "2xl", md: "3xl" }} fontWeight="extrabold" color="secondary.800" lineHeight="1">
                 {dashboardData.overview.totalPatients?.toLocaleString()}
               </Text>
               <HStack spacing={2}>
                 <Box
-                  as={FaTrendingUp}
+                  as={FaArrowUp}
                   color="success"
                   fontSize="sm"
                 />
@@ -426,7 +465,7 @@ const StatisticsDashboard = memo(function StatisticsDashboard() {
 
           {/* Pacientes Hoy */}
           <GlassCard
-            p={6}
+            p={4}
             cursor="pointer"
             onClick={() => navigateToDetail('daily')}
             _hover={{ 
@@ -470,7 +509,7 @@ const StatisticsDashboard = memo(function StatisticsDashboard() {
               <Text fontSize="sm" color="secondary.600" fontWeight="medium">
                 Pacientes Hoy
               </Text>
-              <Text fontSize="3xl" fontWeight="extrabold" color="secondary.800" lineHeight="1">
+              <Text fontSize={{ base: "2xl", md: "3xl" }} fontWeight="extrabold" color="secondary.800" lineHeight="1">
                 {dashboardData.overview.totalToday}
               </Text>
               <Progress 
@@ -493,7 +532,7 @@ const StatisticsDashboard = memo(function StatisticsDashboard() {
 
           {/* Tiempo Promedio */}
           <GlassCard
-            p={6}
+            p={4}
             cursor="pointer"
             onClick={() => navigateToDetail('average-time')}
             _hover={{ 
@@ -537,12 +576,12 @@ const StatisticsDashboard = memo(function StatisticsDashboard() {
               <Text fontSize="sm" color="secondary.600" fontWeight="medium">
                 Tiempo Promedio
               </Text>
-              <Text fontSize="3xl" fontWeight="extrabold" color="secondary.800" lineHeight="1">
+              <Text fontSize={{ base: "2xl", md: "3xl" }} fontWeight="extrabold" color="secondary.800" lineHeight="1">
                 {dashboardData.overview.averageWaitTime} min
               </Text>
               <HStack spacing={2}>
                 <Box
-                  as={FaTrendingUp}
+                  as={FaArrowUp}
                   color="success"
                   fontSize="sm"
                   transform="rotate(180deg)"
@@ -556,7 +595,7 @@ const StatisticsDashboard = memo(function StatisticsDashboard() {
 
           {/* Eficiencia */}
           <GlassCard
-            p={6}
+            p={4}
             cursor="pointer"
             onClick={() => navigateToDetail('phlebotomists')}
             _hover={{ 
@@ -600,12 +639,12 @@ const StatisticsDashboard = memo(function StatisticsDashboard() {
               <Text fontSize="sm" color="secondary.600" fontWeight="medium">
                 Eficiencia
               </Text>
-              <Text fontSize="3xl" fontWeight="extrabold" color="secondary.800" lineHeight="1">
+              <Text fontSize={{ base: "2xl", md: "3xl" }} fontWeight="extrabold" color="secondary.800" lineHeight="1">
                 {dashboardData.overview.efficiency}%
               </Text>
               <HStack spacing={2}>
                 <Box
-                  as={FaTrendingUp}
+                  as={FaArrowUp}
                   color="success"
                   fontSize="sm"
                 />
@@ -618,66 +657,208 @@ const StatisticsDashboard = memo(function StatisticsDashboard() {
         </SimpleGrid>
 
         {/* Gráficas Principales */}
-        <Grid templateColumns={{ base: '1fr', lg: '2fr 1fr' }} gap={6} mb={8}>
-          {/* Gráfica de Tendencias Mensuales */}
-          <GlassCard p={6} animation={`${slideInFromLeft} 0.8s ease-out`}>
-            <Flex justify="space-between" align="center" mb={6}>
-              <VStack align="start" spacing={1}>
-                <Heading size="lg" color="secondary.800" fontWeight="bold">
-                  Tendencias Mensuales
-                </Heading>
-                <Text color="secondary.600" fontSize="sm">
-                  Pacientes atendidos por mes
-                </Text>
-              </VStack>
-              <HStack>
+        <Grid templateColumns={{ base: '1fr', md: '1fr', lg: isAdmin ? '2fr 1fr' : '1fr' }} gap={{ base: 3, md: 4 }} mb={4}>
+          {/* Gráfica de Tendencias Mensuales - Layout Optimizado */}
+          <GlassCard p={{ base: 2, md: 3 }} animation={`${slideInFromLeft} 0.8s ease-out`} h="fit-content">
+            {/* Header compacto */}
+            <Flex justify="space-between" align="center" mb={2}>
+              <HStack spacing={3}>
+                <VStack align="start" spacing={0}>
+                  <Heading size="sm" color="secondary.800" fontWeight="bold">
+                    Tendencias Mensuales
+                  </Heading>
+                  <Text color="secondary.500" fontSize="2xs">
+                    Pacientes por mes
+                  </Text>
+                </VStack>
+              </HStack>
+              <HStack spacing={1}>
                 <IconButton
                   icon={<FaDownload />}
-                  size="sm"
+                  size="xs"
                   variant="ghost"
                   onClick={() => handleExport('excel', 'monthly')}
                 />
                 <IconButton
                   icon={<FaEye />}
-                  size="sm"
+                  size="xs"
                   variant="ghost"
                   onClick={() => navigateToDetail('monthly')}
                 />
               </HStack>
             </Flex>
             
-            <SimpleBarChart 
-              data={dashboardData.monthlyData} 
-              dataKey="pacientes" 
-              height="300px"
-              color="#4F7DF3"
-            />
-            
-            <Box mt={6}>
-              <Table size="sm" variant="simple">
-                <Thead>
-                  <Tr>
-                    <Th color="secondary.600" fontSize="xs">Mes</Th>
-                    <Th color="secondary.600" fontSize="xs" isNumeric>Pacientes</Th>
-                    <Th color="secondary.600" fontSize="xs" isNumeric>Tiempo Prom.</Th>
-                  </Tr>
-                </Thead>
-                <Tbody>
-                  {dashboardData.monthlyData.slice(-4).map((item, index) => (
-                    <Tr key={index}>
-                      <Td fontWeight="medium" color="secondary.700">{item.month}</Td>
-                      <Td isNumeric fontWeight="bold" color="secondary.800">{item.pacientes}</Td>
-                      <Td isNumeric color="secondary.600">{item.promedio} min</Td>
-                    </Tr>
-                  ))}
-                </Tbody>
-              </Table>
-            </Box>
+            {/* Layout compacto side by side */}
+            <Grid 
+              templateColumns={{ base: '1fr', md: '2fr 1fr' }} 
+              gap={2} 
+              alignItems="start"
+              minH="180px"
+            >
+              {/* Gráfico más grande y compacto */}
+              <Box h="100%">
+                <Box height={{ base: "180px", md: "200px" }}>
+                  <Bar
+                    data={{
+                      labels: dashboardData.monthlyData.map(item => item.month),
+                      datasets: [{
+                        label: 'Pacientes',
+                        data: dashboardData.monthlyData.map(item => item.pacientes),
+                        backgroundColor: 'rgba(79, 125, 243, 0.7)',
+                        borderColor: '#4F7DF3',
+                        borderWidth: 2,
+                        borderRadius: 6,
+                        borderSkipped: false,
+                      }]
+                    }}
+                    options={{
+                      responsive: true,
+                      maintainAspectRatio: false,
+                      layout: {
+                        padding: {
+                          top: 20,
+                          right: 10,
+                          bottom: 10,
+                          left: 10
+                        }
+                      },
+                      scales: {
+                        y: {
+                          beginAtZero: true,
+                          grid: {
+                            color: 'rgba(148, 163, 184, 0.2)',
+                            drawBorder: true,
+                          },
+                          ticks: {
+                            color: '#64748b',
+                            font: {
+                              size: 11,
+                              weight: '500'
+                            },
+                            padding: 8,
+                            stepSize: Math.ceil(Math.max(...dashboardData.monthlyData.map(item => item.pacientes)) / 5)
+                          },
+                          title: {
+                            display: true,
+                            text: 'Pacientes',
+                            color: '#475569',
+                            font: {
+                              size: 12,
+                              weight: 'bold'
+                            },
+                            padding: 15
+                          }
+                        },
+                        x: {
+                          grid: {
+                            display: false,
+                          },
+                          ticks: {
+                            color: '#64748b',
+                            font: {
+                              size: 10
+                            },
+                            maxRotation: 45,
+                            padding: 5
+                          }
+                        }
+                      },
+                      plugins: {
+                        legend: {
+                          display: false
+                        },
+                        tooltip: {
+                          backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                          titleColor: '#1e293b',
+                          bodyColor: '#475569',
+                          borderColor: '#4F7DF3',
+                          borderWidth: 1,
+                          cornerRadius: 8,
+                          displayColors: false,
+                          callbacks: {
+                            title: function(context) {
+                              return context[0].label;
+                            },
+                            label: function(context) {
+                              return `Pacientes: ${context.parsed.y}`;
+                            }
+                          }
+                        }
+                      }
+                    }}
+                  />
+                </Box>
+              </Box>
+              
+              {/* Tabla lateral más densa */}
+              <VStack spacing={1} align="stretch" h="100%">
+                <Text fontSize="xs" color="secondary.700" fontWeight="bold">
+                  Últimos 6 Meses
+                </Text>
+                <Box 
+                  overflowY="auto" 
+                  maxH="160px"
+                  css={{
+                    '&::-webkit-scrollbar': {
+                      width: '4px',
+                    },
+                    '&::-webkit-scrollbar-track': {
+                      background: '#f1f1f1',
+                      borderRadius: '2px',
+                    },
+                    '&::-webkit-scrollbar-thumb': {
+                      background: '#c1c1c1',
+                      borderRadius: '2px',
+                    },
+                  }}
+                >
+                  <Table size="xs" variant="simple">
+                    <Thead position="sticky" top={0} bg="white" zIndex={1}>
+                      <Tr>
+                        <Th color="secondary.600" fontSize="2xs" py={1} px={2}>Mes</Th>
+                        <Th color="secondary.600" fontSize="2xs" isNumeric py={1} px={2}>Pac.</Th>
+                        <Th color="secondary.600" fontSize="2xs" isNumeric py={1} px={2}>Min</Th>
+                      </Tr>
+                    </Thead>
+                    <Tbody>
+                      {dashboardData.monthlyData.slice(-6).map((item, index) => (
+                        <Tr key={index} _hover={{ bg: "rgba(79, 125, 243, 0.05)" }}>
+                          <Td fontSize="2xs" fontWeight="medium" color="secondary.700" py={1} px={2}>
+                            {item.month.substring(0, 3)}
+                          </Td>
+                          <Td fontSize="2xs" isNumeric fontWeight="bold" color="secondary.800" py={1} px={2}>
+                            {item.pacientes}
+                          </Td>
+                          <Td fontSize="2xs" isNumeric color="secondary.600" py={1} px={2}>
+                            {item.promedio}
+                          </Td>
+                        </Tr>
+                      ))}
+                    </Tbody>
+                  </Table>
+                </Box>
+                
+                {/* Botón de acción compacto */}
+                <Button 
+                  size="xs" 
+                  variant="ghost" 
+                  onClick={() => navigateToDetail('monthly')}
+                  fontSize="2xs"
+                  h="6"
+                  mt={1}
+                  _hover={{
+                    bg: "rgba(79, 125, 243, 0.1)"
+                  }}
+                >
+                  Ver más
+                </Button>
+              </VStack>
+            </Grid>
           </GlassCard>
 
           {/* Top Flebotomistas - Solo para Administradores */}
           {isAdmin && (
-          <GlassCard p={6} animation={`${slideInFromRight} 0.8s ease-out`}>
+          <GlassCard p={{ base: 4, md: 6 }} animation={`${slideInFromRight} 0.8s ease-out`}>
             <Flex justify="space-between" align="center" mb={6}>
               <VStack align="start" spacing={1}>
                 <Heading size="md" color="secondary.800" fontWeight="bold">
@@ -794,179 +975,6 @@ const StatisticsDashboard = memo(function StatisticsDashboard() {
             </VStack>
           </GlassCard>
           )}
-        </Grid>
-
-        {/* Acciones Rápidas y Alertas */}
-        <Grid templateColumns={{ base: '1fr', lg: '2fr 1fr' }} gap={6} mb={8}>
-          {/* Acciones Rápidas */}
-          <GlassCard p={6} animation={`${slideInFromLeft} 1.0s ease-out`}>
-            <VStack align="start" spacing={4} mb={6}>
-              <Heading size="md" color="secondary.800" fontWeight="bold">
-                Acciones Rápidas
-              </Heading>
-              <Text color="secondary.600" fontSize="sm">
-                {isAdmin ? 'Accede rápidamente a reportes detallados' : 'Reportes disponibles para flebotomistas'}
-              </Text>
-              {isFlebotomista && (
-                <Box
-                  p={3}
-                  background="rgba(79, 125, 243, 0.1)"
-                  borderRadius="lg"
-                  border="1px solid rgba(79, 125, 243, 0.2)"
-                  w="full"
-                >
-                  <Text fontSize="sm" color="primary.700" fontWeight="semibold">
-                    ℹ️ Vista de Flebotomista: Acceso a estadísticas operativas básicas
-                  </Text>
-                </Box>
-              )}
-            </VStack>
-            
-            <SimpleGrid columns={{ base: 2, md: 2 }} spacing={4}>
-              {[
-                { icon: FaCalendarAlt, title: 'Reporte Mensual', action: 'monthly', color: 'linear-gradient(135deg, #4F7DF3 0%, #6B73FF 100%)', roles: ['Administrador'] },
-                { icon: FaEye, title: 'Reporte Diario', action: 'daily', color: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', roles: ['Administrador', 'Flebotomista'] },
-                { icon: FaUserMd, title: 'Por Flebotomista', action: 'phlebotomists', color: 'linear-gradient(135deg, #6B73FF 0%, #9333EA 100%)', roles: ['Administrador'] },
-                { icon: FaClock, title: 'Tiempo Promedio', action: 'average-time', color: 'linear-gradient(135deg, #f59e0b 0%, #f97316 100%)', roles: ['Administrador', 'Flebotomista'] }
-              ].filter(item => !item.roles || item.roles.includes(userRole)).map((item, index) => (
-                <VStack
-                  key={index}
-                  spacing={3}
-                  p={4}
-                  background="rgba(255, 255, 255, 0.4)"
-                  backdropFilter="blur(10px)"
-                  borderRadius="xl"
-                  border="1px solid rgba(255, 255, 255, 0.3)"
-                  cursor="pointer"
-                  onClick={() => navigateToDetail(item.action)}
-                  _hover={{ 
-                    background: "rgba(255, 255, 255, 0.6)", 
-                    transform: 'translateY(-2px)',
-                    boxShadow: 'md'
-                  }}
-                  transition="all 0.3s ease"
-                >
-                  <Box
-                    w={12}
-                    h={12}
-                    background={item.color}
-                    borderRadius="xl"
-                    display="flex"
-                    alignItems="center"
-                    justifyContent="center"
-                    color="white"
-                    boxShadow="lg"
-                  >
-                    <Box as={item.icon} fontSize="xl" />
-                  </Box>
-                  <Text fontWeight="semibold" fontSize="sm" textAlign="center" color="secondary.700">
-                    {item.title}
-                  </Text>
-                </VStack>
-              ))}
-            </SimpleGrid>
-          </GlassCard>
-
-          {/* Alertas del Sistema */}
-          <GlassCard p={6} animation={`${slideInFromRight} 1.0s ease-out`}>
-            <VStack align="start" spacing={4} mb={6}>
-              <Heading size="md" color="secondary.800" fontWeight="bold">
-                Alertas del Sistema
-              </Heading>
-              <Text color="secondary.600" fontSize="sm">
-                Notificaciones importantes
-              </Text>
-            </VStack>
-            
-            <VStack spacing={4} align="stretch">
-              <HStack
-                p={4}
-                background="rgba(16, 185, 129, 0.1)"
-                backdropFilter="blur(10px)"
-                borderRadius="lg"
-                border="1px solid rgba(16, 185, 129, 0.3)"
-              >
-                <Box as={FaCheckCircle} color="success" fontSize="lg" />
-                <VStack align="start" spacing={0} flex={1}>
-                  <Text fontWeight="semibold" fontSize="sm" color="success">
-                    Sistema funcionando correctamente
-                  </Text>
-                  <Text fontSize="xs" color="secondary.600">
-                    Todos los servicios operativos
-                  </Text>
-                </VStack>
-                <Badge
-                  bg="rgba(16, 185, 129, 0.2)"
-                  color="success"
-                  size="sm"
-                  px={2}
-                  py={1}
-                  borderRadius="md"
-                  fontSize="xs"
-                >
-                  OK
-                </Badge>
-              </HStack>
-
-              <HStack
-                p={4}
-                background="rgba(245, 158, 11, 0.1)"
-                backdropFilter="blur(10px)"
-                borderRadius="lg"
-                border="1px solid rgba(245, 158, 11, 0.3)"
-              >
-                <Box as={FaExclamationTriangle} color="warning" fontSize="lg" />
-                <VStack align="start" spacing={0} flex={1}>
-                  <Text fontWeight="semibold" fontSize="sm" color="warning">
-                    Carga alta en Cubículo 2
-                  </Text>
-                  <Text fontSize="xs" color="secondary.600">
-                    Tiempo de espera &gt; 25 min
-                  </Text>
-                </VStack>
-                <Badge
-                  bg="rgba(245, 158, 11, 0.2)"
-                  color="warning"
-                  size="sm"
-                  px={2}
-                  py={1}
-                  borderRadius="md"
-                  fontSize="xs"
-                >
-                  Atención
-                </Badge>
-              </HStack>
-
-              <HStack
-                p={4}
-                background="rgba(79, 125, 243, 0.1)"
-                backdropFilter="blur(10px)"
-                borderRadius="lg"
-                border="1px solid rgba(79, 125, 243, 0.3)"
-              >
-                <Box as={FaChartBar} color="primary.500" fontSize="lg" />
-                <VStack align="start" spacing={0} flex={1}>
-                  <Text fontWeight="semibold" fontSize="sm" color="primary.500">
-                    Nuevo record de eficiencia
-                  </Text>
-                  <Text fontSize="xs" color="secondary.600">
-                    96.5% alcanzada este mes
-                  </Text>
-                </VStack>
-                <Badge
-                  bg="rgba(79, 125, 243, 0.2)"
-                  color="primary.500"
-                  size="sm"
-                  px={2}
-                  py={1}
-                  borderRadius="md"
-                  fontSize="xs"
-                >
-                  Info
-                </Badge>
-              </HStack>
-            </VStack>
-          </GlassCard>
         </Grid>
 
         {/* Footer */}

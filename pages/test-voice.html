@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test de Voz - Sistema de Turnos</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 18px;
+            margin: 10px;
+            transition: all 0.3s;
+        }
+        button:hover {
+            background: #45a049;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+        button:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+        .log {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 14px;
+        }
+        .log-entry {
+            margin: 5px 0;
+            padding: 5px;
+            border-left: 3px solid #4CAF50;
+            padding-left: 10px;
+        }
+        .error {
+            border-left-color: #f44336;
+            color: #ffcdd2;
+        }
+        .warning {
+            border-left-color: #ff9800;
+            color: #ffe0b2;
+        }
+        select {
+            padding: 10px;
+            font-size: 16px;
+            border-radius: 5px;
+            margin: 10px;
+            width: 100%;
+        }
+        input {
+            padding: 10px;
+            font-size: 16px;
+            border-radius: 5px;
+            margin: 10px 0;
+            width: 100%;
+            box-sizing: border-box;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔊 Test de Síntesis de Voz</h1>
+        <p>Prueba la funcionalidad de voz del sistema de turnos</p>
+        
+        <div>
+            <label>Selecciona una voz:</label>
+            <select id="voiceSelect">
+                <option value="">Cargando voces...</option>
+            </select>
+        </div>
+        
+        <div>
+            <label>Nombre del paciente:</label>
+            <input type="text" id="patientName" value="Juan Pérez García" />
+        </div>
+        
+        <div>
+            <label>Número de cubículo:</label>
+            <input type="text" id="cubicleNumber" value="3" />
+        </div>
+        
+        <div style="margin-top: 20px;">
+            <button onclick="testBasicVoice()">🗣️ Test Básico</button>
+            <button onclick="testSpanishVoice()">🇲🇽 Test Español</button>
+            <button onclick="testFullAnnouncement()">📢 Anuncio Completo</button>
+            <button onclick="listVoices()">📋 Listar Voces</button>
+            <button onclick="clearLog()">🗑️ Limpiar Log</button>
+        </div>
+        
+        <div class="log" id="log">
+            <div class="log-entry">Sistema iniciado. Esperando comandos...</div>
+        </div>
+    </div>
+
+    <script>
+        let voices = [];
+        
+        function log(message, type = 'info') {
+            const logDiv = document.getElementById('log');
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            const time = new Date().toLocaleTimeString();
+            entry.textContent = `[${time}] ${message}`;
+            logDiv.appendChild(entry);
+            logDiv.scrollTop = logDiv.scrollHeight;
+            console.log(message);
+        }
+        
+        function clearLog() {
+            document.getElementById('log').innerHTML = '<div class="log-entry">Log limpiado</div>';
+        }
+        
+        // Cargar voces disponibles
+        function loadVoices() {
+            voices = window.speechSynthesis.getVoices();
+            const select = document.getElementById('voiceSelect');
+            select.innerHTML = '<option value="">Voz por defecto</option>';
+            
+            voices.forEach((voice, index) => {
+                const option = document.createElement('option');
+                option.value = index;
+                option.textContent = `${voice.name} (${voice.lang})`;
+                if (voice.lang.startsWith('es')) {
+                    option.style.fontWeight = 'bold';
+                }
+                select.appendChild(option);
+            });
+            
+            log(`✅ ${voices.length} voces cargadas`);
+        }
+        
+        // Esperar a que las voces estén disponibles
+        if (window.speechSynthesis) {
+            window.speechSynthesis.onvoiceschanged = loadVoices;
+            loadVoices(); // Intentar cargar inmediatamente
+        } else {
+            log('❌ SpeechSynthesis no está disponible en este navegador', 'error');
+        }
+        
+        function testBasicVoice() {
+            log('🗣️ Iniciando test básico...');
+            
+            if (!window.speechSynthesis) {
+                log('❌ SpeechSynthesis no disponible', 'error');
+                return;
+            }
+            
+            const text = "Hola, esto es una prueba del sistema de voz";
+            const utterance = new SpeechSynthesisUtterance(text);
+            
+            utterance.onstart = () => log('▶️ Reproduciendo...');
+            utterance.onend = () => log('✅ Test básico completado');
+            utterance.onerror = (e) => log(`❌ Error: ${e.error}`, 'error');
+            
+            window.speechSynthesis.speak(utterance);
+        }
+        
+        function testSpanishVoice() {
+            log('🇲🇽 Probando voz en español...');
+            
+            if (!window.speechSynthesis) {
+                log('❌ SpeechSynthesis no disponible', 'error');
+                return;
+            }
+            
+            window.speechSynthesis.cancel();
+            
+            const text = "Atención, paciente de prueba, favor de dirigirse al cubículo número tres";
+            const utterance = new SpeechSynthesisUtterance(text);
+            
+            utterance.lang = 'es-MX';
+            utterance.rate = 0.9;
+            utterance.pitch = 1.1;
+            utterance.volume = 1.0;
+            
+            // Buscar voz en español
+            const spanishVoice = voices.find(v => v.lang === 'es-MX') || 
+                                voices.find(v => v.lang === 'es-ES') ||
+                                voices.find(v => v.lang.startsWith('es'));
+            
+            if (spanishVoice) {
+                utterance.voice = spanishVoice;
+                log(`🗣️ Usando voz: ${spanishVoice.name}`);
+            } else {
+                log('⚠️ No se encontró voz en español, usando defecto', 'warning');
+            }
+            
+            utterance.onstart = () => log('▶️ Reproduciendo en español...');
+            utterance.onend = () => log('✅ Test español completado');
+            utterance.onerror = (e) => log(`❌ Error: ${e.error}`, 'error');
+            
+            window.speechSynthesis.speak(utterance);
+        }
+        
+        function testFullAnnouncement() {
+            const patientName = document.getElementById('patientName').value;
+            const cubicleNumber = document.getElementById('cubicleNumber').value;
+            const voiceIndex = document.getElementById('voiceSelect').value;
+            
+            log(`📢 Iniciando anuncio completo para: ${patientName}`);
+            
+            if (!window.speechSynthesis) {
+                log('❌ SpeechSynthesis no disponible', 'error');
+                return;
+            }
+            
+            window.speechSynthesis.cancel();
+            
+            const text = `Atención, paciente ${patientName}, favor de dirigirse al cubículo número ${cubicleNumber}. Repito, paciente ${patientName}, cubículo número ${cubicleNumber}.`;
+            
+            log(`📝 Texto: "${text}"`);
+            
+            const utterance = new SpeechSynthesisUtterance(text);
+            
+            utterance.lang = 'es-MX';
+            utterance.rate = 0.95;
+            utterance.pitch = 1.1;
+            utterance.volume = 1.0;
+            
+            if (voiceIndex && voices[voiceIndex]) {
+                utterance.voice = voices[voiceIndex];
+                log(`🗣️ Usando voz seleccionada: ${voices[voiceIndex].name}`);
+            }
+            
+            utterance.onstart = () => log('▶️ Reproduciendo anuncio completo...');
+            utterance.onend = () => log('✅ Anuncio completado exitosamente');
+            utterance.onerror = (e) => log(`❌ Error en anuncio: ${e.error}`, 'error');
+            
+            window.speechSynthesis.speak(utterance);
+        }
+        
+        function listVoices() {
+            log('📋 Lista de voces disponibles:');
+            voices.forEach((voice, index) => {
+                const lang = voice.lang.startsWith('es') ? '🇪🇸' : '🌍';
+                log(`${lang} ${index}: ${voice.name} (${voice.lang})`);
+            });
+            log(`Total: ${voices.length} voces`);
+        }
+    </script>
+</body>
+</html>

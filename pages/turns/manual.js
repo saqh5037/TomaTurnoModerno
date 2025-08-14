@@ -25,8 +25,7 @@ import {
   FaIdCard, 
   FaPhone, 
   FaFlask, 
-  FaClipboardList, 
-  FaNotes,
+  FaClipboardList,
   FaSave,
   FaArrowLeft,
   FaUserPlus,
@@ -568,7 +567,7 @@ export default function ManualTurnAssignment() {
                 <FormControl>
                   <FormLabel fontSize="sm" fontWeight="semibold" color="secondary.700">
                     <Flex align="center" gap={2}>
-                      <Box as={FaNotes} />
+                      <Box as={FaClipboardList} />
                       Observaciones Adicionales
                     </Flex>
                   </FormLabel>

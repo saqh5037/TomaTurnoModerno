@@ -8,9 +8,14 @@ export async function POST(req) {
   const { username, password } = await req.json();
 
   try {
-    // Busca al usuario en la base de datos utilizando el `username`
-    const user = await prisma.user.findUnique({
-      where: { username },
+    // Busca al usuario en la base de datos utilizando el `username` (case-insensitive)
+    const user = await prisma.user.findFirst({
+      where: { 
+        username: {
+          equals: username,
+          mode: 'insensitive'
+        }
+      },
     });
 
     if (!user) {

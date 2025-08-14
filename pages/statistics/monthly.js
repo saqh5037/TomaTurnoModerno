@@ -397,18 +397,24 @@ const MonthlyStatistics = memo(function MonthlyStatistics() {
           title="Estadísticas Mensuales"
           subtitle={isAdmin ? "Análisis Detallado por Mes - Vista Completa" : "Estadísticas Mensuales - Vista Operativa"}
         >
+        </ModernHeader>
+        
+        {/* Botón de Volver */}
+        <Flex align="center" gap={4} justify="flex-start" mb={6}>
           <Button
             leftIcon={<FaArrowLeft />}
-            variant="outline"
             onClick={() => router.push("/statistics")}
+            variant="outline"
+            colorScheme="gray"
+            size="sm"
             _hover={{
               transform: 'translateY(-2px)',
               boxShadow: 'md'
             }}
           >
-            Regresar
+            Volver
           </Button>
-        </ModernHeader>
+        </Flex>
 
         {/* Controles y Filtros */}
         <GlassCard p={6} mb={8} animation={`${fadeInUp} 0.8s ease-out`}>

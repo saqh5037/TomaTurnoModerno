@@ -70,3 +70,23 @@ model Cubicle {
 
   turnRequests TurnRequest[] @relation("TurnRequestToCubicle")
 }
+
+enum SatisfactionRating {
+  HAPPY      // 😊 Satisfecho
+  NEUTRAL    // 😐 Neutral  
+  SAD        // 😞 Insatisfecho
+}
+
+model SatisfactionSurvey {
+  id        Int               @id @default(autoincrement())
+  rating    SatisfactionRating
+  comments  String?           // Comentarios opcionales
+  createdAt DateTime          @default(now())
+  
+  // Información opcional del contexto
+  userAgent String?           // Para saber desde qué dispositivo
+  ipAddress String?           // IP (opcional, para estadísticas)
+  
+  @@index([rating])
+  @@index([createdAt])
+}

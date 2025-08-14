@@ -150,11 +150,11 @@ const LoginPage = memo(function LoginPage() {
           minHeight="100vh"
           p={4}
         >
-          {/* Panel de Login Principal */}
+          {/* Panel de Login Principal - Optimizado para TV */}
           <GlassCard
-            maxW="450px"
+            maxW="500px"
             w="full"
-            p={8}
+            p={10}
             animation={`${fadeInUp} 0.8s ease-out`}
             position="relative"
             overflow="hidden"
@@ -174,36 +174,36 @@ const LoginPage = memo(function LoginPage() {
             <VStack spacing={6} align="stretch">
               <Box textAlign="center">
                 <Box
-                  w={16}
-                  h={16}
+                  w={20}
+                  h={20}
                   borderRadius="2xl"
                   background="linear-gradient(135deg, #4F7DF3 0%, #6B73FF 100%)"
                   display="flex"
                   alignItems="center"
                   justifyContent="center"
                   color="white"
-                  fontSize="2xl"
-                  mb={4}
+                  fontSize="3xl"
+                  mb={5}
                   mx="auto"
                   boxShadow="xl"
                 >
                   <FaHospital />
                 </Box>
                 <Heading 
-                  fontSize="2xl"
+                  fontSize="3xl"
                   fontWeight="extrabold"
                   background="linear-gradient(135deg, #4F7DF3 0%, #6B73FF 100%)"
                   backgroundClip="text"
                   color="transparent"
                   letterSpacing="-0.02em"
-                  mb={2}
+                  mb={3}
                 >
                   TomaTurno INER
                 </Heading>
-                <Text color="secondary.600" fontWeight="medium">
+                <Text color="secondary.600" fontWeight="medium" fontSize="lg">
                   Sistema de Gestión de Turnos
                 </Text>
-                <Text fontSize="sm" color="secondary.500" mt={1}>
+                <Text fontSize="md" color="secondary.500" mt={2}>
                   Ingresa tus credenciales para continuar
                 </Text>
               </Box>
@@ -213,7 +213,7 @@ const LoginPage = memo(function LoginPage() {
                 <VStack spacing={5}>
                   <FormControl isRequired>
                     <FormLabel 
-                      fontSize="sm" 
+                      fontSize="md" 
                       fontWeight="semibold" 
                       color="secondary.700"
                       display="flex"
@@ -241,7 +241,7 @@ const LoginPage = memo(function LoginPage() {
 
                   <FormControl isRequired>
                     <FormLabel 
-                      fontSize="sm" 
+                      fontSize="md" 
                       fontWeight="semibold" 
                       color="secondary.700"
                       display="flex"
@@ -302,18 +302,18 @@ const LoginPage = memo(function LoginPage() {
                 </VStack>
               </Box>
 
-              {/* Información adicional */}
+              {/* Información adicional - Más visible para TV */}
               <Box
-                p={4}
+                p={5}
                 background="rgba(79, 125, 243, 0.1)"
                 borderRadius="lg"
                 border="1px solid rgba(79, 125, 243, 0.2)"
                 textAlign="center"
               >
-                <Text fontSize="sm" color="primary.700" fontWeight="semibold" mb={1}>
+                <Text fontSize="md" color="primary.700" fontWeight="semibold" mb={2}>
                   💡 Información del Sistema
                 </Text>
-                <Text fontSize="xs" color="secondary.600">
+                <Text fontSize="sm" color="secondary.600">
                   Usa las credenciales proporcionadas por el administrador del sistema.
                   En caso de problemas, contacta al departamento de TI.
                 </Text>
@@ -322,25 +322,24 @@ const LoginPage = memo(function LoginPage() {
           </GlassCard>
         </Box>
 
-        {/* Footer */}
+        {/* Footer - Más pequeño para TV */}
         <Box
           as="footer"
           position="fixed"
-          bottom={4}
+          bottom={2}
           left={4}
           right={4}
           textAlign="center"
-          background="rgba(255, 255, 255, 0.25)"
-          backdropFilter="blur(20px)"
-          color="secondary.600"
-          borderRadius="lg"
-          fontSize="sm"
-          p={3}
+          background="rgba(255, 255, 255, 0.2)"
+          backdropFilter="blur(15px)"
+          color="secondary.500"
+          borderRadius="md"
+          fontSize="xs"
+          p={2}
           animation={`${slideInFromLeft} 1.2s ease-out`}
         >
           <Text>
-            Instituto Nacional de Enfermedades Respiratorias Ismael Cosío Villegas (INER) | 
-            Desarrollado por DT Diagnósticos by Labsis © {new Date().getFullYear()}
+            INER - Laboratorio Central | © {new Date().getFullYear()} DT Diagnósticos by Labsis
           </Text>
         </Box>
       </ModernContainer>

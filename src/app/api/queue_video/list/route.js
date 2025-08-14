@@ -42,13 +42,11 @@ export async function GET() {
       },
     });
 
-    // Turnos que están en estado 'Calling' (isCalled: true)
+    // Turnos que están en estado 'Calling' (status: 'In Progress', isCalled: false)
     const inCallingTurns = await prisma.turnRequest.findMany({
       where: {
-        isCalled: true,
-        status: { // El status puede ser 'Pending' o 'In Progress'
-            in: ['Pending', 'In Progress']
-        }
+        status: 'In Progress',
+        isCalled: false, // Recién llamados, esperando anuncio
       },
       orderBy: {
         assignedTurn: 'asc',

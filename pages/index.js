@@ -176,472 +176,257 @@ const HomePage = memo(function HomePage() {
 
         {/* Contenido Principal */}
         <VStack spacing={8} align="stretch">
-          {/* Mensaje de Bienvenida */}
-          <GlassCard p={8} textAlign="center" animation={`${slideInFromLeft} 1s ease-out`}>
-            <Box
-              w={16}
-              h={16}
-              borderRadius="2xl"
-              background="linear-gradient(135deg, #4F7DF3 0%, #6B73FF 100%)"
-              display="flex"
-              alignItems="center"
-              justifyContent="center"
-              color="white"
-              fontSize="3xl"
-              mb={6}
-              mx="auto"
-              boxShadow="xl"
-            >
-              <FaHeart />
-            </Box>
-            
-            <Heading 
-              size="xl" 
-              color="secondary.800" 
-              mb={4}
-              fontWeight="bold"
-            >
-              Sistema de Gestión de Turnos
-            </Heading>
-            
-            <Text 
-              fontSize="lg" 
-              color="secondary.600" 
-              lineHeight="1.8"
-              maxW="600px"
-              mx="auto"
-            >
-              Bienvenido al sistema moderno de gestión de turnos del Instituto Nacional 
-              de Enfermedades Respiratorias. Aquí podrás acceder a todas las herramientas 
-              necesarias para una atención médica eficiente y organizada.
-            </Text>
-          </GlassCard>
-
-          {/* Cards de Navegación */}
-          <VStack spacing={6} align="stretch">
+          {/* Mensaje de Bienvenida Compacto */}
+          <GlassCard p={6} textAlign="center" animation={`${slideInFromLeft} 1s ease-out`}>
             <Heading 
               size="lg" 
               color="secondary.800" 
-              textAlign="center"
+              mb={2}
               fontWeight="bold"
             >
-              Acceso Rápido - Módulos Disponibles
+              Sistema de Gestión de Turnos - INER
             </Heading>
             
-            <Flex 
-              wrap="wrap" 
-              gap={6} 
-              justify="center"
+            <Text 
+              fontSize="md" 
+              color="secondary.600" 
+              maxW="400px"
+              mx="auto"
             >
-              {/* Cola de Turnos - Disponible para todos */}
+              Selecciona la opción que necesitas para continuar
+            </Text>
+          </GlassCard>
+
+          {/* Cards de Navegación - Opciones Principales */}
+          <Flex 
+            wrap="wrap" 
+            gap={8} 
+            justify="center"
+            align="stretch"
+          >
+            {/* Cola de Turnos - Solo para Administrador */}
+            {isAdmin && (
               <GlassCard 
-                p={6}
-                maxW="300px"
+                p={8}
+                minW="280px"
+                maxW="340px"
                 flex="1"
                 cursor="pointer"
                 onClick={() => handleNavigation('/turns/queue')}
                 _hover={{
-                  transform: 'translateY(-8px)',
-                  boxShadow: 'xl',
-                  background: "rgba(255, 255, 255, 0.35)"
+                  transform: 'translateY(-10px)',
+                  boxShadow: '2xl',
+                  background: "rgba(255, 255, 255, 0.4)"
                 }}
                 transition="all 0.3s ease"
                 animation={`${fadeInUp} 1.2s ease-out`}
                 position="relative"
                 overflow="hidden"
+                border="2px solid rgba(79, 125, 243, 0.2)"
               >
                 <Box
                   position="absolute"
                   top={0}
                   left={0}
                   right={0}
-                  height="3px"
+                  height="5px"
                   background="linear-gradient(135deg, #4F7DF3 0%, #6B73FF 100%)"
                   borderTopRadius="2xl"
                 />
                 
-                <VStack spacing={4} align="center">
+                <VStack spacing={6} align="center">
                   <Box
-                    w={12}
-                    h={12}
-                    borderRadius="xl"
+                    w={16}
+                    h={16}
+                    borderRadius="2xl"
                     background="linear-gradient(135deg, #4F7DF3 0%, #6B73FF 100%)"
                     display="flex"
                     alignItems="center"
                     justifyContent="center"
                     color="white"
-                    fontSize="2xl"
-                    boxShadow="lg"
+                    fontSize="3xl"
+                    boxShadow="xl"
                   >
                     <FaClock />
                   </Box>
                   
-                  <VStack spacing={2} textAlign="center">
-                    <Text fontWeight="bold" fontSize="lg" color="secondary.800">
+                  <VStack spacing={3} textAlign="center">
+                    <Text fontWeight="bold" fontSize="xl" color="secondary.800">
                       Cola de Turnos
                     </Text>
-                    <Text fontSize="sm" color="secondary.600">
-                      Visualiza y gestiona la cola de pacientes en tiempo real
+                    <Text fontSize="md" color="secondary.600">
+                      Visualiza la cola de pacientes en tiempo real
                     </Text>
                   </VStack>
                 </VStack>
               </GlassCard>
+            )}
 
-              {/* Panel de Atención - Solo para Flebotomistas y Admins */}
-              {(isFlebotomista || isAdmin) && (
-                <GlassCard 
-                  p={6}
-                  maxW="300px"
-                  flex="1"
-                  cursor="pointer"
-                  onClick={() => handleNavigation('/turns/attention')}
-                  _hover={{
-                    transform: 'translateY(-8px)',
-                    boxShadow: 'xl',
-                    background: "rgba(255, 255, 255, 0.35)"
-                  }}
-                  transition="all 0.3s ease"
-                  animation={`${fadeInUp} 1.4s ease-out`}
-                  position="relative"
-                  overflow="hidden"
-                >
-                  <Box
-                    position="absolute"
-                    top={0}
-                    left={0}
-                    right={0}
-                    height="3px"
-                    background="linear-gradient(135deg, #10b981 0%, #059669 100%)"
-                    borderTopRadius="2xl"
-                  />
-                  
-                  <VStack spacing={4} align="center">
-                    <Box
-                      w={12}
-                      h={12}
-                      borderRadius="xl"
-                      background="linear-gradient(135deg, #10b981 0%, #059669 100%)"
-                      display="flex"
-                      alignItems="center"
-                      justifyContent="center"
-                      color="white"
-                      fontSize="2xl"
-                      boxShadow="lg"
-                    >
-                      <FaStethoscope />
-                    </Box>
-                    
-                    <VStack spacing={2} textAlign="center">
-                      <Text fontWeight="bold" fontSize="lg" color="secondary.800">
-                        Panel de Atención
-                      </Text>
-                      <Text fontSize="sm" color="secondary.600">
-                        Herramientas para flebotomistas y personal médico
-                      </Text>
-                    </VStack>
-                  </VStack>
-                </GlassCard>
-              )}
-
-              {/* Crear Turno Manual - Solo para Flebotomistas y Admins */}
-              {(isFlebotomista || isAdmin) && (
-                <GlassCard 
-                  p={6}
-                  maxW="300px"
-                  flex="1"
-                  cursor="pointer"
-                  onClick={() => handleNavigation('/turns/manual')}
-                  _hover={{
-                    transform: 'translateY(-8px)',
-                    boxShadow: 'xl',
-                    background: "rgba(255, 255, 255, 0.35)"
-                  }}
-                  transition="all 0.3s ease"
-                  animation={`${fadeInUp} 1.5s ease-out`}
-                  position="relative"
-                  overflow="hidden"
-                >
-                  <Box
-                    position="absolute"
-                    top={0}
-                    left={0}
-                    right={0}
-                    height="3px"
-                    background="linear-gradient(135deg, #8b5cf6 0%, #a855f7 100%)"
-                    borderTopRadius="2xl"
-                  />
-                  
-                  <VStack spacing={4} align="center">
-                    <Box
-                      w={12}
-                      h={12}
-                      borderRadius="xl"
-                      background="linear-gradient(135deg, #8b5cf6 0%, #a855f7 100%)"
-                      display="flex"
-                      alignItems="center"
-                      justifyContent="center"
-                      color="white"
-                      fontSize="2xl"
-                      boxShadow="lg"
-                    >
-                      <FaUserMd />
-                    </Box>
-                    
-                    <VStack spacing={2} textAlign="center">
-                      <Text fontWeight="bold" fontSize="lg" color="secondary.800">
-                        Crear Turno
-                      </Text>
-                      <Text fontSize="sm" color="secondary.600">
-                        Registro manual de nuevos pacientes
-                      </Text>
-                    </VStack>
-                  </VStack>
-                </GlassCard>
-              )}
-
-              {/* Estadísticas - Disponible para todos con diferentes niveles */}
+            {/* Panel de Atención - Solo para Flebotomistas y Admins */}
+            {(isFlebotomista || isAdmin) && (
               <GlassCard 
-                p={6}
-                maxW="300px"
+                p={8}
+                minW="280px"
+                maxW="340px"
                 flex="1"
                 cursor="pointer"
-                onClick={() => handleNavigation('/statistics')}
+                onClick={() => handleNavigation('/turns/attention')}
                 _hover={{
-                  transform: 'translateY(-8px)',
-                  boxShadow: 'xl',
-                  background: "rgba(255, 255, 255, 0.35)"
+                  transform: 'translateY(-10px)',
+                  boxShadow: '2xl',
+                  background: "rgba(255, 255, 255, 0.4)"
                 }}
                 transition="all 0.3s ease"
-                animation={`${fadeInUp} 1.6s ease-out`}
+                animation={`${fadeInUp} 1.4s ease-out`}
                 position="relative"
                 overflow="hidden"
+                border="2px solid rgba(16, 185, 129, 0.2)"
               >
                 <Box
                   position="absolute"
                   top={0}
                   left={0}
                   right={0}
-                  height="3px"
-                  background="linear-gradient(135deg, #f59e0b 0%, #f97316 100%)"
+                  height="5px"
+                  background="linear-gradient(135deg, #10b981 0%, #059669 100%)"
                   borderTopRadius="2xl"
                 />
                 
-                <VStack spacing={4} align="center">
+                <VStack spacing={6} align="center">
                   <Box
-                    w={12}
-                    h={12}
-                    borderRadius="xl"
-                    background="linear-gradient(135deg, #f59e0b 0%, #f97316 100%)"
+                    w={16}
+                    h={16}
+                    borderRadius="2xl"
+                    background="linear-gradient(135deg, #10b981 0%, #059669 100%)"
                     display="flex"
                     alignItems="center"
                     justifyContent="center"
                     color="white"
-                    fontSize="2xl"
-                    boxShadow="lg"
+                    fontSize="3xl"
+                    boxShadow="xl"
                   >
-                    <FaChartBar />
+                    <FaStethoscope />
                   </Box>
                   
-                  <VStack spacing={2} textAlign="center">
-                    <Text fontWeight="bold" fontSize="lg" color="secondary.800">
-                      Estadísticas
+                  <VStack spacing={3} textAlign="center">
+                    <Text fontWeight="bold" fontSize="xl" color="secondary.800">
+                      Panel de Atención
                     </Text>
-                    <Text fontSize="sm" color="secondary.600">
-                      {isAdmin ? 'Métricas completas del sistema' : 'Estadísticas operativas básicas'}
+                    <Text fontSize="md" color="secondary.600">
+                      Herramientas para atender pacientes
                     </Text>
                   </VStack>
                 </VStack>
               </GlassCard>
+            )}
 
-              {/* Gestión de Usuarios - Solo para Administradores */}
-              {isAdmin && (
-                <GlassCard 
-                  p={6}
-                  maxW="300px"
-                  flex="1"
-                  cursor="pointer"
-                  onClick={() => handleNavigation('/users')}
-                  _hover={{
-                    transform: 'translateY(-8px)',
-                    boxShadow: 'xl',
-                    background: "rgba(255, 255, 255, 0.35)"
-                  }}
-                  transition="all 0.3s ease"
-                  animation={`${fadeInUp} 1.8s ease-out`}
-                  position="relative"
-                  overflow="hidden"
-                >
-                  <Box
-                    position="absolute"
-                    top={0}
-                    left={0}
-                    right={0}
-                    height="3px"
-                    background="linear-gradient(135deg, #6B73FF 0%, #9333EA 100%)"
-                    borderTopRadius="2xl"
-                  />
-                  
-                  <VStack spacing={4} align="center">
-                    <Box
-                      w={12}
-                      h={12}
-                      borderRadius="xl"
-                      background="linear-gradient(135deg, #6B73FF 0%, #9333EA 100%)"
-                      display="flex"
-                      alignItems="center"
-                      justifyContent="center"
-                      color="white"
-                      fontSize="2xl"
-                      boxShadow="lg"
-                    >
-                      <FaUsers />
-                    </Box>
-                    
-                    <VStack spacing={2} textAlign="center">
-                      <Text fontWeight="bold" fontSize="lg" color="secondary.800">
-                        Usuarios
-                      </Text>
-                      <Text fontSize="sm" color="secondary.600">
-                        Administra el personal y permisos del sistema
-                      </Text>
-                    </VStack>
-                  </VStack>
-                </GlassCard>
-              )}
-
-              {/* Gestión de Cubículos - Solo para Administradores */}
-              {isAdmin && (
-                <GlassCard 
-                  p={6}
-                  maxW="300px"
-                  flex="1"
-                  cursor="pointer"
-                  onClick={() => handleNavigation('/cubicles')}
-                  _hover={{
-                    transform: 'translateY(-8px)',
-                    boxShadow: 'xl',
-                    background: "rgba(255, 255, 255, 0.35)"
-                  }}
-                  transition="all 0.3s ease"
-                  animation={`${fadeInUp} 1.9s ease-out`}
-                  position="relative"
-                  overflow="hidden"
-                >
-                  <Box
-                    position="absolute"
-                    top={0}
-                    left={0}
-                    right={0}
-                    height="3px"
-                    background="linear-gradient(135deg, #06b6d4 0%, #0891b2 100%)"
-                    borderTopRadius="2xl"
-                  />
-                  
-                  <VStack spacing={4} align="center">
-                    <Box
-                      w={12}
-                      h={12}
-                      borderRadius="xl"
-                      background="linear-gradient(135deg, #06b6d4 0%, #0891b2 100%)"
-                      display="flex"
-                      alignItems="center"
-                      justifyContent="center"
-                      color="white"
-                      fontSize="2xl"
-                      boxShadow="lg"
-                    >
-                      <FaHome />
-                    </Box>
-                    
-                    <VStack spacing={2} textAlign="center">
-                      <Text fontWeight="bold" fontSize="lg" color="secondary.800">
-                        Cubículos
-                      </Text>
-                      <Text fontSize="sm" color="secondary.600">
-                        Gestiona espacios de atención médica
-                      </Text>
-                    </VStack>
-                  </VStack>
-                </GlassCard>
-              )}
-            </Flex>
-          </VStack>
-
-          {/* Información Institucional */}
-          <GlassCard 
-            p={8} 
-            textAlign="center"
-            animation={`${slideInFromRight} 1.5s ease-out`}
-          >
-            <HStack justify="center" spacing={4} mb={6}>
-              <Box
-                w={12}
-                h={12}
-                borderRadius="xl"
-                background="linear-gradient(135deg, #10b981 0%, #059669 100%)"
-                display="flex"
-                alignItems="center"
-                justifyContent="center"
-                color="white"
-                fontSize="2xl"
-                boxShadow="lg"
-              >
-                <FaHandsHelping />
-              </Box>
-              <Heading 
-                size="lg" 
-                color="secondary.800"
-                fontWeight="bold"
-              >
-                Instituto Nacional de Enfermedades Respiratorias
-              </Heading>
-            </HStack>
-            
-            <Text 
-              fontSize="md" 
-              color="secondary.600" 
-              lineHeight="1.8"
-              maxW="800px"
-              mx="auto"
-              mb={6}
+            {/* Estadísticas - Disponible para todos */}
+            <GlassCard 
+              p={8}
+              minW="280px"
+              maxW="340px"
+              flex="1"
+              cursor="pointer"
+              onClick={() => handleNavigation('/statistics')}
+              _hover={{
+                transform: 'translateY(-10px)',
+                boxShadow: '2xl',
+                background: "rgba(255, 255, 255, 0.4)"
+              }}
+              transition="all 0.3s ease"
+              animation={`${fadeInUp} 1.6s ease-out`}
+              position="relative"
+              overflow="hidden"
+              border="2px solid rgba(245, 158, 11, 0.2)"
             >
-              Ismael Cosío Villegas (INER) se dedica a la prevención, diagnóstico y tratamiento 
-              de enfermedades respiratorias, brindando atención médica especializada de alta calidad 
-              a la población mexicana con tecnología de vanguardia y un equipo multidisciplinario 
-              comprometido con la excelencia.
-            </Text>
-            
-            <HStack justify="center" spacing={6} wrap="wrap">
-              <Button
-                leftIcon={<FaClock />}
-                variant="gradient"
-                size="lg"
-                onClick={() => handleNavigation('/turns/queue')}
-                _hover={{
-                  transform: 'translateY(-2px)',
-                  boxShadow: 'xl'
-                }}
-                transition="all 0.3s ease"
-              >
-                Ver Cola de Turnos
-              </Button>
-              {(isFlebotomista || isAdmin) && (
-                <Button
-                  leftIcon={<FaStethoscope />}
-                  variant="outline"
-                  size="lg"
-                  onClick={() => handleNavigation('/turns/attention')}
-                  _hover={{
-                    transform: 'translateY(-2px)',
-                    boxShadow: 'md'
-                  }}
-                  transition="all 0.3s ease"
+              <Box
+                position="absolute"
+                top={0}
+                left={0}
+                right={0}
+                height="5px"
+                background="linear-gradient(135deg, #f59e0b 0%, #f97316 100%)"
+                borderTopRadius="2xl"
+              />
+              
+              <VStack spacing={6} align="center">
+                <Box
+                  w={16}
+                  h={16}
+                  borderRadius="2xl"
+                  background="linear-gradient(135deg, #f59e0b 0%, #f97316 100%)"
+                  display="flex"
+                  alignItems="center"
+                  justifyContent="center"
+                  color="white"
+                  fontSize="3xl"
+                  boxShadow="xl"
                 >
-                  Panel de Atención
-                </Button>
-              )}
-            </HStack>
-          </GlassCard>
+                  <FaChartBar />
+                </Box>
+                
+                <VStack spacing={3} textAlign="center">
+                  <Text fontWeight="bold" fontSize="xl" color="secondary.800">
+                    Estadísticas
+                  </Text>
+                  <Text fontSize="md" color="secondary.600">
+                    {isAdmin ? 'Métricas completas del sistema' : 'Análisis de rendimiento y tiempos'}
+                  </Text>
+                </VStack>
+              </VStack>
+            </GlassCard>
+
+          </Flex>
+
+          {/* Acciones Secundarias - Solo para Administradores */}
+          {isAdmin && (
+            <GlassCard p={6} animation={`${fadeInUp} 1.8s ease-out`}>
+              <VStack spacing={4}>
+                <Text fontWeight="bold" fontSize="lg" color="secondary.800" textAlign="center">
+                  Administración
+                </Text>
+                <Flex gap={4} justify="center" wrap="wrap">
+                  <Button
+                    leftIcon={<FaUserMd />}
+                    variant="outline"
+                    size="md"
+                    onClick={() => handleNavigation('/turns/manual')}
+                    _hover={{
+                      transform: 'translateY(-2px)',
+                      boxShadow: 'md'
+                    }}
+                  >
+                    Crear Turno
+                  </Button>
+                  <Button
+                    leftIcon={<FaUsers />}
+                    variant="outline"
+                    size="md"
+                    onClick={() => handleNavigation('/users')}
+                    _hover={{
+                      transform: 'translateY(-2px)',
+                      boxShadow: 'md'
+                    }}
+                  >
+                    Usuarios
+                  </Button>
+                  <Button
+                    leftIcon={<FaHome />}
+                    variant="outline"
+                    size="md"
+                    onClick={() => handleNavigation('/cubicles')}
+                    _hover={{
+                      transform: 'translateY(-2px)',
+                      boxShadow: 'md'
+                    }}
+                  >
+                    Cubículos
+                  </Button>
+                </Flex>
+              </VStack>
+            </GlassCard>
+          )}
+
         </VStack>
 
         {/* Footer */}

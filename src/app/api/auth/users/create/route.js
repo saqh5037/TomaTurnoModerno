@@ -9,8 +9,14 @@ export async function POST(req) {
   }
 
   try {
-    const existingUser = await prisma.user.findUnique({
-      where: { username },
+    // Verifica si el usuario ya existe (case-insensitive)
+    const existingUser = await prisma.user.findFirst({
+      where: { 
+        username: {
+          equals: username,
+          mode: 'insensitive'
+        }
+      },
     });
 
     if (existingUser) {
@@ -19,10 +25,10 @@ export async function POST(req) {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Prueba crear el usuario en la base de datos sin retornarlo directamente en la respuesta
+    // Guarda el username en minúsculas para mantener consistencia
     await prisma.user.create({
       data: {
-        username,
+        username: username.toLowerCase(),
         password: hashedPassword,
         name,
         role,

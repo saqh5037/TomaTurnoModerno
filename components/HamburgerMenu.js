@@ -40,22 +40,16 @@ export default function SidebarMenu() {
         )}
         {user?.role === 'Flebotomista' && (
           <>
-            <NextLink href="/turns/queue" passHref>
-              <Link display="flex" alignItems="center" py={2} _hover={{ bg: 'blue.600', borderRadius: 'md' }}>
-                <Icon as={FaClipboardList} mr={3} />
-                <Text>Queue</Text>
-              </Link>
-            </NextLink>
-            <NextLink href="/turns/manual" passHref>
-              <Link display="flex" alignItems="center" py={2} _hover={{ bg: 'blue.600', borderRadius: 'md' }}>
-                <Icon as={FaUserPlus} mr={3} />
-                <Text>Crear Turno Manual</Text>
-              </Link>
-            </NextLink>
             <NextLink href="/turns/attention" passHref>
               <Link display="flex" alignItems="center" py={2} _hover={{ bg: 'blue.600', borderRadius: 'md' }}>
                 <Icon as={FaClipboardList} mr={3} />
-                <Text>Queue Attention</Text>
+                <Text>Panel de Atención</Text>
+              </Link>
+            </NextLink>
+            <NextLink href="/statistics" passHref>
+              <Link display="flex" alignItems="center" py={2} _hover={{ bg: 'blue.600', borderRadius: 'md' }}>
+                <Icon as={FaClipboardList} mr={3} />
+                <Text>Estadísticas</Text>
               </Link>
             </NextLink>
             <Link display="flex" alignItems="center" py={2} _hover={{ bg: 'blue.600', borderRadius: 'md' }} onClick={logout}>
