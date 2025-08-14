@@ -5,10 +5,15 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "build:prod": "NODE_ENV=production next build",
     "start": "next start",
+    "start:prod": "NODE_ENV=production next start -p $PORT",
     "lint": "next lint",
+    "analyze": "ANALYZE=true next build",
     "prisma:generate": "dotenv -e .env.local -- npx prisma generate",
-    "prisma:migrate:deploy": "dotenv -e .env.local -- npx prisma migrate deploy"
+    "prisma:migrate:deploy": "dotenv -e .env.local -- npx prisma migrate deploy",
+    "prisma:prod": "dotenv -e .env.production -- npx prisma migrate deploy && npx prisma generate",
+    "postinstall": "prisma generate"
   },
   "dependencies": {
     "@chakra-ui/icons": "^2.2.4",
