@@ -138,6 +138,17 @@ const slideInLeft = keyframes`
   }
 `;
 
+const fadeOut = keyframes`
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+`;
+
 export default function Attention() {
   const [userId, setUserId] = useState(null);
   const [pendingTurns, setPendingTurns] = useState([]);
@@ -146,6 +157,8 @@ export default function Attention() {
   const [mounted, setMounted] = useState(false);
   const [selectedCubicle, setSelectedCubicle] = useState("");
   const [cubicles, setCubicles] = useState([]);
+  const [processingTurns, setProcessingTurns] = useState(new Set());
+  const [hidingTurns, setHidingTurns] = useState(new Set());
   const toast = useToast();
 
   // Efecto para manejar la hidratación
@@ -224,7 +237,7 @@ export default function Attention() {
 
     if (mounted) {
       fetchTurns();
-      const intervalId = setInterval(fetchTurns, 5000);
+      const intervalId = setInterval(fetchTurns, 10000); // Actualizar cada 10 segundos en lugar de 5
       return () => clearInterval(intervalId);
     }
   }, [mounted, toast]);
@@ -265,6 +278,28 @@ export default function Attention() {
       return;
     }
 
+    // Prevenir clicks duplicados
+    if (processingTurns.has(turnId)) return;
+    
+    // Marcar como en proceso
+    setProcessingTurns(prev => new Set(prev).add(turnId));
+    
+    // Iniciar animación de ocultamiento para sacar de pendientes
+    setHidingTurns(prev => new Set(prev).add(turnId));
+    
+    // Mover inmediatamente a en proceso (optimista)
+    const turnToMove = pendingTurns.find(t => t.id === turnId);
+    if (turnToMove) {
+      setTimeout(() => {
+        setPendingTurns(prev => prev.filter(turn => turn.id !== turnId));
+        setHidingTurns(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(turnId);
+          return newSet;
+        });
+      }, 300);
+    }
+    
     try {
       const response = await fetch("/api/attention/call", {
         method: "POST",
@@ -273,31 +308,80 @@ export default function Attention() {
       });
 
       if (response.ok) {
+        // Mostrar solo un mensaje de éxito
         toast({
-          title: "Paciente llamado",
-          description: `El paciente fue llamado exitosamente.`,
+          title: "✓ Paciente llamado",
+          description: `El paciente fue llamado exitosamente al ${cubicles.find(c => c.id === parseInt(selectedCubicle))?.name || 'cubículo'}.`,
           status: "success",
-          duration: 5000,
+          duration: 3000,
           isClosable: true,
           position: "top",
         });
+        
+        // Actualizar las listas después del éxito
+        const updatedTurns = await fetch("/api/attention/list");
+        if (updatedTurns.ok) {
+          const data = await updatedTurns.json();
+          setPendingTurns(data.pendingTurns || []);
+          setInProgressTurns(data.inProgressTurns || []);
+        }
       } else {
+        // Si falla, restaurar el paciente en pendientes
+        setHidingTurns(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(turnId);
+          return newSet;
+        });
+        
+        const restoredTurns = await fetch("/api/attention/list");
+        if (restoredTurns.ok) {
+          const data = await restoredTurns.json();
+          setPendingTurns(data.pendingTurns || []);
+        }
+        
         throw new Error("Error al llamar al paciente.");
       }
     } catch (error) {
       console.error("Error al llamar al paciente:", error);
+      
+      // Restaurar si hay error
+      setHidingTurns(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(turnId);
+        return newSet;
+      });
+      
+      const restoredTurns = await fetch("/api/attention/list");
+      if (restoredTurns.ok) {
+        const data = await restoredTurns.json();
+        setPendingTurns(data.pendingTurns || []);
+      }
+      
       toast({
         title: "Error",
         description: "No se pudo llamar al paciente.",
         status: "error",
-        duration: 5000,
+        duration: 3000,
         isClosable: true,
         position: "top",
+      });
+    } finally {
+      // Limpiar el estado de procesamiento
+      setProcessingTurns(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(turnId);
+        return newSet;
       });
     }
   };
 
   const handleRepeatCall = async (turnId) => {
+    // Prevenir clicks duplicados
+    if (processingTurns.has(`repeat-${turnId}`)) return;
+    
+    // Marcar como en proceso
+    setProcessingTurns(prev => new Set(prev).add(`repeat-${turnId}`));
+    
     try {
       const response = await fetch("/api/attention/repeatCall", {
         method: "POST",
@@ -306,11 +390,12 @@ export default function Attention() {
       });
 
       if (response.ok) {
+        // Mostrar solo un mensaje de éxito
         toast({
-          title: "Llamado repetido",
+          title: "🔊 Llamado repetido",
           description: `El paciente será llamado nuevamente.`,
           status: "info",
-          duration: 5000,
+          duration: 3000,
           isClosable: true,
           position: "top",
         });
@@ -319,10 +404,44 @@ export default function Attention() {
       }
     } catch (error) {
       console.error("Error al repetir el llamado:", error);
+      toast({
+        title: "Error",
+        description: "No se pudo repetir el llamado.",
+        status: "error",
+        duration: 3000,
+        isClosable: true,
+        position: "top",
+      });
+    } finally {
+      // Limpiar el estado de procesamiento
+      setProcessingTurns(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(`repeat-${turnId}`);
+        return newSet;
+      });
     }
   };
 
   const handleCompleteAttention = async (turnId) => {
+    // Prevenir clicks duplicados
+    if (processingTurns.has(turnId)) return;
+    
+    // Marcar como en proceso
+    setProcessingTurns(prev => new Set(prev).add(turnId));
+    
+    // Iniciar animación de ocultamiento
+    setHidingTurns(prev => new Set(prev).add(turnId));
+    
+    // Esperar un momento para la animación antes de remover
+    setTimeout(() => {
+      setInProgressTurns(prev => prev.filter(turn => turn.id !== turnId));
+      setHidingTurns(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(turnId);
+        return newSet;
+      });
+    }, 300);
+
     try {
       const response = await fetch("/api/attention/complete", {
         method: "POST",
@@ -331,19 +450,49 @@ export default function Attention() {
       });
 
       if (response.ok) {
+        // Mostrar solo un mensaje de éxito
         toast({
-          title: "Atención finalizada",
-          description: `El paciente ha sido atendido exitosamente.`,
+          title: "✓ Atención finalizada",
+          description: "El paciente ha sido atendido exitosamente.",
           status: "success",
-          duration: 5000,
+          duration: 3000,
           isClosable: true,
           position: "top",
         });
       } else {
+        // Si falla, restaurar el paciente en la lista
         throw new Error("Error al finalizar la atención.");
       }
     } catch (error) {
       console.error("Error al finalizar la atención:", error);
+      // Restaurar si hay error
+      setHidingTurns(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(turnId);
+        return newSet;
+      });
+      
+      const restoredTurns = await fetch("/api/attention/list");
+      if (restoredTurns.ok) {
+        const data = await restoredTurns.json();
+        setInProgressTurns(data.inProgressTurns || []);
+      }
+      
+      toast({
+        title: "Error",
+        description: "No se pudo finalizar la atención. Intente nuevamente.",
+        status: "error",
+        duration: 3000,
+        isClosable: true,
+        position: "top",
+      });
+    } finally {
+      // Limpiar el estado de procesamiento
+      setProcessingTurns(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(turnId);
+        return newSet;
+      });
     }
   };
 
@@ -563,11 +712,15 @@ export default function Attention() {
                     borderLeftColor={turn.isSpecial ? "error" : "warning"}
                     boxShadow="md"
                     transition="all 0.3s ease"
+                    opacity={hidingTurns.has(turn.id) ? 0 : 1}
+                    transform={hidingTurns.has(turn.id) ? 'scale(0.95)' : 'scale(1)'}
                     _hover={{ 
-                      transform: 'translateY(-2px)', 
-                      boxShadow: 'lg' 
+                      transform: hidingTurns.has(turn.id) ? 'scale(0.95)' : 'translateY(-2px)', 
+                      boxShadow: hidingTurns.has(turn.id) ? 'md' : 'lg' 
                     }}
-                    animation={`${fadeInUp} ${0.3 + index * 0.1}s ease-out`}
+                    animation={hidingTurns.has(turn.id) 
+                      ? `${fadeOut} 0.3s ease-out forwards`
+                      : `${fadeInUp} ${0.3 + index * 0.1}s ease-out`}
                   >
                     <Flex align="center" justify="space-between">
                       <Flex align="center" gap={3} flex="1">
@@ -616,13 +769,15 @@ export default function Attention() {
                         fontSize="2xl"
                         aria-label="Llamar Paciente"
                         onClick={() => handleCallPatient(turn.id)}
-                        animation={turn.isSpecial ? `${pulseNotification} 2s infinite` : "none"}
-                        isDisabled={!selectedCubicle}
+                        animation={turn.isSpecial && !processingTurns.has(turn.id) ? `${pulseNotification} 2s infinite` : "none"}
+                        isDisabled={!selectedCubicle || processingTurns.has(turn.id) || hidingTurns.has(turn.id)}
+                        isLoading={processingTurns.has(turn.id)}
                         borderRadius="xl"
                         _hover={{
-                          transform: 'scale(1.1)',
-                          boxShadow: 'xl'
+                          transform: processingTurns.has(turn.id) ? 'scale(1)' : 'scale(1.1)',
+                          boxShadow: processingTurns.has(turn.id) ? 'md' : 'xl'
                         }}
+                        opacity={hidingTurns.has(turn.id) ? 0.5 : 1}
                         ml={2}
                       />
                     </Flex>
@@ -696,11 +851,15 @@ export default function Attention() {
                     borderLeftColor="success"
                     boxShadow="md"
                     transition="all 0.3s ease"
+                    opacity={hidingTurns.has(turn.id) ? 0 : 1}
+                    transform={hidingTurns.has(turn.id) ? 'scale(0.95)' : 'scale(1)'}
                     _hover={{ 
-                      transform: 'translateY(-2px)', 
-                      boxShadow: 'lg' 
+                      transform: hidingTurns.has(turn.id) ? 'scale(0.95)' : 'translateY(-2px)', 
+                      boxShadow: hidingTurns.has(turn.id) ? 'md' : 'lg' 
                     }}
-                    animation={`${fadeInUp} ${0.5 + index * 0.1}s ease-out`}
+                    animation={hidingTurns.has(turn.id) 
+                      ? `${fadeOut} 0.3s ease-out forwards`
+                      : `${fadeInUp} ${0.5 + index * 0.1}s ease-out`}
                   >
                     <Flex align="center" justify="space-between" wrap="wrap" gap={3}>
                       <Flex align="center" gap={3} flex="1">
@@ -753,11 +912,14 @@ export default function Attention() {
                           fontSize="2xl"
                           aria-label="Repetir Llamado"
                           onClick={() => handleRepeatCall(turn.id)}
+                          isDisabled={processingTurns.has(`repeat-${turn.id}`) || hidingTurns.has(turn.id)}
+                          isLoading={processingTurns.has(`repeat-${turn.id}`)}
                           borderRadius="xl"
                           _hover={{
-                            transform: 'scale(1.1)',
-                            boxShadow: 'xl'
+                            transform: processingTurns.has(`repeat-${turn.id}`) ? 'scale(1)' : 'scale(1.1)',
+                            boxShadow: processingTurns.has(`repeat-${turn.id}`) ? 'md' : 'xl'
                           }}
+                          opacity={hidingTurns.has(turn.id) ? 0.5 : 1}
                         />
                         <IconButton
                           icon={<FaCheckCircle />}
@@ -766,11 +928,14 @@ export default function Attention() {
                           fontSize="2xl"
                           aria-label="Finalizar Atención"
                           onClick={() => handleCompleteAttention(turn.id)}
+                          isDisabled={processingTurns.has(turn.id) || hidingTurns.has(turn.id)}
+                          isLoading={processingTurns.has(turn.id)}
                           borderRadius="xl"
                           _hover={{
-                            transform: 'scale(1.1)',
-                            boxShadow: 'xl'
+                            transform: processingTurns.has(turn.id) ? 'scale(1)' : 'scale(1.1)',
+                            boxShadow: processingTurns.has(turn.id) ? 'md' : 'xl'
                           }}
+                          opacity={hidingTurns.has(turn.id) ? 0.5 : 1}
                         />
                       </HStack>
                     </Flex>
