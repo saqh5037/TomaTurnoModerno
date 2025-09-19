@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Box,
   Heading,
@@ -17,139 +17,150 @@ import {
   Select,
   FormControl,
   FormLabel,
+  Container,
+  Tabs,
+  TabList,
+  TabPanels,
+  Tab,
+  TabPanel,
+  Drawer,
+  DrawerBody,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerOverlay,
+  DrawerContent,
+  DrawerCloseButton,
+  useDisclosure,
+  Stat,
+  StatLabel,
+  StatNumber,
+  StatHelpText,
+  StatArrow,
+  SimpleGrid,
+  Tooltip,
+  Divider,
+  useBreakpointValue,
 } from "@chakra-ui/react";
 import { keyframes } from "@emotion/react";
-import { 
-  MdNotificationsActive, 
-  MdDone, 
+import {
+  MdNotificationsActive,
+  MdDone,
   MdPause,
-  MdPlayArrow 
+  MdPlayArrow,
+  MdSkipNext,
+  MdWarning,
+  MdTimer,
+  MdTrendingUp,
+  MdMenu
 } from "react-icons/md";
-import { 
-  FaVolumeUp, 
-  FaWheelchair, 
-  FaUserMd, 
-  FaClock, 
+import {
+  FaVolumeUp,
+  FaWheelchair,
+  FaUserMd,
+  FaClock,
   FaHospital,
   FaBell,
   FaCheckCircle,
   FaUser,
-  FaArrowLeft
+  FaArrowLeft,
+  FaForward,
+  FaExclamationTriangle,
+  FaBars,
+  FaChartLine
 } from "react-icons/fa";
 
-// Tema personalizado (mismo que las otras pantallas)
+// Tema personalizado minimalista
 const theme = extendTheme({
   colors: {
     primary: {
-      50: "#f0f9ff",
-      100: "#e0f2fe",
-      200: "#bae6fd",
-      300: "#7dd3fc",
-      400: "#38bdf8",
-      500: "#4F7DF3",
-      600: "#0284c7",
-      700: "#0369a1",
-      800: "#075985",
-      900: "#0c4a6e",
+      50: "#e6f2ff",
+      100: "#b3d9ff",
+      200: "#80bfff",
+      300: "#4da6ff",
+      400: "#1a8cff",
+      500: "#007AFF",
+      600: "#0066cc",
+      700: "#004d99",
+      800: "#003366",
+      900: "#001a33",
     },
     secondary: {
-      50: "#f8fafc",
-      100: "#f1f5f9",
-      200: "#e2e8f0",
-      300: "#cbd5e1",
-      400: "#94a3b8",
-      500: "#64748b",
-      600: "#475569",
-      700: "#334155",
-      800: "#1e293b",
-      900: "#0f172a",
+      50: "#fafafa",
+      100: "#f5f5f5",
+      200: "#eeeeee",
+      300: "#e0e0e0",
+      400: "#bdbdbd",
+      500: "#9e9e9e",
+      600: "#757575",
+      700: "#616161",
+      800: "#424242",
+      900: "#212121",
     },
-    purple: {
-      500: "#6B73FF",
-      600: "#764ba2",
-    },
-    success: "#10b981",
-    warning: "#f59e0b",
-    error: "#ef4444",
-    info: "#3b82f6",
+    success: "#34C759",
+    warning: "#FF9500",
+    danger: "#FF3B30",
+    info: "#007AFF",
   },
   fonts: {
-    heading: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-    body: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+    heading: "'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+    body: "'SF Pro Text', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
   },
   shadows: {
-    sm: "0 1px 2px 0 rgb(0 0 0 / 0.05)",
-    md: "0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)",
-    lg: "0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)",
-    xl: "0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)",
-    glass: "0 8px 32px 0 rgba(31, 38, 135, 0.37)",
-  },
-  radii: {
-    lg: "16px",
-    xl: "20px",
-    "2xl": "24px",
-    "3xl": "32px",
+    sm: "0 2px 8px rgba(0,0,0,0.08)",
+    md: "0 4px 12px rgba(0,0,0,0.12)",
+    lg: "0 8px 24px rgba(0,0,0,0.16)",
+    xl: "0 12px 48px rgba(0,0,0,0.20)",
   },
   styles: {
     global: {
       body: {
-        background: 'linear-gradient(135deg, #E0F2FE 0%, #F0F9FF 50%, #EDE9FE 100%)',
-        color: 'secondary.700',
-        fontFamily: "'Inter', sans-serif",
+        bg: '#F5F5F7',
+        color: '#1C1C1E',
+        fontFamily: "'SF Pro Text', sans-serif",
         minHeight: '100vh',
-        fontFeatureSettings: '"cv11", "ss01"',
-        fontVariationSettings: '"opsz" 32',
+      },
+      '*:focus': {
+        boxShadow: '0 0 0 3px rgba(0, 122, 255, 0.3) !important',
+      },
+    },
+  },
+  components: {
+    Button: {
+      baseStyle: {
+        fontWeight: 'medium',
+        borderRadius: 'xl',
+        transition: 'all 0.3s ease',
+      },
+      sizes: {
+        xl: {
+          h: '60px',
+          fontSize: 'lg',
+          px: '32px',
+        },
       },
     },
   },
 });
 
-// Animaciones
-const fadeInUp = keyframes`
-  from {
-    opacity: 0;
-    transform: translateY(30px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+// Animaciones simplificadas
+const fadeIn = keyframes`
+  from { opacity: 0; }
+  to { opacity: 1; }
 `;
 
-const pulseNotification = keyframes`
-  0%, 100% {
-    transform: scale(1);
-    box-shadow: 0 0 10px rgba(79, 125, 243, 0.3);
-  }
-  50% {
-    transform: scale(1.05);
-    box-shadow: 0 0 20px rgba(79, 125, 243, 0.6);
-  }
+const pulse = keyframes`
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
 `;
 
-const slideInLeft = keyframes`
-  from {
-    opacity: 0;
-    transform: translateX(-30px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
+const slideUp = keyframes`
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
 `;
 
-const fadeOut = keyframes`
-  from {
-    opacity: 1;
-    transform: scale(1);
-  }
-  to {
-    opacity: 0;
-    transform: scale(0.95);
-  }
-`;
-
+// Componente Principal - Panel de Atención con Quick Actions
 export default function Attention() {
+  // Estados existentes
   const [userId, setUserId] = useState(null);
   const [pendingTurns, setPendingTurns] = useState([]);
   const [inProgressTurns, setInProgressTurns] = useState([]);
@@ -159,7 +170,66 @@ export default function Attention() {
   const [cubicles, setCubicles] = useState([]);
   const [processingTurns, setProcessingTurns] = useState(new Set());
   const [hidingTurns, setHidingTurns] = useState(new Set());
+  const [skippedTurns, setSkippedTurns] = useState(new Set()); // Turnos saltados por este flebotomista
+
+  // Nuevos estados para Quick Actions
+  const [dailyStats, setDailyStats] = useState({
+    totalAttended: 0,
+    averageAttentionTime: 0,
+    efficiencyPercentage: 0,
+    totalPending: 0,
+    totalInProgress: 0,
+  });
+  const [viewMode, setViewMode] = useState('single');
+  const [isTablet, setIsTablet] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  const [sidePanelTabIndex, setSidePanelTabIndex] = useState(0);
+  const [activePatient, setActivePatient] = useState(null); // Paciente actualmente en atención
+
   const toast = useToast();
+  const { isOpen, onOpen, onClose } = useDisclosure();
+
+  // Responsive values
+  const isSidebarCollapsed = useBreakpointValue({ base: true, lg: false });
+  const showMobileDrawer = useBreakpointValue({ base: true, md: false });
+
+  // Detectar dispositivo
+  useEffect(() => {
+    const checkDevice = () => {
+      setIsMobile(window.innerWidth <= 768);
+      setIsTablet(window.innerWidth > 768 && window.innerWidth <= 1024);
+    };
+
+    checkDevice();
+    window.addEventListener('resize', checkDevice);
+    return () => window.removeEventListener('resize', checkDevice);
+  }, []);
+
+  // Calcular estadísticas diarias del flebotomista
+  useEffect(() => {
+    const fetchDailyStats = async () => {
+      try {
+        // Solo hacer fetch si tenemos el userId
+        if (!userId) return;
+
+        const response = await fetch(`/api/statistics/phlebotomist-daily?userId=${userId}`);
+        if (response.ok) {
+          const result = await response.json();
+          if (result.success) {
+            setDailyStats(result.data);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching daily stats:', error);
+      }
+    };
+
+    if (mounted && userId) {
+      fetchDailyStats();
+      const interval = setInterval(fetchDailyStats, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [mounted, userId]);
 
   // Efecto para manejar la hidratación
   useEffect(() => {
@@ -213,45 +283,52 @@ export default function Attention() {
     }
   }, [mounted]);
 
-  // Cargar turnos
-  useEffect(() => {
-    const fetchTurns = async () => {
-      try {
-        const response = await fetch("/api/attention/list");
-        if (!response.ok) throw new Error("Error al cargar los turnos.");
-        const data = await response.json();
-        setPendingTurns(data.pendingTurns || []);
-        setInProgressTurns(data.inProgressTurns || []);
-      } catch (error) {
-        console.error("Error al cargar los turnos:", error);
-        toast({
-          title: "Error",
-          description: "No se pudieron cargar los turnos.",
-          status: "error",
-          duration: 5000,
-          isClosable: true,
-          position: "top",
-        });
-      }
-    };
+  // Función refactorizada para cargar turnos
+  const fetchTurns = useCallback(async () => {
+    try {
+      const response = await fetch("/api/attention/list");
+      if (!response.ok) throw new Error("Error al cargar los turnos.");
+      const data = await response.json();
+      setPendingTurns(data.pendingTurns || []);
+      setInProgressTurns(data.inProgressTurns || []);
+    } catch (error) {
+      console.error("Error al cargar los turnos:", error);
+      toast({
+        title: "Error",
+        description: "No se pudieron cargar los turnos.",
+        status: "error",
+        duration: 5000,
+        isClosable: true,
+        position: "top",
+      });
+    }
+  }, [toast]);
 
+  // Cargar turnos con polling
+  useEffect(() => {
     if (mounted) {
       fetchTurns();
-      const intervalId = setInterval(fetchTurns, 10000); // Actualizar cada 10 segundos en lugar de 5
+      const intervalId = setInterval(fetchTurns, 10000);
       return () => clearInterval(intervalId);
     }
-  }, [mounted, toast]);
+  }, [mounted, fetchTurns]);
 
   const formatTime = (date) => {
-    if (!date || !mounted) return "Cargando...";
-    return date.toLocaleString('es-ES', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
+    if (!date || !mounted) return "--:--:--";
+    return date.toLocaleTimeString('es-ES', {
       hour: '2-digit',
       minute: '2-digit',
       second: '2-digit'
+    });
+  };
+
+  const formatDate = (date) => {
+    if (!date || !mounted) return "";
+    return date.toLocaleDateString('es-ES', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
     });
   };
 
@@ -265,7 +342,41 @@ export default function Attention() {
     localStorage.setItem("selectedCubicle", value);
   };
 
+  // Nueva función para saltar turno (sin modificar orden en BD)
+  const handleSkipPatient = async (turnId) => {
+    if (!turnId) return;
+
+    // Agregar el turno a la lista de saltados para este flebotomista
+    setSkippedTurns(prev => new Set(prev).add(turnId));
+
+    // Limpiar paciente activo si estaba activo
+    if (activePatient && activePatient.id === turnId) {
+      setActivePatient(null);
+    }
+
+    toast({
+      title: "Turno saltado",
+      description: "Mostrando siguiente paciente disponible",
+      status: "info",
+      duration: 2000,
+      position: "top",
+    });
+  };
+
+  // Nueva función para modo emergencia
+  const handleEmergency = () => {
+    toast({
+      title: "🚨 Modo Emergencia Activado",
+      description: "Se ha notificado al supervisor",
+      status: "warning",
+      duration: 5000,
+      position: "top",
+      isClosable: false,
+    });
+  };
+
   const handleCallPatient = async (turnId) => {
+
     if (!selectedCubicle || !userId) {
       toast({
         title: "Error",
@@ -277,6 +388,21 @@ export default function Attention() {
       });
       return;
     }
+
+    // Verificar que el turno existe
+    const turnToCall = pendingTurns.find(t => t.id === turnId);
+    if (!turnToCall) {
+      toast({
+        title: "Error",
+        description: "El turno no fue encontrado.",
+        status: "error",
+        duration: 3000,
+        isClosable: true,
+        position: "top",
+      });
+      return;
+    }
+
 
     // Prevenir clicks duplicados
     if (processingTurns.has(turnId)) return;
@@ -311,13 +437,28 @@ export default function Attention() {
         // Mostrar solo un mensaje de éxito
         toast({
           title: "✓ Paciente llamado",
-          description: `El paciente fue llamado exitosamente al ${cubicles.find(c => c.id === parseInt(selectedCubicle))?.name || 'cubículo'}.`,
+          description: `${turnToCall.patientName} (Turno #${turnToCall.assignedTurn}) fue llamado al ${cubicles.find(c => c.id === parseInt(selectedCubicle))?.name || 'cubículo'}.`,
           status: "success",
           duration: 3000,
           isClosable: true,
           position: "top",
         });
-        
+
+        // Establecer el paciente como activo con información del cubículo
+        const calledPatient = {
+          ...turnToCall,
+          cubicleId: selectedCubicle,
+          cubicle: cubicles.find(c => c.id === parseInt(selectedCubicle))
+        };
+        setActivePatient(calledPatient);
+
+        // Si este turno estaba saltado, quitarlo de la lista de saltados
+        setSkippedTurns(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(turnId);
+          return newSet;
+        });
+
         // Actualizar las listas después del éxito
         const updatedTurns = await fetch("/api/attention/list");
         if (updatedTurns.ok) {
@@ -459,6 +600,16 @@ export default function Attention() {
           isClosable: true,
           position: "top",
         });
+
+        // Limpiar paciente activo después de completar
+        setActivePatient(null);
+
+        // También quitar de saltados si estaba ahí
+        setSkippedTurns(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(turnId);
+          return newSet;
+        });
       } else {
         // Si falla, restaurar el paciente en la lista
         throw new Error("Error al finalizar la atención.");
@@ -496,473 +647,705 @@ export default function Attention() {
     }
   };
 
+  // Atajos de teclado
+  useEffect(() => {
+    const handleKeyPress = (e) => {
+      // Solo si no hay input activo
+      if (document.activeElement.tagName === 'INPUT' ||
+          document.activeElement.tagName === 'SELECT' ||
+          document.activeElement.tagName === 'TEXTAREA') return;
+
+      const nextPatientForKey = pendingTurns[0];
+      const currentPatientForKey = inProgressTurns[0];
+
+      switch(e.key) {
+        case ' ':
+        case 'Enter':
+          if (nextPatientForKey && !e.shiftKey) {
+            e.preventDefault();
+            handleCallPatient(nextPatientForKey.id);
+          }
+          break;
+        case 'f':
+        case 'F':
+          if (currentPatientForKey) {
+            e.preventDefault();
+            handleCompleteAttention(currentPatientForKey.id);
+          }
+          break;
+        case 'r':
+        case 'R':
+          if (currentPatientForKey) {
+            e.preventDefault();
+            handleRepeatCall(currentPatientForKey.id);
+          }
+          break;
+        case 's':
+        case 'Tab':
+          if (nextPatientForKey && e.shiftKey) {
+            e.preventDefault();
+            handleSkipPatient(nextPatientForKey.id);
+          }
+          break;
+        case 'e':
+          if (e.ctrlKey || e.metaKey) {
+            e.preventDefault();
+            handleEmergency();
+          }
+          break;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [pendingTurns, inProgressTurns]);
+
   const goBack = () => {
     window.history.back();
+  };
+
+  // Componente CurrentPatientCard
+  const CurrentPatientCard = ({ patient, onCall, onComplete, onRepeat, isProcessing, selectedCubicle, isActive }) => {
+    if (!patient) {
+      return (
+        <Box
+          bg="white"
+          borderRadius="xl"
+          p={{ base: 4, md: 6, lg: 8 }}
+          minH={{ base: "250px", md: "400px", lg: "500px" }}
+          display="flex"
+          flexDirection="column"
+          alignItems="center"
+          justifyContent="center"
+          boxShadow="md"
+        >
+          <FaUser fontSize="48px" color="#C7C7CC" mb={4} />
+          <Text fontSize="2xl" color="secondary.500" fontWeight="medium">
+            No hay pacientes en espera
+          </Text>
+          <Text fontSize="md" color="secondary.400" mt={2}>
+            Los nuevos turnos aparecerán aquí
+          </Text>
+        </Box>
+      );
+    }
+
+    return (
+      <Box
+        bg="white"
+        borderRadius="xl"
+        p={{ base: 4, sm: 6, md: 8 }}
+        minH={{ base: "320px", md: "500px" }}
+        boxShadow="lg"
+        border={patient.isSpecial ? "3px solid" : "1px solid"}
+        borderColor={patient.isSpecial ? "warning" : "gray.200"}
+        position="relative"
+        animation={patient.isSpecial ? `${pulse} 2s infinite` : undefined}
+      >
+        {patient.isSpecial && (
+          <Badge
+            position="absolute"
+            top={4}
+            right={4}
+            colorScheme="orange"
+            fontSize="sm"
+            px={3}
+            py={1}
+          >
+            <FaWheelchair style={{ marginRight: '4px', display: 'inline' }} />
+            Prioritario
+          </Badge>
+        )}
+
+        <VStack spacing={{ base: 4, md: 6 }} align="center" h="full" justify="center">
+          <Text fontSize={{ base: "4xl", sm: "5xl", md: "6xl" }} fontWeight="bold" color="primary.500">
+            #{patient.assignedTurn}
+          </Text>
+
+          <Box textAlign="center">
+            <Text fontSize={{ base: "xl", sm: "2xl", md: "3xl" }} fontWeight="semibold" color="gray.800">
+              {patient.patientName}
+            </Text>
+            {patient.waitTime && (
+              <Text fontSize="md" color="secondary.500" mt={2}>
+                <FaClock style={{ display: 'inline', marginRight: '4px' }} />
+                Esperando: {patient.waitTime} min
+              </Text>
+            )}
+          </Box>
+
+          {/* Botones según el estado del paciente */}
+          {isActive ? (
+            // Paciente activo - mostrar botones de repetir y finalizar
+            <VStack spacing={4} w="full" align="center">
+              <HStack spacing={4}>
+                <Button
+                  size="lg"
+                  h={{ base: "60px", md: "70px" }}
+                  minW={{ base: "150px", md: "180px" }}
+                  colorScheme="orange"
+                  leftIcon={<FaBell size="24" />}
+                  onClick={() => onRepeat(patient.id)}
+                  isLoading={isProcessing}
+                  fontSize={{ base: "lg", md: "xl" }}
+                  fontWeight="bold"
+                  _hover={{ transform: 'scale(1.02)' }}
+                  _active={{ transform: 'scale(0.98)' }}
+                >
+                  Repetir Llamado
+                </Button>
+                <Button
+                  size="lg"
+                  h={{ base: "60px", md: "70px" }}
+                  minW={{ base: "150px", md: "180px" }}
+                  colorScheme="green"
+                  leftIcon={<FaCheckCircle size="24" />}
+                  onClick={() => onComplete(patient.id)}
+                  isLoading={isProcessing}
+                  fontSize={{ base: "lg", md: "xl" }}
+                  fontWeight="bold"
+                  _hover={{ transform: 'scale(1.02)' }}
+                  _active={{ transform: 'scale(0.98)' }}
+                >
+                  Toma Finalizada
+                </Button>
+              </HStack>
+              {patient.cubicle && (
+                <Badge colorScheme="blue" fontSize="md" px={3} py={1}>
+                  En atención en {patient.cubicle.name}
+                </Badge>
+              )}
+            </VStack>
+          ) : (
+            // Paciente en espera - mostrar botón de llamar
+            <>
+              <Button
+                size="lg"
+                h={{ base: "60px", md: "70px" }}
+                w="full"
+                maxW={{ base: "320px", md: "400px" }}
+                colorScheme="blue"
+                leftIcon={<FaBell size="24" />}
+                onClick={() => {
+                  onCall(patient.id);
+                }}
+                isLoading={isProcessing}
+                isDisabled={!selectedCubicle}
+                fontSize={{ base: "xl", md: "2xl" }}
+                fontWeight="bold"
+                _hover={{ transform: 'scale(1.02)' }}
+                _active={{ transform: 'scale(0.98)' }}
+              >
+                LLAMAR PACIENTE
+              </Button>
+              <Text fontSize={{ base: "xs", md: "sm" }} color="secondary.400" textAlign="center" display={{ base: "none", md: "block" }}>
+                Presione <kbd>Espacio</kbd> o <kbd>Enter</kbd> para llamar
+              </Text>
+            </>
+          )}
+        </VStack>
+      </Box>
+    );
+  };
+
+  // Componente QuickActionsBar
+  const QuickActionsBar = ({ patient, onSkip, onComplete, onEmergency, isProcessing }) => {
+    if (!patient) return null;
+
+    return (
+      <Stack
+        direction={{ base: "column", sm: "row" }}
+        spacing={{ base: 3, md: 4 }}
+        justify="center"
+        mt={{ base: 4, md: 6 }}
+        w="full"
+      >
+        <Tooltip label="Saltar al siguiente paciente (mantiene orden original)" placement="top">
+          <Button
+            variant="outline"
+            colorScheme="gray"
+            leftIcon={<MdSkipNext size="20" />}
+            onClick={() => onSkip(patient.id)}
+            isDisabled={isProcessing}
+            size="lg"
+            h={{ base: "50px", md: "60px" }}
+            w={{ base: "full", sm: "auto" }}
+            fontSize={{ base: "md", md: "lg" }}
+          >
+            Saltar al siguiente
+          </Button>
+        </Tooltip>
+
+        <Tooltip label="Toma Finalizada (F)" placement="top">
+          <Button
+            colorScheme="green"
+            leftIcon={<FaCheckCircle size="20" />}
+            onClick={() => onComplete(patient.id)}
+            isDisabled={isProcessing}
+            size="lg"
+            h={{ base: "50px", md: "60px" }}
+            w={{ base: "full", sm: "auto" }}
+            fontSize={{ base: "md", md: "lg" }}
+          >
+            Paciente atendido
+          </Button>
+        </Tooltip>
+
+        <Tooltip label="Modo emergencia (Ctrl+E)" placement="top">
+          <Button
+            variant="solid"
+            colorScheme="orange"
+            leftIcon={<FaExclamationTriangle size="20" />}
+            onClick={onEmergency}
+            size="lg"
+            h={{ base: "50px", md: "60px" }}
+            w={{ base: "full", sm: "auto" }}
+            fontSize={{ base: "md", md: "lg" }}
+          >
+            Emergencia
+          </Button>
+        </Tooltip>
+      </Stack>
+    );
+  };
+
+  // Componente SidePanel
+  const SidePanel = ({ pendingTurns, inProgressTurns, onCall, onComplete, onRepeat, processingTurns, tabIndex, onTabChange }) => {
+    return (
+      <Tabs
+        colorScheme="blue"
+        size="md"
+        index={tabIndex}
+        onChange={onTabChange}
+      >
+        <TabList>
+          <Tab fontWeight="semibold" fontSize="md">
+            En Espera ({pendingTurns.length})
+          </Tab>
+          <Tab fontWeight="semibold" fontSize="md">
+            En Atención ({inProgressTurns.length})
+          </Tab>
+        </TabList>
+
+        <TabPanels>
+          <TabPanel px={0} maxH="400px" overflowY="auto">
+            <VStack spacing={2} align="stretch">
+              {pendingTurns.map((turn, index) => (
+                <HStack
+                  key={turn.id}
+                  p={4}
+                  bg={index === 0 ? "blue.50" : "gray.50"}
+                  borderRadius="lg"
+                  justify="space-between"
+                  borderLeft="4px solid"
+                  borderLeftColor={turn.isSpecial ? "orange.400" : "blue.400"}
+                  minH="60px"
+                >
+                  <HStack spacing={3}>
+                    <Badge colorScheme="blue" fontSize="lg" px={2} py={1}>#{turn.assignedTurn}</Badge>
+                    <Text fontWeight="medium" fontSize="md">{turn.patientName}</Text>
+                    {turn.isSpecial && <FaWheelchair color="#FF9500" />}
+                  </HStack>
+                  {index === 0 && (
+                    <IconButton
+                      size="md"
+                      icon={<FaBell />}
+                      colorScheme="blue"
+                      variant="solid"
+                      onClick={() => onCall(turn.id)}
+                      isDisabled={processingTurns.has(turn.id)}
+                      aria-label="Llamar paciente"
+                    />
+                  )}
+                </HStack>
+              ))}
+              {pendingTurns.length === 0 && (
+                <Text textAlign="center" color="gray.500" py={4}>
+                  No hay pacientes esperando
+                </Text>
+              )}
+            </VStack>
+          </TabPanel>
+
+          <TabPanel px={0} maxH="400px" overflowY="auto">
+            <VStack spacing={2} align="stretch">
+              {inProgressTurns.map((turn) => (
+                <Box
+                  key={turn.id}
+                  p={4}
+                  bg="green.50"
+                  borderRadius="lg"
+                  borderLeft="4px solid"
+                  borderLeftColor="green.400"
+                  minH="80px"
+                >
+                  <HStack justify="space-between" mb={2}>
+                    <Badge colorScheme="green" fontSize="lg" px={2} py={1}>#{turn.assignedTurn}</Badge>
+                    <HStack spacing={2}>
+                      <IconButton
+                        size="md"
+                        icon={<FaVolumeUp />}
+                        colorScheme="orange"
+                        variant="solid"
+                        onClick={() => onRepeat(turn.id)}
+                        isDisabled={processingTurns.has(`repeat-${turn.id}`)}
+                        aria-label="Repetir llamado"
+                      />
+                      <IconButton
+                        size="md"
+                        icon={<FaCheckCircle />}
+                        colorScheme="green"
+                        variant="solid"
+                        onClick={() => onComplete(turn.id)}
+                        isDisabled={processingTurns.has(turn.id)}
+                        aria-label="Toma Finalizada"
+                      />
+                    </HStack>
+                  </HStack>
+                  <Text fontWeight="medium" fontSize="md">{turn.patientName}</Text>
+                  <Text fontSize="sm" color="gray.600">
+                    {turn.cubicleName} - {turn.flebotomistName}
+                  </Text>
+                </Box>
+              ))}
+              {inProgressTurns.length === 0 && (
+                <Text textAlign="center" color="gray.500" py={4}>
+                  No hay pacientes en atención
+                </Text>
+              )}
+            </VStack>
+          </TabPanel>
+        </TabPanels>
+      </Tabs>
+    );
+  };
+
+  // Componente StatsFooter
+  const StatsFooter = ({ stats }) => {
+    return (
+      <SimpleGrid columns={{ base: 2, sm: 2, md: 4 }} spacing={{ base: 3, md: 4 }} p={4} bg="white" borderRadius="xl" boxShadow="sm">
+        <Stat>
+          <StatLabel fontSize="xs" color="gray.600">Mis Atendidos Hoy</StatLabel>
+          <StatNumber fontSize={{ base: "xl", md: "2xl" }} color="green.500">{stats.totalAttended}</StatNumber>
+          <StatHelpText fontSize="xs">
+            <StatArrow type="increase" />
+            {stats.efficiencyPercentage}%
+          </StatHelpText>
+        </Stat>
+
+        <Stat>
+          <StatLabel fontSize="xs" color="gray.600">Tiempo Promedio</StatLabel>
+          <StatNumber fontSize="2xl" color="blue.500">{stats.averageAttentionTime} min</StatNumber>
+          <StatHelpText>
+            <MdTimer style={{ display: 'inline' }} /> Por paciente
+          </StatHelpText>
+        </Stat>
+
+        <Stat>
+          <StatLabel fontSize="xs" color="gray.600">En Espera</StatLabel>
+          <StatNumber fontSize="2xl" color="orange.500">{stats.totalPending}</StatNumber>
+          <StatHelpText>Pacientes</StatHelpText>
+        </Stat>
+
+        <Stat>
+          <StatLabel fontSize="xs" color="gray.600">En Atención</StatLabel>
+          <StatNumber fontSize="2xl" color="purple.500">{stats.totalInProgress}</StatNumber>
+          <StatHelpText>Actualmente</StatHelpText>
+        </Stat>
+      </SimpleGrid>
+    );
   };
 
   if (!mounted) {
     return (
       <ChakraProvider theme={theme}>
-        <Box
-          minHeight="100vh"
-          display="flex"
-          alignItems="center"
-          justifyContent="center"
-          p={6}
-        >
-          <Box
-            p={8}
-            background="rgba(255, 255, 255, 0.25)"
-            backdropFilter="blur(20px)"
-            borderRadius="3xl"
-            textAlign="center"
-          >
-            <Text fontSize="xl" color="secondary.600">
+        <Flex h="100vh" align="center" justify="center" bg="gray.50">
+          <VStack spacing={4}>
+            <Box className="loader" />
+            <Text fontSize="lg" color="gray.600">
               Cargando panel de atención...
             </Text>
-          </Box>
-        </Box>
+          </VStack>
+        </Flex>
       </ChakraProvider>
     );
   }
 
+  // Obtener el próximo paciente y el actual
+  // Filtrar turnos saltados para este flebotomista
+  const availablePendingTurns = pendingTurns.filter(turn => !skippedTurns.has(turn.id));
+
+  // Determinar qué paciente mostrar en la tarjeta principal
+  const nextPatient = availablePendingTurns[0] || null;
+  const displayPatient = activePatient || nextPatient;
+  const currentPatient = inProgressTurns[0] || null;
+
   return (
     <ChakraProvider theme={theme}>
-      <Box
-        minHeight="100vh"
-        p={3}
-        display="flex"
-        flexDirection="column"
-        position="relative"
-        overflow="hidden"
-      >
-        {/* Header Principal */}
+      <Box minH="100vh" bg="#F5F5F7" pb={{ base: isMobile ? "80px" : 0, md: 0 }}>
+        {/* Header Minimalista */}
         <Box
-          p={4}
-          background="rgba(255, 255, 255, 0.25)"
-          backdropFilter="blur(20px)"
-          borderRadius="2xl"
-          boxShadow="glass"
-          border="1px solid rgba(255, 255, 255, 0.18)"
-          mb={4}
-          width="100%"
-          animation={`${fadeInUp} 0.8s ease-out`}
+          h={{ base: "auto", md: "60px" }}
+          bg="white"
+          borderBottom="1px solid"
+          borderColor="gray.200"
+          px={{ base: 3, md: 6 }}
+          py={{ base: 2, md: 0 }}
+          position="sticky"
+          top={0}
+          zIndex={100}
+          boxShadow="sm"
         >
-          <Flex justify="space-between" align="center">
-            <Box flex="1" textAlign="center">
-              <Heading 
-                fontSize="4xl"
-                fontWeight="extrabold"
-                background="linear-gradient(135deg, #4F7DF3 0%, #6B73FF 100%)"
-                backgroundClip="text"
-                color="transparent"
-                letterSpacing="-0.02em"
-                lineHeight="1"
-              >
-                Atención por Flebotomista
+          <Flex
+            h="full"
+            align="center"
+            justify="space-between"
+            direction={{ base: "column", sm: "row" }}
+            gap={{ base: 2, sm: 0 }}
+          >
+            {/* Logo y Título */}
+            <HStack spacing={2} w={{ base: "full", sm: "auto" }} justify={{ base: "space-between", sm: "flex-start" }}>
+              {isMobile && (
+                <IconButton
+                  icon={<FaBars size="22" />}
+                  variant="solid"
+                  onClick={onOpen}
+                  aria-label="Menu"
+                  size="md"
+                  colorScheme="gray"
+                />
+              )}
+              <Heading size={{ base: "md", md: "lg" }} color="gray.800" fontWeight="semibold">
+                Panel de Atención
               </Heading>
-              <Text
-                fontSize="lg"
-                color="secondary.600"
-                fontWeight="medium"
-                mt={1}
-              >
-                Panel de Control de Turnos
-              </Text>
-            </Box>
-            <Box
-              p={2}
-              background="rgba(255, 255, 255, 0.4)"
-              borderRadius="lg"
-              border="1px solid rgba(255, 255, 255, 0.3)"
-            >
-              <Text
-                fontSize="md"
-                color="secondary.800"
-                fontWeight="bold"
-                textAlign="center"
-              >
-                {currentTime ? formatTime(currentTime) : "Cargando hora..."}
-              </Text>
-            </Box>
-          </Flex>
-        </Box>
 
-        {/* Panel de Control Superior */}
-        <Box
-          p={4}
-          background="rgba(255, 255, 255, 0.25)"
-          backdropFilter="blur(20px)"
-          borderRadius="2xl"
-          boxShadow="glass"
-          border="1px solid rgba(255, 255, 255, 0.18)"
-          mb={4}
-          animation={`${slideInLeft} 1s ease-out`}
-        >
-          <Flex align="center" gap={4} justify="space-between">
-            <Button
-              leftIcon={<FaArrowLeft />}
-              onClick={goBack}
-              variant="outline"
-              colorScheme="gray"
-              size="sm"
-            >
-              Volver
-            </Button>
+              {/* Reloj Digital para móvil */}
+              {isMobile && (
+                <Text fontSize="sm" fontWeight="medium" color="gray.600">
+                  {currentTime ? formatTime(currentTime) : "--:--:--"}
+                </Text>
+              )}
+            </HStack>
 
-            <FormControl maxW="300px">
-              <FormLabel fontSize="sm" fontWeight="semibold" color="secondary.700" mb={1}>
-                <Flex align="center" gap={2}>
-                  <Box as={FaHospital} />
-                  Cubículo Asignado
-                </Flex>
-              </FormLabel>
+            {/* Selector de Cubículo */}
+            <HStack spacing={4} w={{ base: "full", sm: "auto" }}>
               <Select
                 value={selectedCubicle}
                 onChange={(e) => handleCubicleChange(e.target.value)}
                 placeholder="Seleccionar cubículo"
-                size="sm"
-                background="rgba(255, 255, 255, 0.8)"
-                borderColor="rgba(255, 255, 255, 0.3)"
+                size="md"
+                w={{ base: "full", sm: "250px" }}
+                maxW={{ base: "none", sm: "250px" }}
+                bg="white"
+                borderColor="gray.300"
+                _focus={{ borderColor: "primary.500" }}
+                fontSize={{ base: "md", md: "lg" }}
               >
                 {cubicles.map((cubicle) => (
                   <option key={cubicle.id} value={cubicle.id}>
-                    {cubicle.name} {cubicle.isSpecial && "(Especial)"}
+                    {cubicle.name} {cubicle.isSpecial && "(★)"}
                   </option>
                 ))}
               </Select>
-            </FormControl>
 
-            <HStack spacing={3}>
-              <Box textAlign="center">
-                <Text fontSize="xs" color="secondary.600">En Espera</Text>
-                <Text fontSize="lg" fontWeight="bold" color="warning">{pendingTurns.length}</Text>
-              </Box>
-              <Box textAlign="center">
-                <Text fontSize="xs" color="secondary.600">En Atención</Text>
-                <Text fontSize="lg" fontWeight="bold" color="success">{inProgressTurns.length}</Text>
+              {/* Reloj Digital Desktop */}
+              <Box display={{ base: "none", md: "block" }}>
+                <Text fontSize="lg" fontWeight="bold" color="gray.700">
+                  {currentTime ? formatTime(currentTime) : "--:--:--"}
+                </Text>
+                <Text fontSize="xs" color="gray.500">
+                  {currentTime ? formatDate(currentTime) : ""}
+                </Text>
               </Box>
             </HStack>
           </Flex>
         </Box>
 
-        {/* Contenido Principal - Optimizado para Mobile/Tablet */}
-        <VStack spacing={4} flex="1" align="stretch">
-          {/* Pacientes en Espera */}
-          <Box
-            borderRadius="2xl"
-            p={4}
-            background="rgba(255, 255, 255, 0.25)"
-            backdropFilter="blur(20px)"
-            boxShadow="glass"
-            border="1px solid rgba(255, 255, 255, 0.18)"
-            maxHeight="45vh"
-            overflowY="auto"
-            animation={`${fadeInUp} 1s ease-out`}
-            position="relative"
+        {/* Main Content */}
+        <Container maxW="container.xl" py={{ base: 3, md: 6 }} px={{ base: 3, sm: 4, md: 6 }}>
+          <Grid
+            templateColumns={{ base: "1fr", lg: "7fr 3fr" }}
+            gap={{ base: 4, md: 6 }}
+            alignItems="start"
           >
-            {/* Gradient line */}
-            <Box
-              position="absolute"
-              top={0}
-              left={0}
-              right={0}
-              height="3px"
-              background="linear-gradient(135deg, #f59e0b 0%, #f97316 100%)"
-              borderTopRadius="2xl"
-            />
+            {/* Panel Principal */}
+            <VStack spacing={{ base: 3, md: 4 }} align="stretch">
+              {/* Paciente Actual / Próximo */}
+              <CurrentPatientCard
+                patient={displayPatient}
+                onCall={handleCallPatient}
+                onComplete={handleCompleteAttention}
+                onRepeat={handleRepeatCall}
+                isProcessing={processingTurns.has(displayPatient?.id)}
+                selectedCubicle={selectedCubicle}
+                isActive={!!activePatient && displayPatient?.id === activePatient?.id}
+              />
 
-            <Flex align="center" justify="space-between" mb={4}>
-              <Heading 
-                size="lg" 
-                color="secondary.800" 
-                fontWeight="bold"
-                display="flex"
-                alignItems="center"
-                gap={2}
-              >
-                <Box as={FaClock} color="warning" />
-                Pacientes en Espera
-              </Heading>
-              <Badge colorScheme="orange" fontSize="md" px={3} py={1} borderRadius="lg">
-                {pendingTurns.length}
-              </Badge>
-            </Flex>
+              {/* Indicador de turnos saltados */}
+              {skippedTurns.size > 0 && (
+                <Box
+                  bg="yellow.50"
+                  border="1px solid"
+                  borderColor="yellow.300"
+                  borderRadius="md"
+                  p={3}
+                  mt={2}
+                >
+                  <HStack spacing={2}>
+                    <MdWarning color="orange" size="20" />
+                    <Text fontSize="sm" color="gray.700">
+                      {skippedTurns.size} {skippedTurns.size === 1 ? 'turno saltado' : 'turnos saltados'}.
+                      Otros flebotomistas pueden atenderlos.
+                    </Text>
+                  </HStack>
+                </Box>
+              )}
 
-            {pendingTurns.length === 0 ? (
+              {/* Quick Actions - Solo mostrar cuando no hay paciente activo */}
+              {!activePatient && (nextPatient || currentPatient) && (
+                <QuickActionsBar
+                  patient={currentPatient || nextPatient}
+                  onSkip={handleSkipPatient}
+                  onComplete={handleCompleteAttention}
+                  onEmergency={handleEmergency}
+                  isProcessing={processingTurns.has(currentPatient?.id || nextPatient?.id)}
+                />
+              )}
+            </VStack>
+
+            {/* Panel Lateral - Desktop */}
+            {!isMobile && (
               <Box
-                textAlign="center"
-                py={8}
-                color="secondary.500"
+                bg="white"
+                borderRadius="xl"
+                p={4}
+                boxShadow="md"
+                position="sticky"
+                top="80px"
               >
-                <Box as={FaUser} fontSize="3xl" mb={3} />
-                <Text fontSize="lg">No hay pacientes en espera</Text>
-              </Box>
-            ) : (
-              <VStack spacing={3} align="stretch">
-                {pendingTurns.map((turn, index) => (
-                  <Box
-                    key={turn.id}
-                    p={4}
-                    background="rgba(255, 255, 255, 0.7)"
-                    backdropFilter="blur(10px)"
-                    borderRadius="xl"
-                    border="1px solid rgba(255, 255, 255, 0.3)"
-                    borderLeft="6px solid"
-                    borderLeftColor={turn.isSpecial ? "error" : "warning"}
-                    boxShadow="md"
-                    transition="all 0.3s ease"
-                    opacity={hidingTurns.has(turn.id) ? 0 : 1}
-                    transform={hidingTurns.has(turn.id) ? 'scale(0.95)' : 'scale(1)'}
-                    _hover={{ 
-                      transform: hidingTurns.has(turn.id) ? 'scale(0.95)' : 'translateY(-2px)', 
-                      boxShadow: hidingTurns.has(turn.id) ? 'md' : 'lg' 
-                    }}
-                    animation={hidingTurns.has(turn.id) 
-                      ? `${fadeOut} 0.3s ease-out forwards`
-                      : `${fadeInUp} ${0.3 + index * 0.1}s ease-out`}
-                  >
-                    <Flex align="center" justify="space-between">
-                      <Flex align="center" gap={3} flex="1">
-                        <Box
-                          w={12}
-                          h={12}
-                          borderRadius="xl"
-                          background={turn.isSpecial 
-                            ? "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)"
-                            : "linear-gradient(135deg, #f59e0b 0%, #f97316 100%)"
-                          }
-                          display="flex"
-                          alignItems="center"
-                          justifyContent="center"
-                          color="white"
-                          fontWeight="bold"
-                          fontSize="sm"
-                        >
-                          {getInitials(turn.patientName)}
-                        </Box>
-                        <Box flex="1">
-                          <Text 
-                            fontWeight="bold" 
-                            fontSize="lg" 
-                            color="secondary.800"
-                            display="flex"
-                            alignItems="center"
-                            gap={2}
-                            mb={1}
-                          >
-                            {turn.patientName}
-                            {turn.isSpecial && (
-                              <Box as={FaWheelchair} color="error" fontSize="lg" />
-                            )}
-                          </Text>
-                          <Text color="secondary.600" fontSize="md">
-                            Turno: <strong>#{turn.assignedTurn}</strong>
-                          </Text>
-                        </Box>
-                      </Flex>
-                      
-                      <IconButton
-                        icon={<FaBell />}
-                        colorScheme="blue"
-                        size="lg"
-                        fontSize="2xl"
-                        aria-label="Llamar Paciente"
-                        onClick={() => handleCallPatient(turn.id)}
-                        animation={turn.isSpecial && !processingTurns.has(turn.id) ? `${pulseNotification} 2s infinite` : "none"}
-                        isDisabled={!selectedCubicle || processingTurns.has(turn.id) || hidingTurns.has(turn.id)}
-                        isLoading={processingTurns.has(turn.id)}
-                        borderRadius="xl"
-                        _hover={{
-                          transform: processingTurns.has(turn.id) ? 'scale(1)' : 'scale(1.1)',
-                          boxShadow: processingTurns.has(turn.id) ? 'md' : 'xl'
-                        }}
-                        opacity={hidingTurns.has(turn.id) ? 0.5 : 1}
-                        ml={2}
-                      />
-                    </Flex>
-                  </Box>
-                ))}
-              </VStack>
-            )}
-          </Box>
+                <SidePanel
+                  pendingTurns={pendingTurns}
+                  inProgressTurns={inProgressTurns}
+                  onCall={handleCallPatient}
+                  onComplete={handleCompleteAttention}
+                  onRepeat={handleRepeatCall}
+                  processingTurns={processingTurns}
+                  tabIndex={sidePanelTabIndex}
+                  onTabChange={setSidePanelTabIndex}
+                />
 
-          {/* Pacientes en Atención */}
+                <Divider my={4} />
+
+                {/* Mini Stats */}
+                <VStack spacing={3} align="stretch">
+                  <HStack justify="space-between">
+                    <Text fontSize="sm" color="gray.600">Total Espera:</Text>
+                    <Badge colorScheme="orange" fontSize="md">{pendingTurns.length}</Badge>
+                  </HStack>
+                  <HStack justify="space-between">
+                    <Text fontSize="sm" color="gray.600">En Atención:</Text>
+                    <Badge colorScheme="green" fontSize="md">{inProgressTurns.length}</Badge>
+                  </HStack>
+                  <HStack justify="space-between">
+                    <Text fontSize="sm" color="gray.600">Mis Atendidos:</Text>
+                    <Badge colorScheme="blue" fontSize="md">{dailyStats.totalAttended}</Badge>
+                  </HStack>
+                </VStack>
+              </Box>
+            )}
+          </Grid>
+
+          {/* Footer Stats - Hidden on Mobile */}
+          <Box mt={6} display={{ base: "none", md: "block" }}>
+            <StatsFooter
+              stats={{
+                ...dailyStats,
+                totalPending: pendingTurns.length,
+                totalInProgress: inProgressTurns.length,
+              }}
+            />
+          </Box>
+        </Container>
+
+        {/* Mobile Drawer */}
+        <Drawer isOpen={isOpen} placement="right" onClose={onClose} size={{ base: "full", sm: "md" }}>
+          <DrawerOverlay />
+          <DrawerContent maxW={{ base: "100%", sm: "md" }}>
+            <DrawerCloseButton />
+            <DrawerHeader>Pacientes</DrawerHeader>
+            <DrawerBody>
+              <SidePanel
+                pendingTurns={pendingTurns}
+                inProgressTurns={inProgressTurns}
+                onCall={handleCallPatient}
+                onComplete={handleCompleteAttention}
+                onRepeat={handleRepeatCall}
+                processingTurns={processingTurns}
+                tabIndex={sidePanelTabIndex}
+                onTabChange={setSidePanelTabIndex}
+              />
+            </DrawerBody>
+            <DrawerFooter>
+              <VStack w="full" align="stretch" spacing={2}>
+                <HStack justify="space-between">
+                  <Text fontSize="sm">En Espera:</Text>
+                  <Badge colorScheme="orange">{pendingTurns.length}</Badge>
+                </HStack>
+                <HStack justify="space-between">
+                  <Text fontSize="sm">Mis Atendidos:</Text>
+                  <Badge colorScheme="green">{dailyStats.totalAttended}</Badge>
+                </HStack>
+              </VStack>
+            </DrawerFooter>
+          </DrawerContent>
+        </Drawer>
+
+        {/* Bottom Navigation - Mobile Only */}
+        {isMobile && (
           <Box
-            borderRadius="2xl"
-            p={4}
-            background="rgba(255, 255, 255, 0.25)"
-            backdropFilter="blur(20px)"
-            boxShadow="glass"
-            border="1px solid rgba(255, 255, 255, 0.18)"
-            maxHeight="45vh"
-            overflowY="auto"
-            animation={`${fadeInUp} 1.2s ease-out`}
-            position="relative"
+            position="fixed"
+            bottom={0}
+            left={0}
+            right={0}
+            bg="white"
+            borderTop="1px solid"
+            borderColor="gray.200"
+            p={2}
+            boxShadow="lg"
+            zIndex={99}
           >
-            {/* Gradient line */}
-            <Box
-              position="absolute"
-              top={0}
-              left={0}
-              right={0}
-              height="3px"
-              background="linear-gradient(135deg, #10b981 0%, #059669 100%)"
-              borderTopRadius="2xl"
-            />
-
-            <Flex align="center" justify="space-between" mb={4}>
-              <Heading 
-                size="lg" 
-                color="secondary.800" 
-                fontWeight="bold"
-                display="flex"
-                alignItems="center"
-                gap={2}
-              >
-                <Box as={FaUserMd} color="success" />
-                Pacientes en Atención
-              </Heading>
-              <Badge colorScheme="green" fontSize="md" px={3} py={1} borderRadius="lg">
-                {inProgressTurns.length}
-              </Badge>
-            </Flex>
-
-            {inProgressTurns.length === 0 ? (
-              <Box
-                textAlign="center"
-                py={8}
-                color="secondary.500"
-              >
-                <Box as={FaUserMd} fontSize="3xl" mb={3} />
-                <Text fontSize="lg">No hay pacientes en atención</Text>
-              </Box>
-            ) : (
-              <VStack spacing={4} align="stretch">
-                {inProgressTurns.map((turn, index) => (
-                  <Box
-                    key={turn.id}
-                    p={4}
-                    background="rgba(255, 255, 255, 0.7)"
-                    backdropFilter="blur(10px)"
-                    borderRadius="xl"
-                    border="1px solid rgba(255, 255, 255, 0.3)"
-                    borderLeft="6px solid"
-                    borderLeftColor="success"
-                    boxShadow="md"
-                    transition="all 0.3s ease"
-                    opacity={hidingTurns.has(turn.id) ? 0 : 1}
-                    transform={hidingTurns.has(turn.id) ? 'scale(0.95)' : 'scale(1)'}
-                    _hover={{ 
-                      transform: hidingTurns.has(turn.id) ? 'scale(0.95)' : 'translateY(-2px)', 
-                      boxShadow: hidingTurns.has(turn.id) ? 'md' : 'lg' 
-                    }}
-                    animation={hidingTurns.has(turn.id) 
-                      ? `${fadeOut} 0.3s ease-out forwards`
-                      : `${fadeInUp} ${0.5 + index * 0.1}s ease-out`}
-                  >
-                    <Flex align="center" justify="space-between" wrap="wrap" gap={3}>
-                      <Flex align="center" gap={3} flex="1">
-                        <Box
-                          w={12}
-                          h={12}
-                          borderRadius="xl"
-                          background="linear-gradient(135deg, #10b981 0%, #059669 100%)"
-                          display="flex"
-                          alignItems="center"
-                          justifyContent="center"
-                          color="white"
-                          fontWeight="bold"
-                          fontSize="sm"
-                        >
-                          {getInitials(turn.patientName)}
-                        </Box>
-                        <Box flex="1">
-                          <Text 
-                            fontWeight="bold" 
-                            fontSize="lg" 
-                            color="secondary.800"
-                            display="flex"
-                            alignItems="center"
-                            gap={2}
-                            mb={1}
-                          >
-                            {turn.patientName}
-                            {turn.isSpecial && (
-                              <Box as={FaWheelchair} color="error" fontSize="lg" />
-                            )}
-                          </Text>
-                          <Text color="secondary.600" fontSize="sm" mb={1}>
-                            <strong>Turno:</strong> #{turn.assignedTurn}
-                          </Text>
-                          <Text color="secondary.600" fontSize="sm" mb={1}>
-                            <strong>Cubículo:</strong> {turn.cubicleName}
-                          </Text>
-                          <Text color="secondary.600" fontSize="sm">
-                            <strong>Flebotomista:</strong> {turn.flebotomistName}
-                          </Text>
-                        </Box>
-                      </Flex>
-                      
-                      <HStack spacing={2}>
-                        <IconButton
-                          icon={<FaVolumeUp />}
-                          colorScheme="orange"
-                          size="lg"
-                          fontSize="2xl"
-                          aria-label="Repetir Llamado"
-                          onClick={() => handleRepeatCall(turn.id)}
-                          isDisabled={processingTurns.has(`repeat-${turn.id}`) || hidingTurns.has(turn.id)}
-                          isLoading={processingTurns.has(`repeat-${turn.id}`)}
-                          borderRadius="xl"
-                          _hover={{
-                            transform: processingTurns.has(`repeat-${turn.id}`) ? 'scale(1)' : 'scale(1.1)',
-                            boxShadow: processingTurns.has(`repeat-${turn.id}`) ? 'md' : 'xl'
-                          }}
-                          opacity={hidingTurns.has(turn.id) ? 0.5 : 1}
-                        />
-                        <IconButton
-                          icon={<FaCheckCircle />}
-                          colorScheme="green"
-                          size="lg"
-                          fontSize="2xl"
-                          aria-label="Finalizar Atención"
-                          onClick={() => handleCompleteAttention(turn.id)}
-                          isDisabled={processingTurns.has(turn.id) || hidingTurns.has(turn.id)}
-                          isLoading={processingTurns.has(turn.id)}
-                          borderRadius="xl"
-                          _hover={{
-                            transform: processingTurns.has(turn.id) ? 'scale(1)' : 'scale(1.1)',
-                            boxShadow: processingTurns.has(turn.id) ? 'md' : 'xl'
-                          }}
-                          opacity={hidingTurns.has(turn.id) ? 0.5 : 1}
-                        />
-                      </HStack>
-                    </Flex>
-                  </Box>
-                ))}
+            <HStack justify="space-around">
+              <VStack spacing={1}>
+                <IconButton
+                  icon={<FaArrowLeft size="20" />}
+                  onClick={goBack}
+                  variant="solid"
+                  size="md"
+                  aria-label="Volver"
+                  colorScheme="gray"
+                />
+                <Text fontSize="xs" color="gray.600">Volver</Text>
               </VStack>
-            )}
+              <VStack spacing={1}>
+                <IconButton
+                  icon={<FaBars size="20" />}
+                  onClick={onOpen}
+                  variant="solid"
+                  size="md"
+                  aria-label="Lista"
+                  colorScheme={isOpen ? "blue" : "gray"}
+                />
+                <Text fontSize="xs" color="gray.600">Pacientes</Text>
+              </VStack>
+              <VStack spacing={1}>
+                <Badge colorScheme="orange" fontSize="lg" px={3} py={1}>
+                  {pendingTurns.length}
+                </Badge>
+                <Text fontSize="xs" color="gray.600">En Espera</Text>
+              </VStack>
+            </HStack>
           </Box>
-        </VStack>
-
-        {/* Footer */}
-        <Box
-          as="footer"
-          p={2}
-          textAlign="center"
-          background="rgba(255, 255, 255, 0.25)"
-          backdropFilter="blur(20px)"
-          color="secondary.600"
-          borderRadius="lg"
-          fontSize="xs"
-          mt={2}
-        >
-          <Text>
-            Instituto Nacional de Enfermedades Respiratorias Ismael Cosío Villegas (INER) | 
-            Desarrollado por DT Diagnósticos by Labsis © {new Date().getFullYear()}
-          </Text>
-        </Box>
+        )}
       </Box>
     </ChakraProvider>
   );

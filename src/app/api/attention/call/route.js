@@ -13,7 +13,13 @@ export async function POST(req) {
 
     const updatedTurn = await prisma.turnRequest.update({
       where: { id: turnId },
-      data: { status: "In Progress", isCalled: false, attendedBy: userId, cubicleId: parseInt(cubicleId, 10) },
+      data: {
+        status: "In Progress",
+        isCalled: false,
+        attendedBy: userId,
+        cubicleId: parseInt(cubicleId, 10),
+        calledAt: new Date() // Registrar la hora exacta en que fue llamado
+      },
     });
 
     return new Response(JSON.stringify(updatedTurn), {

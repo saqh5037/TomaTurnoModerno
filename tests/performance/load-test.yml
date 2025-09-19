@@ -1,0 +1,147 @@
+# Artillery Load Testing Configuration
+# Sistema TomaTurno INER
+# Criticidad: ALTA
+
+config:
+  target: 'http://localhost:3005'
+  phases:
+    - duration: 120  # 2 minutes warm-up
+      arrivalRate: 5
+      name: "Warm up"
+    - duration: 300  # 5 minutes normal load
+      arrivalRate: 20
+      name: "Normal load"
+    - duration: 180  # 3 minutes stress test
+      arrivalRate: 50
+      name: "Stress test"
+    - duration: 60   # 1 minute spike
+      arrivalRate: 100
+      name: "Spike test"
+
+  payload:
+    path: "./test-data.csv"
+    fields:
+      - "patientName"
+      - "age"
+      - "gender"
+
+  variables:
+    studies:
+      - ["Hemograma", "Glucosa"]
+      - ["Perfil Lipídico", "Perfil Hepático"]
+      - ["COVID-19", "Influenza"]
+      - ["TSH", "T3", "T4"]
+
+  processor: "./processors.js"
+
+scenarios:
+  - name: "Patient Turn Creation Flow"
+    weight: 40
+    flow:
+      - post:
+          url: "/api/turns/create"
+          json:
+            patientName: "{{ patientName }}"
+            age: "{{ age }}"
+            gender: "{{ gender }}"
+            studies: "{{ studies }}"
+            tubesRequired: "{{ $randomNumber(1, 5) }}"
+            tipoAtencion: "{{ $randomString(['General', 'General', 'General', 'Special']) }}"
+          capture:
+            - json: "$.assignedTurn"
+              as: "turnId"
+          expect:
+            - statusCode: 201
+            - contentType: json
+            - hasProperty: assignedTurn
+
+      - think: 2
+
+      - get:
+          url: "/api/queue/list"
+          expect:
+            - statusCode: 200
+            - contentType: json
+            - hasProperty: pendingTurns
+
+  - name: "Queue Monitoring Flow"
+    weight: 30
+    flow:
+      - loop:
+        - get:
+            url: "/api/queue/list"
+            expect:
+              - statusCode: 200
+              - responseTime: 500  # Max 500ms
+        - think: 3
+        count: 10
+
+  - name: "Statistics Query Flow"
+    weight: 20
+    flow:
+      - get:
+          url: "/api/statistics/daily"
+          expect:
+            - statusCode: 200
+            - responseTime: 1000
+
+      - think: 5
+
+      - get:
+          url: "/api/statistics/monthly"
+          expect:
+            - statusCode: 200
+            - responseTime: 2000
+
+  - name: "Phlebotomist Operations Flow"
+    weight: 10
+    flow:
+      # First login
+      - post:
+          url: "/api/auth/login"
+          json:
+            username: "phlebotomist{{ $randomNumber(1, 5) }}"
+            password: "password123"
+          capture:
+            - json: "$.token"
+              as: "authToken"
+          expect:
+            - statusCode:
+              - 200
+              - 401  # May fail if user doesn't exist
+
+      - think: 1
+
+      # Call patient if logged in
+      - post:
+          url: "/api/attention/call"
+          headers:
+            Authorization: "Bearer {{ authToken }}"
+          json:
+            turnId: "{{ $randomNumber(1, 100) }}"
+            cubicleId: "{{ $randomNumber(1, 10) }}"
+          expect:
+            - statusCode:
+              - 200
+              - 201
+              - 400
+              - 401
+              - 404
+
+      - think: 30  # Simulate attention time
+
+      # Complete attention
+      - post:
+          url: "/api/attention/complete"
+          headers:
+            Authorization: "Bearer {{ authToken }}"
+          json:
+            turnId: "{{ $randomNumber(1, 100) }}"
+            observations: "Atención completada"
+          expect:
+            - statusCode:
+              - 200
+              - 201
+              - 400
+              - 401
+              - 404

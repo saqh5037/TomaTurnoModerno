@@ -1,50 +1,46 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
-generator client {
-  provider = "prisma-client-js"
-}
-
 model User {
   id           Int           @id @default(autoincrement())
-  username     String        @unique
-  password     String
   name         String
   role         String
+  password     String
+  username     String        @unique
   createdAt    DateTime      @default(now())
-
-  // Relación de vuelta a TurnRequest
   turnRequests TurnRequest[] @relation("UserTurnRequests")
 }
 
 model TurnRequest {
-  id              Int       @id @default(autoincrement())
-  patientName     String
-  age             Int
-  gender          String
-  contactInfo     String?
-  studies         String
-  tubesRequired   Int
-  observations    String?
-  clinicalInfo    String?
-  status          String    @default("Pending")
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  assignedTurn    Int?
-  tipoAtencion    String    @default("General")
-  calledAt        DateTime?
-  attendedAt      DateTime? // Fecha y hora de inicio de la atención
-  finishedAt      DateTime? // Fecha y hora de fin de la atención
-  attendedBy      Int?      // Foreign key to User
-  user            User?     @relation("UserTurnRequests", fields: [attendedBy], references: [id])
+  id            Int       @id @default(autoincrement())
+  patientName   String
+  age           Int
+  gender        String
+  contactInfo   String?
+  studies       String
+  tubesRequired Int
+  observations  String?
+  clinicalInfo  String?
+  status        String    @default("Pending")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  assignedTurn  Int?
+  attendedAt    DateTime?
+  attendedBy    Int?
+  calledAt      DateTime?
+  tipoAtencion  String    @default("General")
+  cubicleId     Int?
+  isCalled      Boolean   @default(false)
+  finishedAt    DateTime?
+  user          User?     @relation("UserTurnRequests", fields: [attendedBy], references: [id])
+  cubicle       Cubicle?  @relation("TurnRequestToCubicle", fields: [cubicleId], references: [id])
 
-  cubicleId       Int?
-  cubicle         Cubicle?  @relation("TurnRequestToCubicle", fields: [cubicleId], references: [id])
-  isCalled        Boolean   @default(false) // Indica si el paciente ha sido llamado
-
-  // Índices para mejorar rendimiento de consultas frecuentes
   @@index([status])
   @@index([isCalled])
   @@index([status, isCalled])
@@ -55,11 +51,6 @@ model TurnRequest {
   @@index([status, assignedTurn])
 }
 
-enum CubicleType {
-  GENERAL
-  SPECIAL
-}
-
 model Cubicle {
   id           Int           @id @default(autoincrement())
   name         String        @unique
@@ -67,26 +58,10 @@ model Cubicle {
   type         CubicleType
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
-
   turnRequests TurnRequest[] @relation("TurnRequestToCubicle")
 }
 
-enum SatisfactionRating {
-  HAPPY      // 😊 Satisfecho
-  NEUTRAL    // 😐 Neutral  
-  SAD        // 😞 Insatisfecho
-}
-
-model SatisfactionSurvey {
-  id        Int               @id @default(autoincrement())
-  rating    SatisfactionRating
-  comments  String?           // Comentarios opcionales
-  createdAt DateTime          @default(now())
-  
-  // Información opcional del contexto
-  userAgent String?           // Para saber desde qué dispositivo
-  ipAddress String?           // IP (opcional, para estadísticas)
-  
-  @@index([rating])
-  @@index([createdAt])
+enum CubicleType {
+  GENERAL
+  SPECIAL
 }

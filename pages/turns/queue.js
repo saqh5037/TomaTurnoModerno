@@ -248,13 +248,15 @@ const Queue = memo(function Queue() {
 
                 if (isActive) {
                     await new Promise(resolve => setTimeout(resolve, 3000));
-                    updateCallStatus();
+                    // NO actualizar el estado para permitir que otras pantallas también anuncien
+                    // updateCallStatus();
                 }
             } catch (error) {
                 console.error("Error en el proceso de llamado:", error);
-                if (isActive) {
-                    updateCallStatus();
-                }
+                // NO actualizar el estado en caso de error
+                // if (isActive) {
+                //     updateCallStatus();
+                // }
             }
         };
 
@@ -374,19 +376,19 @@ const Queue = memo(function Queue() {
                             borderColor="green.200"
                             bg="#F0FDF4"
                         >
-                            <Box as={FaHeartbeat} color="#10B981" fontSize="xl" mr={2} />
-                            <Text fontSize="lg" fontWeight="bold" color="#064E3B" flex="1">
+                            <Box as={FaHeartbeat} color="#10B981" fontSize="2xl" mr={2} />
+                            <Text fontSize="2xl" fontWeight="bold" color="#064E3B" flex="1">
                                 PACIENTES EN ATENCIÓN
                             </Text>
                             <Box
                                 bg="#10B981"
                                 color="white"
-                                px={3}
-                                py={1}
+                                px={4}
+                                py={2}
                                 borderRadius="full"
-                                fontSize="md"
+                                fontSize="2xl"
                                 fontWeight="bold"
-                                minW="32px"
+                                minW="45px"
                                 textAlign="center"
                             >
                                 {inProgressTurns.length}
@@ -469,19 +471,19 @@ const Queue = memo(function Queue() {
                             borderColor="orange.200"
                             bg="#FFF7ED"
                         >
-                            <Box as={FaClock} color="#F59E0B" fontSize="xl" mr={2} />
-                            <Text fontSize="lg" fontWeight="bold" color="#78350F" flex="1">
+                            <Box as={FaClock} color="#F59E0B" fontSize="2xl" mr={2} />
+                            <Text fontSize="2xl" fontWeight="bold" color="#78350F" flex="1">
                                 PACIENTES EN ESPERA
                             </Text>
                             <Box
                                 bg="#F59E0B"
                                 color="white"
-                                px={3}
-                                py={1}
+                                px={4}
+                                py={2}
                                 borderRadius="full"
-                                fontSize="md"
+                                fontSize="2xl"
                                 fontWeight="bold"
-                                minW="32px"
+                                minW="45px"
                                 textAlign="center"
                             >
                                 {pendingTurns.length}
@@ -495,33 +497,65 @@ const Queue = memo(function Queue() {
                                     No hay pacientes en espera
                                 </Text>
                             ) : (
-                                <Grid templateColumns="repeat(2, 1fr)" gap={1}>
-                                    {pendingTurns.slice(0, 20).map((turn, index) => (
-                                        <Flex
-                                            key={turn.id}
-                                            align="center"
-                                            px={2}
-                                            py={1}
-                                            bg="white"
-                                            borderRadius="sm"
-                                            borderLeft="2px solid"
-                                            borderLeftColor={turn.tipoAtencion === "Special" ? "#EF4444" : "#F59E0B"}
-                                            fontSize="xs"
-                                        >
-                                            <Text fontWeight="bold" color="#F59E0B" fontSize="xs" mr={1}>
-                                                #{turn.assignedTurn}
-                                            </Text>
-                                            <Text color="#1E293B" flex="1" fontWeight="medium" fontSize="sm" isTruncated>
-                                                {turn.patientName}
-                                            </Text>
-                                            {turn.tipoAtencion === "Special" && (
-                                                <Text color="#EF4444" fontWeight="bold" fontSize="sm" ml={1}>
-                                                    ♿
+                                <Flex gap={2}>
+                                    {/* Columna Izquierda - Primeros 10 pacientes */}
+                                    <VStack flex="1" spacing={1} align="stretch">
+                                        {pendingTurns.slice(0, 10).map((turn, index) => (
+                                            <Flex
+                                                key={turn.id}
+                                                align="center"
+                                                px={2}
+                                                py={1}
+                                                bg="white"
+                                                borderRadius="sm"
+                                                borderLeft="2px solid"
+                                                borderLeftColor={turn.tipoAtencion === "Special" ? "#EF4444" : "#F59E0B"}
+                                                fontSize="xs"
+                                            >
+                                                <Text fontWeight="bold" color="#F59E0B" fontSize="xs" mr={1}>
+                                                    #{turn.assignedTurn}
                                                 </Text>
-                                            )}
-                                        </Flex>
-                                    ))}
-                                </Grid>
+                                                <Text color="#1E293B" flex="1" fontWeight="medium" fontSize="sm" isTruncated>
+                                                    {turn.patientName}
+                                                </Text>
+                                                {turn.tipoAtencion === "Special" && (
+                                                    <Text color="#EF4444" fontWeight="bold" fontSize="sm" ml={1}>
+                                                        ♿
+                                                    </Text>
+                                                )}
+                                            </Flex>
+                                        ))}
+                                    </VStack>
+
+                                    {/* Columna Derecha - Siguientes 10 pacientes (11-20) */}
+                                    <VStack flex="1" spacing={1} align="stretch">
+                                        {pendingTurns.slice(10, 20).map((turn, index) => (
+                                            <Flex
+                                                key={turn.id}
+                                                align="center"
+                                                px={2}
+                                                py={1}
+                                                bg="white"
+                                                borderRadius="sm"
+                                                borderLeft="2px solid"
+                                                borderLeftColor={turn.tipoAtencion === "Special" ? "#EF4444" : "#F59E0B"}
+                                                fontSize="xs"
+                                            >
+                                                <Text fontWeight="bold" color="#F59E0B" fontSize="xs" mr={1}>
+                                                    #{turn.assignedTurn}
+                                                </Text>
+                                                <Text color="#1E293B" flex="1" fontWeight="medium" fontSize="sm" isTruncated>
+                                                    {turn.patientName}
+                                                </Text>
+                                                {turn.tipoAtencion === "Special" && (
+                                                    <Text color="#EF4444" fontWeight="bold" fontSize="sm" ml={1}>
+                                                        ♿
+                                                    </Text>
+                                                )}
+                                            </Flex>
+                                        ))}
+                                    </VStack>
+                                </Flex>
                             )}
 
                             {/* Indicador de más pacientes */}
@@ -548,14 +582,14 @@ const Queue = memo(function Queue() {
                     borderTop="3px solid"
                     borderColor="#3B82F6"
                     px={4}
-                    py={3}
-                    h="70px"
+                    py={4}
+                    h="98px"
                 >
                     <Flex align="center" justify="space-between" h="100%">
                         {/* QR con mejor diseño */}
                         <HStack spacing={3}>
                             <Box
-                                p={1}
+                                p={2}
                                 bg="white"
                                 border="2px solid"
                                 borderColor="#3B82F6"
@@ -563,16 +597,16 @@ const Queue = memo(function Queue() {
                                 boxShadow="sm"
                             >
                                 <QRCode
-                                    size={45}
+                                    size={63}
                                     value="https://redcap-iner.com.mx/surveys/?s=KXTEHHDT8C"
                                     viewBox="0 0 256 256"
                                 />
                             </Box>
                             <VStack spacing={0} align="flex-start">
-                                <Text fontSize="xs" color="#1E40AF" fontWeight="bold" textTransform="uppercase">
+                                <Text fontSize="md" color="#1E40AF" fontWeight="bold" textTransform="uppercase">
                                     Califica el servicio
                                 </Text>
-                                <Text fontSize="xs" color="#64748B">
+                                <Text fontSize="md" color="#64748B">
                                     Escanea el código
                                 </Text>
                             </VStack>
@@ -585,7 +619,7 @@ const Queue = memo(function Queue() {
                             textAlign="center"
                         >
                             <Text
-                                fontSize="lg"
+                                fontSize="xl"
                                 fontWeight="extrabold"
                                 color="#1E40AF"
                                 letterSpacing="wide"
