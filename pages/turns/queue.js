@@ -1,111 +1,34 @@
-import { useEffect, useState, useCallback, useMemo, memo } from "react";
-import { Box, Heading, Text, Grid, Flex, ChakraProvider, extendTheme, VStack, HStack, Icon, Circle, Button } from "@chakra-ui/react";
-import { keyframes } from "@emotion/react";
-import { FaHeartbeat, FaClock, FaUserMd, FaUser, FaWheelchair, FaMicrophone, FaStar, FaQrcode, FaVolumeUp } from 'react-icons/fa';
+import { useEffect, useState, useCallback, memo } from "react";
+import { Box, Heading, Text, Flex, ChakraProvider, extendTheme, VStack, HStack, Grid } from "@chakra-ui/react";
+import { FaHeartbeat, FaClock, FaMicrophone } from 'react-icons/fa';
 import QRCode from 'react-qr-code';
 
-// Tema personalizado optimizado para TV - Tamaños aumentados significativamente
+// Tema ultra-minimalista optimizado para máxima densidad de información
 const theme = extendTheme({
     colors: {
         primary: {
-            50: "#f0f9ff",
-            100: "#e0f2fe",
-            200: "#bae6fd",
-            300: "#7dd3fc",
-            400: "#38bdf8",
             500: "#4F7DF3",
-            600: "#0284c7",
-            700: "#0369a1",
-            800: "#075985",
-            900: "#0c4a6e",
+            600: "#6B73FF",
         },
-        secondary: {
-            50: "#f8fafc",
-            100: "#f1f5f9",
-            200: "#e2e8f0",
-            300: "#cbd5e1",
-            400: "#94a3b8",
-            500: "#64748b",
-            600: "#475569",
-            700: "#334155",
-            800: "#1e293b",
-            900: "#0f172a",
-        },
-        purple: {
-            500: "#6B73FF",
-            600: "#764ba2",
-        },
-        success: "#10b981",
-        warning: "#f59e0b",
-        error: "#ef4444",
-        info: "#3b82f6",
+        success: "#10B981",
+        warning: "#F59E0B",
+        error: "#EF4444",
     },
     fonts: {
-        heading: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-        body: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-    },
-    shadows: {
-        sm: "0 1px 2px 0 rgb(0 0 0 / 0.05)",
-        md: "0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)",
-        lg: "0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)",
-        xl: "0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)",
-        glass: "0 8px 32px 0 rgba(31, 38, 135, 0.37)",
-    },
-    radii: {
-        lg: "16px",
-        xl: "20px",
-        "2xl": "24px",
-        "3xl": "32px",
+        body: "'Inter', -apple-system, 'Segoe UI', sans-serif",
+        heading: "'Inter', -apple-system, 'Segoe UI', sans-serif",
     },
     styles: {
         global: {
             body: {
-                background: 'linear-gradient(135deg, #E0F2FE 0%, #F0F9FF 50%, #EDE9FE 100%)',
-                color: 'secondary.700',
+                bg: '#ffffff',
+                color: '#1E293B',
                 fontFamily: "'Inter', sans-serif",
-                minHeight: '100vh',
-                fontFeatureSettings: '"cv11", "ss01"',
-                fontVariationSettings: '"opsz" 32',
+                overflow: 'hidden',
             },
         },
     },
 });
-
-// Animaciones
-const blinkAnimation = keyframes`
-    0% { 
-        background: rgba(255, 255, 255, 0.95);
-        transform: scale(1);
-    }
-    50% { 
-        background: rgba(255, 255, 255, 0.98);
-        transform: scale(1.05);
-    }
-    100% { 
-        background: rgba(255, 255, 255, 0.95);
-        transform: scale(1);
-    }
-`;
-
-const fadeInUp = keyframes`
-    from {
-        opacity: 0;
-        transform: translateY(30px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-`;
-
-const pulseGlow = keyframes`
-    0%, 100% {
-        box-shadow: 0 0 30px rgba(79, 125, 243, 0.4);
-    }
-    50% {
-        box-shadow: 0 0 60px rgba(79, 125, 243, 0.8);
-    }
-`;
 
 const Queue = memo(function Queue() {
     const [pendingTurns, setPendingTurns] = useState([]);
@@ -115,18 +38,29 @@ const Queue = memo(function Queue() {
     const [error, setError] = useState(null);
     const [currentTime, setCurrentTime] = useState(null);
     const [mounted, setMounted] = useState(false);
-    const [scrollPositions, setScrollPositions] = useState({ inProgress: 0, pending: 0 });
-    const [audioEnabled, setAudioEnabled] = useState(true); // Audio siempre activo
+    const [currentPhraseIndex, setCurrentPhraseIndex] = useState(0);
 
-    // Effect para marcar el componente como montado y activar audio silenciosamente
+    // Frases motivacionales que rotan
+    const phrases = [
+        "💙 Cuidamos de ti con tecnología y calidad humana",
+        "🏥 El Instituto Nacional de Enfermedades Respiratorias trabaja para ti",
+        "✨ Tu bienestar es nuestra prioridad",
+        "🫁 Respirar bien es vivir mejor",
+        "👨‍⚕️ Excelencia médica al servicio de México",
+        "🌟 Juntos por una mejor calidad de vida",
+        "💪 Comprometidos con tu recuperación y bienestar",
+        "🔬 Innovación y cuidado en cada atención",
+        "❤️ Tu salud respiratoria en las mejores manos",
+        "🌱 Prevenir es la mejor medicina"
+    ];
+
+    // Effect para marcar el componente como montado
     useEffect(() => {
         setMounted(true);
         setCurrentTime(new Date());
-        
-        // Activar audio de forma silenciosa automáticamente
-        // Esto funciona porque el usuario ya interactuó al navegar a esta página
+
+        // Activar audio de forma silenciosa
         if (typeof window !== 'undefined' && window.speechSynthesis) {
-            // Inicializar speech synthesis con un mensaje vacío
             const initUtterance = new SpeechSynthesisUtterance('');
             initUtterance.volume = 0;
             window.speechSynthesis.speak(initUtterance);
@@ -140,7 +74,6 @@ const Queue = memo(function Queue() {
             const response = await fetch("/api/queue/list");
             if (!response.ok) throw new Error("Error al obtener los turnos");
             const data = await response.json();
-
 
             const sortedPendingTurns = (data.pendingTurns || []).sort((a, b) => a.assignedTurn - b.assignedTurn);
             const sortedInProgressTurns = (data.inProgressTurns || []).sort((a, b) => a.assignedTurn - b.assignedTurn);
@@ -164,7 +97,7 @@ const Queue = memo(function Queue() {
     // Función para actualizar estado de llamado
     const updateCallStatus = useCallback(async () => {
         if (!callingPatient) return;
-        
+
         try {
             const response = await fetch(`/api/queue/updateCall`, {
                 method: "PUT",
@@ -172,7 +105,7 @@ const Queue = memo(function Queue() {
                 body: JSON.stringify({ id: callingPatient.id, isCalled: true }),
             });
             if (!response.ok) throw new Error("Error al actualizar el estado del paciente.");
-            
+
             setCallingPatient(null);
             setIsCalling(false);
         } catch (err) {
@@ -194,20 +127,6 @@ const Queue = memo(function Queue() {
         return () => clearInterval(interval);
     }, [mounted, fetchQueueData, pendingTurns.length, isCalling]);
 
-    // Efecto para scroll automático - Rotación cada 5 pacientes
-    useEffect(() => {
-        if (!isCalling && mounted) {
-            const scrollInterval = setInterval(() => {
-                setScrollPositions(prev => ({
-                    inProgress: inProgressTurns.length > 5 ? (prev.inProgress + 1) % inProgressTurns.length : 0,
-                    pending: pendingTurns.length > 5 ? (prev.pending + 1) % pendingTurns.length : 0,
-                }));
-            }, 8000); // Rotación cada 8 segundos
-
-            return () => clearInterval(scrollInterval);
-        }
-    }, [inProgressTurns.length, pendingTurns.length, isCalling, mounted]);
-
     // Effect para actualizar la hora
     useEffect(() => {
         if (mounted) {
@@ -218,188 +137,84 @@ const Queue = memo(function Queue() {
         }
     }, [mounted]);
 
-    // Función para activar audio (requerido por navegadores modernos)
-    const enableAudio = useCallback(() => {
-        
-        // Crear un audio silencioso para activar el contexto de audio
-        const silentAudio = new Audio("data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLaizsIGWm78OScTgwOUKjj8LZiHQU5ktXyzHksBSR3x/DdkEAKFFiz6OuoVRAMRp/g8r5tIAUrgM7y2oo7CBlpufDknE0MDlCn4/G2Yh0EOJHW8sx5LAYkd8bx3ZBAChVYs+jrqVYRDEWf4PK+bSEFK4DN8tiIOQgZabvx5Z1ODAVQ");
-        silentAudio.play().then(() => {
-            setAudioEnabled(true);
-        }).catch(e => {
-            console.error("❌ Error al activar audio:", e);
-        });
-
-        // También intentar activar speech synthesis
-        if (window.speechSynthesis) {
-            const utterance = new SpeechSynthesisUtterance("");
-            utterance.volume = 0;
-            window.speechSynthesis.speak(utterance);
-            window.speechSynthesis.cancel();
+    // Effect para rotar las frases motivacionales
+    useEffect(() => {
+        if (mounted) {
+            const phraseInterval = setInterval(() => {
+                setCurrentPhraseIndex((prevIndex) => (prevIndex + 1) % phrases.length);
+            }, 8000); // Cambia cada 8 segundos
+            return () => clearInterval(phraseInterval);
         }
-    }, []);
+    }, [mounted, phrases.length]);
 
-    // 🔊 FUNCIÓN DE VOZ ORIGINAL RESTAURADA - Con voz femenina mexicana
+    // Función de voz
     const speakAnnouncement = useCallback((patient) => {
-        
         if (!patient || typeof window === 'undefined' || !window.speechSynthesis) {
-            console.warn("SpeechSynthesis no está disponible o no hay turno para anunciar.");
             return Promise.resolve();
         }
 
-        // Audio siempre activo, no necesita verificación
-
-        // Mensaje del anuncio - Directo y profesional
         const cubiculoName = patient.cubicle?.name || 'uno';
         const messageText = `Atención, paciente ${patient.patientName}, favor de dirigirse al cubículo número ${cubiculoName}. Repito, paciente ${patient.patientName}, cubículo número ${cubiculoName}.`;
 
-        // Función para configurar y reproducir el anuncio
         const playAnnouncement = () => {
             return new Promise((resolve) => {
                 const utterance = new SpeechSynthesisUtterance(messageText);
-                
-                // Configurar voz - Priorizar voces femeninas en español mexicano/neutro
-                const voices = window.speechSynthesis.getVoices();
-                
-                let selectedVoice = null;
-                
-                if (voices.length > 0) {
-                    // Lista ampliada de nombres femeninos para mejor detección
-                    const femaleNames = [
-                        'Paulina', 'Mónica', 'Monica', 'Esperanza', 'Angelica', 'Maria', 'Carmen', 
-                        'Helena', 'Sabina', 'Paloma', 'Lucia', 'Sofia', 'Valentina', 'Isabella',
-                        'Camila', 'Valeria', 'Natalia', 'Mariana', 'Paola', 'Daniela', 'Gabriela',
-                        'Victoria', 'Andrea', 'Raquel', 'Beatriz', 'Cristina',
-                        'Kendra', 'Aria', 'Jenny', 'Neural', 'WaveNet',
-                        'Female', 'Woman', 'Mujer', 'Femenina'
-                    ];
 
-                    // Función para verificar si una voz es probablemente femenina
+                const voices = window.speechSynthesis.getVoices();
+
+                if (voices.length > 0) {
+                    const femaleNames = ['Paulina', 'Mónica', 'Monica', 'Esperanza', 'Angelica', 'Maria', 'Carmen',
+                        'Helena', 'Sabina', 'Paloma', 'Lucia', 'Sofia', 'Valentina', 'Isabella'];
+
                     const isFemaleVoice = (voice) => {
                         const voiceName = voice.name.toLowerCase();
-                        const localName = voice.localName?.toLowerCase() || '';
-                        
-                        return femaleNames.some(name => 
-                            voiceName.includes(name.toLowerCase()) || 
-                            localName.includes(name.toLowerCase())
-                        );
+                        return femaleNames.some(name => voiceName.includes(name.toLowerCase()));
                     };
 
-                    // Función para detectar voces masculinas
-                    const isMaleVoice = (voice) => {
-                        const voiceName = voice.name.toLowerCase();
-                        const maleNames = [
-                            'diego', 'jorge', 'carlos', 'miguel', 'antonio', 'juan', 'pablo',
-                            'male', 'masculino', 'hombre', 'man', 'masculine'
-                        ];
-                        return maleNames.some(name => voiceName.includes(name));
-                    };
+                    const selectedVoice =
+                        voices.find(voice => voice.lang === 'es-MX' && isFemaleVoice(voice)) ||
+                        voices.find(voice => voice.lang === 'es-MX') ||
+                        voices.find(voice => voice.lang.startsWith('es')) ||
+                        voices[0];
 
-
-                    // Sistema de selección mejorado con prioridades
-                    selectedVoice = 
-                    // Prioridad 1: Voces mexicanas femeninas
-                    voices.find(voice => 
-                        voice.lang === 'es-MX' && 
-                        isFemaleVoice(voice) && 
-                        !isMaleVoice(voice)
-                    ) ||
-                    
-                    // Prioridad 2: Microsoft Sabina/Helena en español
-                    voices.find(voice => 
-                        voice.name.includes('Microsoft') &&
-                        voice.lang.startsWith('es') &&
-                        (voice.name.includes('Sabina') || voice.name.includes('Helena'))
-                    ) ||
-                    
-                    // Prioridad 3: Google Neural/WaveNet en español mexicano
-                    voices.find(voice => 
-                        voice.name.includes('Google') &&
-                        voice.lang === 'es-MX' &&
-                        (voice.name.includes('Neural') || voice.name.includes('WaveNet'))
-                    ) ||
-                    
-                    // Prioridad 4: Cualquier voz mexicana NO masculina
-                    voices.find(voice => 
-                        voice.lang === 'es-MX' && 
-                        !isMaleVoice(voice)
-                    ) ||
-                    
-                    // Prioridad 5: Voces españolas femeninas
-                    voices.find(voice => 
-                        voice.lang.startsWith('es') && 
-                        isFemaleVoice(voice) &&
-                        !isMaleVoice(voice)
-                    ) ||
-                    
-                    // Prioridad 6: Cualquier voz en español NO masculina
-                    voices.find(voice => 
-                        voice.lang.startsWith('es') &&
-                        !isMaleVoice(voice)
-                    ) ||
-                    
-                    // Última opción
-                    voices[0];
-                    
                     utterance.voice = selectedVoice;
                     utterance.lang = selectedVoice?.lang || "es-MX";
                 } else {
                     utterance.lang = "es-MX";
                 }
-                
-                // Configuración para voz más natural y fluida
-                utterance.rate = 0.9;      // Velocidad natural pero clara
-                utterance.pitch = 1.15;    // Tono femenino y profesional
-                utterance.volume = 0.95;   // Ligeramente más suave para sonar profesional
 
-                // Eventos del anuncio
-                utterance.onstart = () => {
-                };
-                
-                utterance.onend = () => {
-                    resolve();
-                };
-                
-                utterance.onerror = (event) => {
-                    console.error("❌ Error en el anuncio:", event.error);
-                    resolve();
-                };
+                utterance.rate = 0.9;
+                utterance.pitch = 1.15;
+                utterance.volume = 0.95;
 
-                // Cancelar cualquier anuncio previo
+                utterance.onend = () => resolve();
+                utterance.onerror = () => resolve();
+
                 if (window.speechSynthesis.speaking) {
                     window.speechSynthesis.cancel();
                 }
-                
-                // Reproducir el anuncio
+
                 setTimeout(() => {
                     try {
                         window.speechSynthesis.speak(utterance);
                     } catch (error) {
-                        console.error("❌ Error al intentar reproducir:", error);
                         resolve();
                     }
                 }, 500);
             });
         };
 
-        // Compatibilidad cross-browser mejorada (Firefox/Chrome/Safari)
         if (window.speechSynthesis.getVoices().length === 0) {
             return new Promise((resolve) => {
-                // Timeout de seguridad para navegadores que no cargan voces
                 const voicesTimeout = setTimeout(() => {
                     playAnnouncement().then(resolve);
                 }, 2000);
-                
+
                 window.speechSynthesis.onvoiceschanged = () => {
                     clearTimeout(voicesTimeout);
-                    window.speechSynthesis.onvoiceschanged = null; // Limpiar el evento
+                    window.speechSynthesis.onvoiceschanged = null;
                     playAnnouncement().then(resolve);
                 };
-                
-                // Forzar carga de voces en algunos navegadores
-                if (window.speechSynthesis.getVoices().length === 0) {
-                    window.speechSynthesis.speak(new SpeechSynthesisUtterance(''));
-                    window.speechSynthesis.cancel();
-                }
             });
         } else {
             return playAnnouncement();
@@ -410,7 +225,6 @@ const Queue = memo(function Queue() {
     useEffect(() => {
         if (!mounted || !callingPatient || !isCalling) return;
 
-        
         let isActive = true;
         let audio = null;
 
@@ -418,31 +232,26 @@ const Queue = memo(function Queue() {
             try {
                 audio = new Audio("/airport-sound.mp3");
                 audio.volume = 0.7;
-                
+
                 await audio.play().catch(err => {
-                    console.warn("⚠️ No se pudo reproducir el sonido:", err);
+                    console.warn("No se pudo reproducir el sonido:", err);
                 });
-                
+
                 if (!isActive) return;
-                
-                // Esperar un poco después del sonido
+
                 await new Promise(resolve => setTimeout(resolve, 1500));
-                
-                // Hacer el anuncio 2 veces
-                for (let i = 0; i < 2 && isActive; i++) {
+
+                // Solo llamar una vez (el mensaje ya dice "Repito" internamente)
+                if (isActive) {
                     await speakAnnouncement(callingPatient);
-                    if (i < 1 && isActive) {
-                        await new Promise(resolve => setTimeout(resolve, 2000));
-                    }
                 }
-                
-                // Esperar un poco más antes de actualizar
+
                 if (isActive) {
                     await new Promise(resolve => setTimeout(resolve, 3000));
                     updateCallStatus();
                 }
             } catch (error) {
-                console.error("❌ Error en el proceso de llamado:", error);
+                console.error("Error en el proceso de llamado:", error);
                 if (isActive) {
                     updateCallStatus();
                 }
@@ -466,32 +275,27 @@ const Queue = memo(function Queue() {
     // Función para formatear la hora
     const formatTime = useCallback((date) => {
         if (!date || !mounted) return "";
-        return date.toLocaleString('es-ES', {
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit'
-        });
+        const hours = date.getHours().toString().padStart(2, '0');
+        const minutes = date.getMinutes().toString().padStart(2, '0');
+        const seconds = date.getSeconds().toString().padStart(2, '0');
+        return `${hours}:${minutes}:${seconds}`;
     }, [mounted]);
 
-    // Función para obtener iniciales
-    const getInitials = useCallback((name) => {
-        if (!name) return "??";
-        return name.split(' ').map(word => word[0]).join('').substring(0, 2).toUpperCase();
-    }, []);
+    // Función para formatear la fecha
+    const formatDate = useCallback((date) => {
+        if (!date || !mounted) return "";
+        const day = date.getDate().toString().padStart(2, '0');
+        const months = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+        const month = months[date.getMonth()];
+        const year = date.getFullYear();
+        return `${day} ${month} ${year}`;
+    }, [mounted]);
 
     if (!mounted) {
         return (
             <ChakraProvider theme={theme}>
-                <Box
-                    minHeight="100vh"
-                    display="flex"
-                    alignItems="center"
-                    justifyContent="center"
-                    p={6}
-                >
-                    <Text fontSize="3xl" color="secondary.600">
-                        Cargando sistema...
-                    </Text>
+                <Box h="100vh" display="flex" alignItems="center" justifyContent="center">
+                    <Text fontSize="lg" color="gray.600">Cargando sistema...</Text>
                 </Box>
             </ChakraProvider>
         );
@@ -500,13 +304,8 @@ const Queue = memo(function Queue() {
     if (error) {
         return (
             <ChakraProvider theme={theme}>
-                <Box
-                    height="100vh"
-                    display="flex"
-                    alignItems="center"
-                    justifyContent="center"
-                >
-                    <Text fontSize="2xl" fontWeight="bold" color="red.700">{error}</Text>
+                <Box h="100vh" display="flex" alignItems="center" justifyContent="center">
+                    <Text fontSize="lg" fontWeight="bold" color="red.600">{error}</Text>
                 </Box>
             </ChakraProvider>
         );
@@ -514,381 +313,309 @@ const Queue = memo(function Queue() {
 
     return (
         <ChakraProvider theme={theme}>
-            <Box
-                minHeight="100vh"
-                p={4}
-                display="flex"
-                flexDirection="column"
-                position="relative"
-                overflow="hidden"
-            >
-                {/* Header Principal GRANDE para TV con QR */}
+            <Box h="100vh" display="flex" flexDirection="column" bg="white" position="relative">
+
+                {/* Header Superior - Ultra compacto */}
                 <Box
-                    p={6}
-                    background="rgba(255, 255, 255, 0.3)"
-                    backdropFilter="blur(20px)"
-                    borderRadius="3xl"
-                    boxShadow="glass"
-                    border="2px solid rgba(255, 255, 255, 0.25)"
-                    mb={6}
-                    width="100%"
-                    animation={`${fadeInUp} 0.8s ease-out`}
+                    bgGradient="linear(135deg, #4F7DF3 0%, #6B73FF 100%)"
+                    color="white"
+                    px={4}
+                    py={3}
+                    h="70px"
+                    display="flex"
+                    alignItems="center"
                 >
-                    <Flex justify="space-between" align="center" gap={6}>
-                        {/* QR Code en la izquierda */}
-                        <Flex align="center" gap={4}>
-                            <Box 
-                                p="3" 
-                                bg="white" 
-                                borderRadius="xl" 
-                                boxShadow="xl"
-                                border="3px solid"
-                                borderColor="primary.400"
-                            >
-                                <QRCode
-                                    size={100}
-                                    value="https://redcap-iner.com.mx/surveys/?s=KXTEHHDT8C"
-                                    viewBox="0 0 256 256"
-                                    style={{
-                                        height: "auto",
-                                        maxWidth: "100%",
-                                        width: "100%",
-                                    }}
-                                />
-                            </Box>
-                            <VStack spacing="1" align="center">
-                                <Text fontSize="md" fontWeight="bold" color="primary.700">
-                                    Califica el servicio
-                                </Text>
-                                <HStack spacing="2">
-                                    <Text fontSize="lg">😊</Text>
-                                    <Text fontSize="lg">😐</Text>
-                                    <Text fontSize="lg">😞</Text>
-                                </HStack>
-                            </VStack>
-                        </Flex>
-
-                        {/* Título central */}
-                        <Box flex="1" textAlign="center">
-                            <Heading 
-                                fontSize="6xl"
-                                fontWeight="extrabold"
-                                background="linear-gradient(135deg, #4F7DF3 0%, #6B73FF 100%)"
-                                backgroundClip="text"
-                                color="transparent"
-                                letterSpacing="-0.02em"
-                                lineHeight="1"
-                            >
-                                GESTIÓN DE TURNOS
-                            </Heading>
-                            <Text
-                                fontSize="2xl"
-                                color="secondary.700"
-                                fontWeight="bold"
-                                mt={2}
-                            >
-                                Instituto Nacional de Enfermedades Respiratorias
-                            </Text>
-                        </Box>
-
-                        {/* Reloj en la derecha */}
+                    <Flex w="100%" justify="space-between" align="center">
+                        <Text fontSize="xl" fontWeight="bold" letterSpacing="wide">
+                            GESTIÓN DE TURNOS
+                        </Text>
+                        <Text fontSize="xl" fontWeight="bold">
+                            Instituto Nacional de Enfermedades Respiratorias
+                        </Text>
                         <Box
-                            p={4}
-                            background="rgba(255, 255, 255, 0.5)"
-                            borderRadius="xl"
-                            border="2px solid rgba(79, 125, 243, 0.3)"
+                            bg="white"
+                            color="#1E293B"
+                            px={3}
+                            py={1}
+                            borderRadius="md"
+                            textAlign="center"
+                            minW="140px"
                         >
-                            <Text
-                                fontSize="2xl"
-                                color="secondary.900"
-                                fontWeight="bold"
-                                textAlign="center"
-                            >
+                            <Text fontSize="md" fontWeight="bold">
                                 {currentTime ? formatTime(currentTime) : ""}
+                            </Text>
+                            <Text fontSize="xs" fontWeight="medium">
+                                {currentTime ? formatDate(currentTime) : ""}
                             </Text>
                         </Box>
                     </Flex>
                 </Box>
 
-                {/* Grid Principal - Optimizado para TV */}
-                <Grid 
-                    templateColumns="1.5fr 1fr" 
-                    gap={6} 
-                    flex="1" 
-                    width="100%"
-                    height="calc(100vh - 280px)"
-                >
-                    {/* Pacientes en Atención - GRANDE */}
+                {/* Contenido Principal - DOS COLUMNAS */}
+                <Flex flex="1" overflow="hidden" p={3} gap={3}>
+
+                    {/* COLUMNA IZQUIERDA - Pacientes en Atención */}
                     <Box
-                        borderRadius="3xl"
-                        p={6}
-                        background="rgba(255, 255, 255, 0.3)"
-                        backdropFilter="blur(20px)"
-                        boxShadow="glass"
-                        border="2px solid rgba(16, 185, 129, 0.3)"
-                        overflowY="auto"
-                        height="100%"
-                        animation={`${fadeInUp} 1s ease-out`}
-                        position="relative"
+                        w="40%"
+                        bg="white"
+                        borderRadius="lg"
+                        border="1px solid"
+                        borderColor="gray.200"
+                        display="flex"
+                        flexDirection="column"
+                        overflow="hidden"
                     >
-                        <Box
-                            position="absolute"
-                            top={0}
-                            left={0}
-                            right={0}
-                            height="6px"
-                            background="linear-gradient(135deg, #10b981 0%, #059669 100%)"
-                            borderTopRadius="3xl"
-                        />
-                        
-                        <Flex align="center" justify="space-between" mb={6}>
-                            <Heading 
-                                size="xl" 
-                                color="secondary.900" 
-                                fontWeight="bold"
-                                display="flex"
-                                alignItems="center"
-                                gap={4}
-                            >
-                                <Box as={FaHeartbeat} color="success" fontSize="3xl" />
-                                EN ATENCIÓN
-                            </Heading>
+                        {/* Header de columna */}
+                        <Flex
+                            align="center"
+                            px={3}
+                            py={2}
+                            borderBottom="2px solid"
+                            borderColor="green.200"
+                            bg="#F0FDF4"
+                        >
+                            <Box as={FaHeartbeat} color="#10B981" fontSize="xl" mr={2} />
+                            <Text fontSize="lg" fontWeight="bold" color="#064E3B" flex="1">
+                                PACIENTES EN ATENCIÓN
+                            </Text>
                             <Box
-                                bg="linear-gradient(135deg, #10b981 0%, #059669 100%)"
+                                bg="#10B981"
                                 color="white"
-                                px={6}
-                                py={3}
-                                borderRadius="xl"
-                                fontSize="xl"
+                                px={3}
+                                py={1}
+                                borderRadius="full"
+                                fontSize="md"
                                 fontWeight="bold"
+                                minW="32px"
+                                textAlign="center"
                             >
                                 {inProgressTurns.length}
                             </Box>
                         </Flex>
 
-                        {inProgressTurns.length === 0 ? (
-                            <Box
-                                textAlign="center"
-                                py={16}
-                                color="secondary.600"
-                            >
-                                <Box as={FaUserMd} fontSize="5xl" mb={3} />
-                                <Text fontSize="2xl" fontWeight="semibold">No hay pacientes en atención</Text>
-                            </Box>
-                        ) : (
-                            (() => {
-                                // Lógica de rotación circular para mostrar exactamente 5 pacientes
-                                const totalPatients = inProgressTurns.length;
-                                let patientsToShow = [];
-                                
-                                if (totalPatients <= 5) {
-                                    patientsToShow = inProgressTurns;
-                                } else {
-                                    // Rotación circular
-                                    for (let i = 0; i < 5; i++) {
-                                        const index = (scrollPositions.inProgress + i) % totalPatients;
-                                        patientsToShow.push(inProgressTurns[index]);
-                                    }
-                                }
-                                
-                                return patientsToShow.map((turn, index) => (
-                                    <Box
-                                        key={turn.id}
-                                        p={8}
-                                        borderRadius="3xl"
-                                        mb={6}
-                                        background="rgba(255, 255, 255, 0.9)"
-                                        backdropFilter="blur(10px)"
-                                        border="3px solid rgba(16, 185, 129, 0.5)"
-                                        borderLeft="12px solid"
-                                        borderLeftColor="success"
-                                        boxShadow="xl"
-                                        transition="all 0.3s ease"
-                                        _hover={{ 
-                                            transform: 'translateY(-2px)', 
-                                            boxShadow: '2xl',
-                                            background: "rgba(255, 255, 255, 0.95)"
-                                        }}
-                                        animation={`${fadeInUp} ${0.3 + index * 0.05}s ease-out`}
-                                    >
-                                        <Flex align="center" justify="space-between">
-                                            <Box>
-                                                <Text 
-                                                    fontWeight="extrabold" 
-                                                    fontSize="4xl" 
-                                                    color="secondary.900"
-                                                    lineHeight="1.1"
-                                                >
-                                                    {turn.patientName}
-                                                </Text>
-                                                <Flex align="center" gap={10} mt={3}>
-                                                    <Text color="secondary.800" fontSize="3xl" fontWeight="bold">
-                                                        Turno: <strong style={{color: '#10b981'}}>#{turn.assignedTurn}</strong>
-                                                    </Text>
-                                                    <Text color="secondary.800" fontSize="3xl" fontWeight="bold">
-                                                        Cubículo: <strong style={{color: '#10b981'}}>{turn.cubicle?.name}</strong>
-                                                    </Text>
-                                                </Flex>
-                                            </Box>
-                                            
+                        {/* Lista de pacientes en atención */}
+                        <Box flex="1" overflowY="auto" px={2} py={2} bg="#F0FDF4">
+                            {inProgressTurns.length === 0 ? (
+                                <Text textAlign="center" color="gray.500" fontSize="sm" py={4}>
+                                    No hay pacientes en atención
+                                </Text>
+                            ) : (
+                                <VStack spacing={1} align="stretch">
+                                    {inProgressTurns.slice(0, 12).map((turn, index) => (
+                                        <Flex
+                                            key={turn.id}
+                                            align="center"
+                                            px={2}
+                                            py={1.5}
+                                            bg="white"
+                                            borderRadius="sm"
+                                            borderLeft="3px solid"
+                                            borderLeftColor="#10B981"
+                                            fontSize="xs"
+                                        >
+                                            <Text fontWeight="bold" color="#64748B" w="25px" fontSize="sm">
+                                                {index + 1}.
+                                            </Text>
                                             <Box
-                                                bg="rgba(16, 185, 129, 0.2)"
-                                                color="success"
-                                                px={8}
-                                                py={5}
-                                                borderRadius="2xl"
-                                                fontSize="2xl"
-                                                fontWeight="extrabold"
-                                                display="flex"
-                                                alignItems="center"
-                                                gap={4}
+                                                bg="#10B981"
+                                                color="white"
+                                                px={2}
+                                                py={1}
+                                                borderRadius="sm"
+                                                fontSize="sm"
+                                                fontWeight="bold"
+                                                mr={2}
                                             >
-                                                <Box as={FaHeartbeat} fontSize="3xl" />
-                                                ATENDIENDO
+                                                Cubículo {turn.cubicle?.name || '-'}
+                                            </Box>
+                                            <Text color="#1E293B" flex="1" fontWeight="bold" fontSize="md" isTruncated>
+                                                {turn.patientName}
+                                            </Text>
+                                            <Box
+                                                bg="gray.100"
+                                                color="gray.700"
+                                                px={2}
+                                                py={0.5}
+                                                borderRadius="sm"
+                                                fontSize="sm"
+                                                fontWeight="bold"
+                                            >
+                                                #{turn.assignedTurn}
                                             </Box>
                                         </Flex>
-                                    </Box>
-                                ));
-                            })()
-                        )}
+                                    ))}
+                                </VStack>
+                            )}
+                        </Box>
                     </Box>
 
-                    {/* Pacientes en Espera - GRANDE */}
+                    {/* COLUMNA DERECHA - Pacientes en Espera */}
                     <Box
-                        borderRadius="3xl"
-                        p={6}
-                        background="rgba(255, 255, 255, 0.3)"
-                        backdropFilter="blur(20px)"
-                        boxShadow="glass"
-                        border="2px solid rgba(245, 158, 11, 0.3)"
-                        overflowY="auto"
-                        height="100%"
-                        animation={`${fadeInUp} 1.2s ease-out`}
-                        position="relative"
+                        flex="1"
+                        bg="white"
+                        borderRadius="lg"
+                        border="1px solid"
+                        borderColor="gray.200"
+                        display="flex"
+                        flexDirection="column"
+                        overflow="hidden"
                     >
-                        <Box
-                            position="absolute"
-                            top={0}
-                            left={0}
-                            right={0}
-                            height="6px"
-                            background="linear-gradient(135deg, #f59e0b 0%, #f97316 100%)"
-                            borderTopRadius="3xl"
-                        />
-                        
-                        <Flex align="center" justify="space-between" mb={6}>
-                            <Heading 
-                                size="xl" 
-                                color="secondary.900" 
-                                fontWeight="bold"
-                                display="flex"
-                                alignItems="center"
-                                gap={4}
-                            >
-                                <Box as={FaClock} color="warning" fontSize="3xl" />
-                                EN ESPERA
-                            </Heading>
+                        {/* Header de columna */}
+                        <Flex
+                            align="center"
+                            px={3}
+                            py={2}
+                            borderBottom="2px solid"
+                            borderColor="orange.200"
+                            bg="#FFF7ED"
+                        >
+                            <Box as={FaClock} color="#F59E0B" fontSize="xl" mr={2} />
+                            <Text fontSize="lg" fontWeight="bold" color="#78350F" flex="1">
+                                PACIENTES EN ESPERA
+                            </Text>
                             <Box
-                                bg="linear-gradient(135deg, #f59e0b 0%, #f97316 100%)"
+                                bg="#F59E0B"
                                 color="white"
-                                px={6}
-                                py={3}
-                                borderRadius="xl"
-                                fontSize="xl"
+                                px={3}
+                                py={1}
+                                borderRadius="full"
+                                fontSize="md"
                                 fontWeight="bold"
+                                minW="32px"
+                                textAlign="center"
                             >
                                 {pendingTurns.length}
                             </Box>
                         </Flex>
 
-                        {pendingTurns.length === 0 ? (
-                            <Box
-                                textAlign="center"
-                                py={16}
-                                color="secondary.600"
-                            >
-                                <Box as={FaClock} fontSize="5xl" mb={3} />
-                                <Text fontSize="2xl" fontWeight="semibold">No hay pacientes en espera</Text>
-                            </Box>
-                        ) : (
-                            (() => {
-                                // Lógica de rotación circular para mostrar exactamente 5 pacientes
-                                const totalPatients = pendingTurns.length;
-                                let patientsToShow = [];
-                                
-                                if (totalPatients <= 5) {
-                                    patientsToShow = pendingTurns;
-                                } else {
-                                    // Rotación circular
-                                    for (let i = 0; i < 5; i++) {
-                                        const index = (scrollPositions.pending + i) % totalPatients;
-                                        patientsToShow.push(pendingTurns[index]);
-                                    }
-                                }
-                                
-                                return patientsToShow.map((turn, index) => (
-                                    <Box
-                                        key={turn.id}
-                                        p={6}
-                                        borderRadius="3xl"
-                                        mb={5}
-                                        background="rgba(255, 255, 255, 0.9)"
-                                        backdropFilter="blur(10px)"
-                                        border="3px solid rgba(245, 158, 11, 0.5)"
-                                        borderLeft="10px solid"
-                                        borderLeftColor={turn.tipoAtencion === "Special" ? "error" : "warning"}
-                                        boxShadow="xl"
-                                        transition="all 0.3s ease"
-                                        _hover={{ 
-                                            transform: 'translateY(-2px)', 
-                                            boxShadow: '2xl',
-                                            background: "rgba(255, 255, 255, 0.95)"
-                                        }}
-                                        animation={`${fadeInUp} ${0.2 + index * 0.03}s ease-out`}
-                                    >
-                                        <Flex align="center" justify="space-between">
-                                            <Box>
-                                                <Text 
-                                                    fontWeight="extrabold" 
-                                                    fontSize="3xl" 
-                                                    color="secondary.900"
-                                                    lineHeight="1.1"
-                                                >
-                                                    {turn.patientName}
+                        {/* Grid de pacientes en espera - 2 columnas */}
+                        <Box flex="1" overflowY="auto" px={2} py={2} bg="#FFF7ED">
+                            {pendingTurns.length === 0 ? (
+                                <Text textAlign="center" color="gray.500" fontSize="sm" py={4}>
+                                    No hay pacientes en espera
+                                </Text>
+                            ) : (
+                                <Grid templateColumns="repeat(2, 1fr)" gap={1}>
+                                    {pendingTurns.slice(0, 20).map((turn, index) => (
+                                        <Flex
+                                            key={turn.id}
+                                            align="center"
+                                            px={2}
+                                            py={1}
+                                            bg="white"
+                                            borderRadius="sm"
+                                            borderLeft="2px solid"
+                                            borderLeftColor={turn.tipoAtencion === "Special" ? "#EF4444" : "#F59E0B"}
+                                            fontSize="xs"
+                                        >
+                                            <Text fontWeight="bold" color="#F59E0B" fontSize="xs" mr={1}>
+                                                #{turn.assignedTurn}
+                                            </Text>
+                                            <Text color="#1E293B" flex="1" fontWeight="medium" fontSize="sm" isTruncated>
+                                                {turn.patientName}
+                                            </Text>
+                                            {turn.tipoAtencion === "Special" && (
+                                                <Text color="#EF4444" fontWeight="bold" fontSize="sm" ml={1}>
+                                                    ♿
                                                 </Text>
-                                                <Text color="secondary.800" fontSize="2xl" fontWeight="bold" mt={2}>
-                                                    Turno: <strong style={{color: '#f59e0b'}}>#{turn.assignedTurn}</strong>
-                                                </Text>
-                                            </Box>
-                                            
-                                            <Flex align="center" gap={4}>
-                                                {turn.tipoAtencion === "Special" && (
-                                                    <Box as={FaWheelchair} color="error" fontSize="3xl" />
-                                                )}
-                                                <Box
-                                                    bg={turn.tipoAtencion === "Special" 
-                                                        ? "rgba(239, 68, 68, 0.2)" 
-                                                        : "rgba(245, 158, 11, 0.2)"
-                                                    }
-                                                    color={turn.tipoAtencion === "Special" ? "error" : "warning"}
-                                                    px={6}
-                                                    py={3}
-                                                    borderRadius="2xl"
-                                                    fontSize="xl"
-                                                    fontWeight="extrabold"
-                                                >
-                                                    {turn.tipoAtencion === "Special" ? "PRIORITARIO" : "EN ESPERA"}
-                                                </Box>
-                                            </Flex>
+                                            )}
                                         </Flex>
-                                    </Box>
-                                ));
-                            })()
-                        )}
-                    </Box>
-                </Grid>
+                                    ))}
+                                </Grid>
+                            )}
 
-                {/* Modal de Llamado - GIGANTE para TV */}
+                            {/* Indicador de más pacientes */}
+                            {pendingTurns.length > 20 && (
+                                <Box
+                                    mt={2}
+                                    p={2}
+                                    bg="orange.100"
+                                    borderRadius="sm"
+                                    textAlign="center"
+                                >
+                                    <Text fontSize="xs" fontWeight="bold" color="orange.700">
+                                        +{pendingTurns.length - 20} pacientes más en espera
+                                    </Text>
+                                </Box>
+                            )}
+                        </Box>
+                    </Box>
+                </Flex>
+
+                {/* Footer Inferior - Prominente */}
+                <Box
+                    bgGradient="linear(135deg, #E0F2FE 0%, #DBEAFE 100%)"
+                    borderTop="3px solid"
+                    borderColor="#3B82F6"
+                    px={4}
+                    py={3}
+                    h="70px"
+                >
+                    <Flex align="center" justify="space-between" h="100%">
+                        {/* QR con mejor diseño */}
+                        <HStack spacing={3}>
+                            <Box
+                                p={1}
+                                bg="white"
+                                border="2px solid"
+                                borderColor="#3B82F6"
+                                borderRadius="md"
+                                boxShadow="sm"
+                            >
+                                <QRCode
+                                    size={45}
+                                    value="https://redcap-iner.com.mx/surveys/?s=KXTEHHDT8C"
+                                    viewBox="0 0 256 256"
+                                />
+                            </Box>
+                            <VStack spacing={0} align="flex-start">
+                                <Text fontSize="xs" color="#1E40AF" fontWeight="bold" textTransform="uppercase">
+                                    Califica el servicio
+                                </Text>
+                                <Text fontSize="xs" color="#64748B">
+                                    Escanea el código
+                                </Text>
+                            </VStack>
+                        </HStack>
+
+                        {/* Mensaje motivacional PROMINENTE */}
+                        <Box
+                            flex="1"
+                            mx={6}
+                            textAlign="center"
+                        >
+                            <Text
+                                fontSize="lg"
+                                fontWeight="extrabold"
+                                color="#1E40AF"
+                                letterSpacing="wide"
+                                textShadow="0 1px 2px rgba(0,0,0,0.1)"
+                            >
+                                {phrases[currentPhraseIndex]}
+                            </Text>
+                        </Box>
+
+                        {/* Contador adicional mejorado */}
+                        {pendingTurns.length > 20 && (
+                            <Box
+                                bg="#FEF3C7"
+                                color="#D97706"
+                                px={4}
+                                py={2}
+                                borderRadius="md"
+                                border="2px solid"
+                                borderColor="#F59E0B"
+                                boxShadow="sm"
+                            >
+                                <Text fontSize="sm" fontWeight="extrabold">
+                                    +{pendingTurns.length - 20} en espera
+                                </Text>
+                            </Box>
+                        )}
+                    </Flex>
+                </Box>
+
+                {/* Modal de Llamado - Se mantiene igual pero con animación simple */}
                 {callingPatient && (
                     <Box
                         position="fixed"
@@ -896,70 +623,54 @@ const Queue = memo(function Queue() {
                         left="0"
                         right="0"
                         bottom="0"
-                        background="rgba(0, 0, 0, 0.7)"
-                        backdropFilter="blur(15px)"
+                        bg="rgba(0, 0, 0, 0.85)"
                         display="flex"
                         alignItems="center"
                         justifyContent="center"
-                        zIndex="modal"
+                        zIndex="9999"
                     >
                         <Box
-                            p={16}
-                            borderRadius="3xl"
-                            background="rgba(255, 255, 255, 0.98)"
-                            backdropFilter="blur(20px)"
-                            boxShadow="glass"
-                            border="4px solid rgba(79, 125, 243, 0.4)"
+                            p={8}
+                            borderRadius="xl"
+                            bg="white"
+                            boxShadow="2xl"
                             textAlign="center"
-                            minWidth="80%"
-                            animation={`${blinkAnimation} 2s infinite, ${pulseGlow} 2s infinite`}
+                            w="60%"
+                            maxW="600px"
                         >
                             <Box
-                                w={48}
-                                h={48}
+                                w={20}
+                                h={20}
                                 borderRadius="full"
-                                background="linear-gradient(135deg, #4F7DF3 0%, #6B73FF 100%)"
+                                bgGradient="linear(135deg, #4F7DF3 0%, #6B73FF 100%)"
                                 display="flex"
                                 alignItems="center"
                                 justifyContent="center"
                                 mx="auto"
-                                mb={12}
-                                boxShadow="2xl"
-                            >
-                                <Box as={FaMicrophone} color="white" fontSize="7xl" />
-                            </Box>
-                            
-                            <Text 
-                                fontSize="6xl" 
-                                fontWeight="bold" 
-                                color="secondary.900"
                                 mb={6}
-                                lineHeight="shorter"
                             >
+                                <Box as={FaMicrophone} color="white" fontSize="3xl" />
+                            </Box>
+
+                            <Text fontSize="2xl" fontWeight="bold" color="gray.700" mb={3}>
                                 LLAMANDO A
                             </Text>
-                            <Text 
-                                fontSize="8xl" 
-                                fontWeight="extrabold" 
-                                background="linear-gradient(135deg, #4F7DF3 0%, #6B73FF 100%)"
-                                backgroundClip="text"
-                                color="transparent"
-                                mb={12}
-                                lineHeight="shorter"
-                            >
+                            <Text fontSize="4xl" fontWeight="extrabold" color="#4F7DF3" mb={6}>
                                 {callingPatient.patientName}
                             </Text>
                             <Box
-                                bg="rgba(79, 125, 243, 0.15)"
-                                color="primary.600"
-                                px={10}
-                                py={6}
-                                borderRadius="2xl"
+                                bg="#E0F7FF"
+                                color="#0369A1"
+                                px={6}
+                                py={3}
+                                borderRadius="lg"
                                 display="inline-block"
-                                fontSize="5xl"
+                                fontSize="2xl"
                                 fontWeight="bold"
+                                border="2px solid"
+                                borderColor="#0EA5E9"
                             >
-                                CUBÍCULO: {callingPatient.cubicle?.name}
+                                CUBÍCULO {callingPatient.cubicle?.name || '-'}
                             </Box>
                         </Box>
                     </Box>
