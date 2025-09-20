@@ -24,7 +24,7 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
 import { useRouter } from "next/router";
-import { useAuth } from "../../context/AuthContext";
+import { useAuth } from "../../contexts/AuthContext";
 import { modernTheme, fadeInUp, slideInFromLeft, slideInFromRight, GlassCard, ModernContainer, ModernHeader } from '../../components/theme/ModernTheme';
 
 // Registrar los componentes necesarios de Chart.js
@@ -47,7 +47,8 @@ const AverageTimeStatistics = memo(function AverageTimeStatistics() {
   const [isExporting, setIsExporting] = useState(false);
 
   const router = useRouter();
-  const { userRole } = useAuth();
+  const { user } = useAuth();
+  const userRole = user?.role;
 
   const monthNames = [
     "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",

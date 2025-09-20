@@ -1,4 +1,4 @@
-import { AuthProvider } from '../context/AuthContext';
+import { AuthProvider } from '../contexts/AuthContext';
 import { ChakraProvider } from '@chakra-ui/react';
 import theme from '../theme';
 import ProtectedRoute from '../components/ProtectedRoute';
@@ -8,13 +8,13 @@ import '../styles/globals.css'
 function MyApp({ Component, pageProps }) {
   return (
     <ErrorBoundary>
-      <AuthProvider>
-        <ChakraProvider theme={theme}>
+      <ChakraProvider theme={theme}>
+        <AuthProvider>
           <ProtectedRoute>
             <Component {...pageProps} />
           </ProtectedRoute>
-        </ChakraProvider>
-      </AuthProvider>
+        </AuthProvider>
+      </ChakraProvider>
     </ErrorBoundary>
   );
 }

@@ -53,12 +53,13 @@ import {
   FaArrowLeft
 } from 'react-icons/fa';
 import { useRouter } from 'next/router';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '../../contexts/AuthContext';
 import { modernTheme, fadeInUp, slideInFromRight, slideInFromLeft, GlassCard, ModernContainer, ModernHeader } from '../../components/theme/ModernTheme';
 
 const StatisticsDashboard = memo(function StatisticsDashboard() {
   const router = useRouter();
-  const { userRole } = useAuth();
+  const { user } = useAuth();
+  const userRole = user?.role;
   const [selectedPeriod, setSelectedPeriod] = useState('thisMonth');
   const [loading, setLoading] = useState(true);
   const [exportLoading, setExportLoading] = useState(false);
@@ -356,6 +357,18 @@ const StatisticsDashboard = memo(function StatisticsDashboard() {
           subtitle={isAdmin ? "Sistema Inteligente de Análisis de Turnos - Vista Completa" : "Estadísticas Operativas - Vista de Flebotomista"}
         >
           <Flex gap={4} align="center">
+            <Button
+              leftIcon={<FaArrowLeft />}
+              variant="outline"
+              size="sm"
+              onClick={() => router.push('/')}
+              _hover={{
+                transform: 'translateY(-1px)',
+                boxShadow: 'md'
+              }}
+            >
+              Volver
+            </Button>
             <Select
               value={selectedPeriod}
               onChange={(e) => setSelectedPeriod(e.target.value)}

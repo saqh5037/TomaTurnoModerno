@@ -24,7 +24,7 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
 import { useRouter } from "next/router";
-import { useAuth } from "../../context/AuthContext";
+import { useAuth } from "../../contexts/AuthContext";
 import { modernTheme, fadeInUp, slideInFromLeft, slideInFromRight, GlassCard, ModernContainer, ModernHeader } from '../../components/theme/ModernTheme';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, ChartTooltip, Legend);
@@ -41,7 +41,8 @@ const DailyStatistics = memo(function DailyStatistics() {
   const [isExporting, setIsExporting] = useState(false);
 
   const router = useRouter();
-  const { userRole } = useAuth();
+  const { user } = useAuth();
+  const userRole = user?.role;
 
   const monthOrder = [
     "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
@@ -532,7 +533,7 @@ const DailyStatistics = memo(function DailyStatistics() {
         <Flex align="center" gap={4} justify="flex-start" mb={6}>
           <Button
             leftIcon={<FaArrowLeft />}
-            onClick={() => router.push("/statistics")}
+            onClick={() => router.push("/")}
             variant="outline"
             colorScheme="gray"
             size="sm"

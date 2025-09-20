@@ -1,150 +1,178 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
-import { 
-  Box, 
-  Spinner, 
-  Text, 
-  ChakraProvider 
+import {
+  Box,
+  Spinner,
+  Text,
+  ChakraProvider,
+  Center,
+  VStack
 } from '@chakra-ui/react';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../contexts/AuthContext';
 import { modernTheme, GlassCard, ModernContainer } from './theme/ModernTheme';
 
 // Rutas que NO requieren autenticación
 const PUBLIC_ROUTES = [
+  '/login',
   '/turns/queue',
   '/turns/queue_video',
-  '/login'
+  '/turns/queue-tv',
+  '/announce',
+  '/satisfaction-survey'
 ];
 
-// Rutas que requieren rol específico
-const ADMIN_ONLY_ROUTES = [
-  '/users',
-  '/cubicles',
-  '/statistics/dashboard', // Si hay rutas específicas de admin
-];
+// Rutas que requieren roles específicos
+const ROLE_RESTRICTED_ROUTES = {
+  '/users': ['admin', 'Admin', 'Administrador'],
+  '/statistics': ['admin', 'Admin', 'Administrador', 'supervisor'],
+  '/statistics/monthly': ['admin', 'Admin', 'Administrador', 'supervisor'],
+  '/statistics/daily': ['admin', 'Admin', 'Administrador', 'supervisor'],
+  '/statistics/average-time': ['admin', 'Admin', 'Administrador', 'supervisor'],
+  '/statistics/phlebotomists': ['admin', 'Admin', 'Administrador', 'supervisor'],
+  '/cubicles': ['admin', 'Admin', 'Administrador']
+};
 
-const FLEBOTOMISTA_ROUTES = [
+// Rutas para flebotomistas
+const PHLEBOTOMIST_ROUTES = [
+  '/select-cubicle',
   '/turns/attention',
-  '/turns/manual',
-  '/statistics', // Estadísticas básicas
+  '/turns/manual'
 ];
 
 const ProtectedRoute = ({ children }) => {
-  const { userRole } = useAuth();
   const router = useRouter();
-  const [isLoading, setIsLoading] = useState(true);
+  const { user, loading, isAuthenticated, updateActivity, hasRole } = useAuth();
   const [isAuthorized, setIsAuthorized] = useState(false);
 
   useEffect(() => {
-    const checkAccess = () => {
-      const currentPath = router.asPath;
-      
-      // Permitir acceso a rutas públicas sin autenticación
+    const checkAuth = async () => {
+      const currentPath = router.pathname;
+
+      // Rutas públicas - permitir acceso sin autenticación
       if (PUBLIC_ROUTES.includes(currentPath)) {
         setIsAuthorized(true);
-        setIsLoading(false);
         return;
       }
 
-      // Si no hay usuario y no es ruta pública, redirigir al login
-      if (!userRole) {
-        router.push('/login');
+      // Si está cargando, esperar
+      if (loading) {
         return;
+      }
+
+      // Si no está autenticado, verificar si hay token en localStorage antes de redirigir
+      if (!isAuthenticated && currentPath !== '/login') {
+        const token = localStorage.getItem('token');
+        const userData = localStorage.getItem('userData');
+
+        // Solo redirigir si realmente no hay datos de sesión
+        if (!token || !userData) {
+          router.push('/login');
+          return;
+        }
+        // Si hay token, dar tiempo a que se verifique
+        return;
+      }
+
+      // Actualizar actividad cuando accede a una ruta protegida
+      if (updateActivity) {
+        updateActivity();
       }
 
       // Verificar permisos por rol
-      const isAdmin = userRole === 'Administrador';
-      const isFlebotomista = userRole === 'Flebotomista';
+      if (ROLE_RESTRICTED_ROUTES[currentPath]) {
+        const allowedRoles = ROLE_RESTRICTED_ROUTES[currentPath];
+        const userRole = user?.role;
 
-      // Administradores tienen acceso completo
-      if (isAdmin) {
-        setIsAuthorized(true);
-        setIsLoading(false);
-        return;
-      }
+        // Verificar si el usuario tiene uno de los roles permitidos
+        const hasPermission = allowedRoles.some(role =>
+          userRole?.toLowerCase() === role.toLowerCase() ||
+          userRole === 'admin' ||
+          userRole === 'Admin' ||
+          userRole === 'Administrador'
+        );
 
-      // Verificar rutas específicas de admin
-      if (ADMIN_ONLY_ROUTES.some(route => currentPath.startsWith(route))) {
-        // No autorizado - redirigir al inicio
-        router.push('/');
-        return;
-      }
-
-      // Flebotomistas pueden acceder a sus rutas específicas
-      if (isFlebotomista) {
-        const hasAccess = FLEBOTOMISTA_ROUTES.some(route => 
-          currentPath.startsWith(route)
-        ) || currentPath === '/'; // También puede acceder al inicio
-
-        if (hasAccess) {
-          setIsAuthorized(true);
-          setIsLoading(false);
-          return;
-        } else {
-          // No autorizado - redirigir al inicio
+        if (!hasPermission) {
           router.push('/');
           return;
         }
       }
 
-      // Por defecto, no autorizado
-      router.push('/login');
+      // Rutas específicas para flebotomistas
+      if (PHLEBOTOMIST_ROUTES.includes(currentPath)) {
+        const userRole = user?.role?.toLowerCase();
+        if (userRole !== 'flebotomista' &&
+            userRole !== 'admin' &&
+            userRole !== 'administrador') {
+          router.push('/');
+          return;
+        }
+      }
+
+      setIsAuthorized(true);
     };
 
-    // Solo verificar cuando el router esté listo
-    if (router.isReady) {
-      checkAccess();
-    }
-  }, [userRole, router, router.asPath, router.isReady]);
+    checkAuth();
+  }, [router, user, loading, isAuthenticated, updateActivity, hasRole]);
 
-  // Pantalla de carga
-  if (isLoading || !router.isReady) {
+  // Si es una ruta pública, mostrar directamente
+  if (PUBLIC_ROUTES.includes(router.pathname)) {
+    return <>{children}</>;
+  }
+
+  // Si está cargando, mostrar spinner
+  if (loading) {
     return (
       <ChakraProvider theme={modernTheme}>
         <ModernContainer>
-          <Box
-            display="flex"
-            alignItems="center"
-            justifyContent="center"
-            minHeight="100vh"
-          >
-            <GlassCard p={8} textAlign="center">
-              <Spinner size="xl" color="primary.500" thickness="4px" mb={4} />
-              <Text fontSize="xl" color="secondary.600">
-                Verificando permisos...
-              </Text>
+          <Center minH="100vh">
+            <GlassCard p={8}>
+              <VStack spacing={4}>
+                <Spinner
+                  thickness="4px"
+                  speed="0.65s"
+                  emptyColor="gray.200"
+                  color="blue.500"
+                  size="xl"
+                />
+                <Text fontSize="lg" color="gray.600">
+                  Verificando sesión...
+                </Text>
+              </VStack>
             </GlassCard>
-          </Box>
+          </Center>
+        </ModernContainer>
+      </ChakraProvider>
+    );
+  }
+
+  // Si no está autorizado, no mostrar nada (ya se habrá redirigido)
+  if (!isAuthorized) {
+    return (
+      <ChakraProvider theme={modernTheme}>
+        <ModernContainer>
+          <Center minH="100vh">
+            <GlassCard p={8}>
+              <VStack spacing={4}>
+                <Spinner
+                  thickness="4px"
+                  speed="0.65s"
+                  emptyColor="gray.200"
+                  color="blue.500"
+                  size="xl"
+                />
+                <Text fontSize="lg" color="gray.600">
+                  Redirigiendo...
+                </Text>
+              </VStack>
+            </GlassCard>
+          </Center>
         </ModernContainer>
       </ChakraProvider>
     );
   }
 
   // Si está autorizado, mostrar el contenido
-  if (isAuthorized) {
-    return children;
-  }
-
-  // No autorizado - mostrar pantalla de carga mientras redirige
-  return (
-    <ChakraProvider theme={modernTheme}>
-      <ModernContainer>
-        <Box
-          display="flex"
-          alignItems="center"
-          justifyContent="center"
-          minHeight="100vh"
-        >
-          <GlassCard p={8} textAlign="center">
-            <Spinner size="xl" color="primary.500" thickness="4px" mb={4} />
-            <Text fontSize="xl" color="secondary.600">
-              Redirigiendo...
-            </Text>
-          </GlassCard>
-        </Box>
-      </ModernContainer>
-    </ChakraProvider>
-  );
+  return <>{children}</>;
 };
 
 export default ProtectedRoute;

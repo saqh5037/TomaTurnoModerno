@@ -68,6 +68,7 @@ import {
   FaBars,
   FaChartLine
 } from "react-icons/fa";
+import { useRouter } from 'next/router';
 
 // Tema personalizado minimalista
 const theme = extendTheme({
@@ -160,6 +161,8 @@ const slideUp = keyframes`
 
 // Componente Principal - Panel de Atención con Quick Actions
 export default function Attention() {
+  const router = useRouter();
+
   // Estados existentes
   const [userId, setUserId] = useState(null);
   const [pendingTurns, setPendingTurns] = useState([]);
@@ -1105,6 +1108,18 @@ export default function Attention() {
           >
             {/* Logo y Título */}
             <HStack spacing={2} w={{ base: "full", sm: "auto" }} justify={{ base: "space-between", sm: "flex-start" }}>
+              <Button
+                leftIcon={<FaArrowLeft />}
+                variant="outline"
+                size="sm"
+                onClick={() => router.push('/')}
+                _hover={{
+                  transform: 'translateY(-1px)',
+                  boxShadow: 'md'
+                }}
+              >
+                Volver
+              </Button>
               {isMobile && (
                 <IconButton
                   icon={<FaBars size="22" />}

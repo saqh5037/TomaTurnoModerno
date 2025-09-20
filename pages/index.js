@@ -10,7 +10,7 @@ import {
   Spinner,
   Flex
 } from '@chakra-ui/react';
-import { 
+import {
   FaHeart,
   FaHome,
   FaStethoscope,
@@ -20,17 +20,20 @@ import {
   FaUsers,
   FaSignOutAlt,
   FaUserMd,
-  FaChartBar
+  FaChartBar,
+  FaUserCircle,
+  FaBook
 } from 'react-icons/fa';
 import { modernTheme, fadeInUp, slideInFromLeft, slideInFromRight, GlassCard, ModernContainer } from '../components/theme/ModernTheme';
 import { useRouter } from 'next/router';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../contexts/AuthContext';
 
 const HomePage = memo(function HomePage() {
   const [mounted, setMounted] = useState(false);
   const [currentTime, setCurrentTime] = useState(null);
   const router = useRouter();
-  const { userRole, logout } = useAuth();
+  const { user, logout } = useAuth();
+  const userRole = user?.role;
 
   // Effect para marcar el componente como montado
   useEffect(() => {
@@ -101,8 +104,8 @@ const HomePage = memo(function HomePage() {
   }
 
   // Configurar módulos según el rol
-  const isAdmin = userRole === 'Administrador';
-  const isFlebotomista = userRole === 'Flebotomista';
+  const isAdmin = userRole === 'admin' || userRole === 'Admin' || userRole === 'Administrador';
+  const isFlebotomista = userRole === 'Flebotomista' || userRole === 'flebotomista';
 
   return (
     <ChakraProvider theme={modernTheme}>
@@ -158,6 +161,32 @@ const HomePage = memo(function HomePage() {
                   {currentTime ? formatTime(currentTime) : "Cargando hora..."}
                 </Text>
               </Box>
+              <Button
+                leftIcon={<FaUserCircle />}
+                size="sm"
+                colorScheme="blue"
+                variant="outline"
+                onClick={() => handleNavigation('/profile')}
+                _hover={{
+                  transform: 'translateY(-1px)',
+                  boxShadow: 'md'
+                }}
+              >
+                Mi Perfil
+              </Button>
+              <Button
+                leftIcon={<FaBook />}
+                size="sm"
+                colorScheme="purple"
+                variant="outline"
+                onClick={() => handleNavigation('/docs')}
+                _hover={{
+                  transform: 'translateY(-1px)',
+                  boxShadow: 'md'
+                }}
+              >
+                Documentación
+              </Button>
               <Button
                 leftIcon={<FaSignOutAlt />}
                 size="sm"

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../contexts/AuthContext';
 import { Box, Flex, Stack, Link, Icon, Text } from '@chakra-ui/react';
 import { FaHome, FaUserPlus, FaClipboardList, FaSignOutAlt, FaSignInAlt } from 'react-icons/fa';
 import NextLink from 'next/link';

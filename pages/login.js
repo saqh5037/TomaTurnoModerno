@@ -18,7 +18,7 @@ import {
   IconButton
 } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../contexts/AuthContext';
 import { FaUser, FaLock, FaEye, FaEyeSlash, FaSignInAlt, FaHospital } from 'react-icons/fa';
 import { modernTheme, fadeInUp, slideInFromLeft, GlassCard, ModernContainer } from '../components/theme/ModernTheme';
 
@@ -40,7 +40,7 @@ const LoginPage = memo(function LoginPage() {
   // Función optimizada para el login
   const handleLogin = useCallback(async (e) => {
     e.preventDefault();
-    
+
     if (!username.trim() || !password.trim()) {
       toast({
         title: 'Campos requeridos',
@@ -56,25 +56,13 @@ const LoginPage = memo(function LoginPage() {
     setIsLoading(true);
 
     try {
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: username.trim(), password }),
-      });
+      // Usar el método login del AuthContext
+      const result = await login(username.trim(), password);
 
-      const data = await response.json();
-
-      if (response.ok) {
-        // Guarda el token y el rol en localStorage
-        localStorage.setItem('token', data.token);
-        localStorage.setItem('userRole', data.role);
-
-        // Llama al contexto para establecer el rol
-        login(data.role);
-
+      if (result.success) {
         toast({
           title: 'Acceso autorizado',
-          description: `Bienvenido/a ${data.name || username}`,
+          description: `Bienvenido/a`,
           status: 'success',
           duration: 5000,
           isClosable: true,
@@ -82,7 +70,7 @@ const LoginPage = memo(function LoginPage() {
         });
 
         // Redirige según el rol
-        if (data.role === 'Flebotomista') {
+        if (result.role === 'Flebotomista' || result.role === 'flebotomista') {
           router.push('/select-cubicle');
         } else {
           router.push('/');
@@ -90,7 +78,7 @@ const LoginPage = memo(function LoginPage() {
       } else {
         toast({
           title: 'Acceso denegado',
-          description: data.error || 'Credenciales incorrectas',
+          description: result.error || 'Credenciales incorrectas',
           status: 'error',
           duration: 5000,
           isClosable: true,
