@@ -477,7 +477,7 @@ const SearchBar = ({
                     {searchTerm && results.length === 0 && !isLoading && (
                       <Box p={4} textAlign="center">
                         <Text color={mutedColor}>
-                          No se encontraron resultados para "{searchTerm}"
+                          No se encontraron resultados para &quot;{searchTerm}&quot;
                         </Text>
                       </Box>
                     )}

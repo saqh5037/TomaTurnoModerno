@@ -601,7 +601,7 @@ const ModuleDetailPage = () => {
 
                             {/* Code examples */}
                             {section.content.codeExamples?.map((example, codeIndex) => (
-                              <Card key={codeIndex} bg={useColorModeValue('gray.50', 'gray.700')}>
+                              <Card key={codeIndex} bg={cardBg}>
                                 <CardHeader>
                                   <HStack>
                                     <FaCode />

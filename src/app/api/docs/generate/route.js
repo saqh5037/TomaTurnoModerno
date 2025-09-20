@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { generateDocumentationPDF } from "../../../../lib/docs/pdfGenerator";
-import { documentationContent } from "../../../../lib/docs/content";
+import { generateDocumentationPDF } from "../../../../../lib/docs/pdfGenerator";
+import { documentationContent } from "../../../../../lib/docs/content";
 
 export async function POST(req) {
   try {
