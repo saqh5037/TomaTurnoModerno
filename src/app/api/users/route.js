@@ -34,7 +34,7 @@ export async function GET(request) {
       where: { id: decodedToken.userId }
     });
 
-    if (!requestingUser || requestingUser.role !== 'admin') {
+    if (!requestingUser || requestingUser.role !== 'Administrador') {
       return NextResponse.json(
         { success: false, error: "Acceso denegado. Se requieren permisos de administrador." },
         { status: 403 }
@@ -127,7 +127,7 @@ export async function GET(request) {
       active: users.filter(u => u.isActive).length,
       inactive: users.filter(u => !u.isActive).length,
       byRole: {
-        admin: users.filter(u => u.role === 'admin').length,
+        admin: users.filter(u => u.role === 'Administrador').length,
         supervisor: users.filter(u => u.role === 'supervisor').length,
         flebotomista: users.filter(u => u.role === 'flebotomista' || u.role === 'Flebotomista').length,
         recepcion: users.filter(u => u.role === 'recepcion').length,
@@ -194,7 +194,7 @@ export async function POST(request) {
       where: { id: decodedToken.userId }
     });
 
-    if (!requestingUser || requestingUser.role !== 'admin') {
+    if (!requestingUser || requestingUser.role !== 'Administrador') {
       return NextResponse.json(
         { success: false, error: "Acceso denegado. Se requieren permisos de administrador." },
         { status: 403 }

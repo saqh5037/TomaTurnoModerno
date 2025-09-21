@@ -1,0 +1,718 @@
+import { useEffect, useState, useCallback, memo } from "react";
+import { Box, Heading, Text, Flex, ChakraProvider, extendTheme, VStack, HStack, Grid } from "@chakra-ui/react";
+import { FaHeartbeat, FaClock, FaMicrophone } from 'react-icons/fa';
+import QRCode from 'react-qr-code';
+
+// Tema ultra-minimalista optimizado para máxima densidad de información
+const theme = extendTheme({
+    colors: {
+        primary: {
+            500: "#4F7DF3",
+            600: "#6B73FF",
+        },
+        success: "#10B981",
+        warning: "#F59E0B",
+        error: "#EF4444",
+    },
+    fonts: {
+        body: "'Inter', -apple-system, 'Segoe UI', sans-serif",
+        heading: "'Inter', -apple-system, 'Segoe UI', sans-serif",
+    },
+    styles: {
+        global: {
+            body: {
+                bg: '#ffffff',
+                color: '#1E293B',
+                fontFamily: "'Inter', sans-serif",
+                overflow: 'hidden',
+            },
+        },
+    },
+});
+
+const Queue = memo(function Queue() {
+    const [pendingTurns, setPendingTurns] = useState([]);
+    const [inProgressTurns, setInProgressTurns] = useState([]);
+    const [callingPatient, setCallingPatient] = useState(null);
+    const [isCalling, setIsCalling] = useState(false);
+    const [error, setError] = useState(null);
+    const [currentTime, setCurrentTime] = useState(null);
+    const [mounted, setMounted] = useState(false);
+    const [currentPhraseIndex, setCurrentPhraseIndex] = useState(0);
+
+    // Frases motivacionales que rotan
+    const phrases = [
+        "💙 Cuidamos de ti con tecnología y calidad humana",
+        "🏥 El Instituto Nacional de Enfermedades Respiratorias trabaja para ti",
+        "✨ Tu bienestar es nuestra prioridad",
+        "🫁 Respirar bien es vivir mejor",
+        "👨‍⚕️ Excelencia médica al servicio de México",
+        "🌟 Juntos por una mejor calidad de vida",
+        "💪 Comprometidos con tu recuperación y bienestar",
+        "🔬 Innovación y cuidado en cada atención",
+        "❤️ Tu salud respiratoria en las mejores manos",
+        "🌱 Prevenir es la mejor medicina"
+    ];
+
+    // Effect para marcar el componente como montado
+    useEffect(() => {
+        setMounted(true);
+        setCurrentTime(new Date());
+
+        // Activar audio de forma silenciosa
+        if (typeof window !== 'undefined' && window.speechSynthesis) {
+            const initUtterance = new SpeechSynthesisUtterance('');
+            initUtterance.volume = 0;
+            window.speechSynthesis.speak(initUtterance);
+            window.speechSynthesis.cancel();
+        }
+    }, []);
+
+    // Función para obtener datos de la cola
+    const fetchQueueData = useCallback(async () => {
+        try {
+            const response = await fetch("/api/queue/list");
+            if (!response.ok) throw new Error("Error al obtener los turnos");
+            const data = await response.json();
+
+            const sortedPendingTurns = (data.pendingTurns || []).sort((a, b) => a.assignedTurn - b.assignedTurn);
+            const sortedInProgressTurns = (data.inProgressTurns || []).sort((a, b) => a.assignedTurn - b.assignedTurn);
+
+            setPendingTurns(sortedPendingTurns);
+            setInProgressTurns(sortedInProgressTurns);
+
+            // Detectar pacientes siendo llamados
+            if (data.inCallingTurns && data.inCallingTurns.length > 0) {
+                if (!isCalling) {
+                    setCallingPatient(data.inCallingTurns[0]);
+                    setIsCalling(true);
+                }
+            }
+        } catch (err) {
+            console.error("Error al cargar los turnos:", err);
+            setError("Error al cargar los turnos. Por favor, intente de nuevo.");
+        }
+    }, [isCalling]);
+
+    // Función para actualizar estado de llamado
+    const updateCallStatus = useCallback(async () => {
+        if (!callingPatient) return;
+
+        try {
+            const response = await fetch(`/api/queue/updateCall`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ id: callingPatient.id, isCalled: true }),
+            });
+            if (!response.ok) throw new Error("Error al actualizar el estado del paciente.");
+
+            setCallingPatient(null);
+            setIsCalling(false);
+        } catch (err) {
+            console.error("Error al actualizar el estado del paciente:", err);
+            setError("Error al actualizar el estado del paciente.");
+            setIsCalling(false);
+        }
+    }, [callingPatient]);
+
+    // Effect para obtener datos
+    useEffect(() => {
+        if (!mounted) return;
+
+        fetchQueueData();
+
+        const pollInterval = pendingTurns.length > 0 || isCalling ? 3000 : 8000;
+        const interval = setInterval(fetchQueueData, pollInterval);
+
+        return () => clearInterval(interval);
+    }, [mounted, fetchQueueData, pendingTurns.length, isCalling]);
+
+    // Effect para actualizar la hora
+    useEffect(() => {
+        if (mounted) {
+            const timeInterval = setInterval(() => {
+                setCurrentTime(new Date());
+            }, 1000);
+            return () => clearInterval(timeInterval);
+        }
+    }, [mounted]);
+
+    // Effect para rotar las frases motivacionales
+    useEffect(() => {
+        if (mounted) {
+            const phraseInterval = setInterval(() => {
+                setCurrentPhraseIndex((prevIndex) => (prevIndex + 1) % phrases.length);
+            }, 8000); // Cambia cada 8 segundos
+            return () => clearInterval(phraseInterval);
+        }
+    }, [mounted, phrases.length]);
+
+    // Función de voz
+    const speakAnnouncement = useCallback((patient) => {
+        if (!patient || typeof window === 'undefined' || !window.speechSynthesis) {
+            return Promise.resolve();
+        }
+
+        const cubiculoName = patient.cubicle?.name || 'uno';
+        const messageText = `Atención, paciente ${patient.patientName}, favor de dirigirse al cubículo número ${cubiculoName}. Repito, paciente ${patient.patientName}, cubículo número ${cubiculoName}.`;
+
+        const playAnnouncement = () => {
+            return new Promise((resolve) => {
+                const utterance = new SpeechSynthesisUtterance(messageText);
+
+                const voices = window.speechSynthesis.getVoices();
+
+                if (voices.length > 0) {
+                    const femaleNames = ['Paulina', 'Mónica', 'Monica', 'Esperanza', 'Angelica', 'Maria', 'Carmen',
+                        'Helena', 'Sabina', 'Paloma', 'Lucia', 'Sofia', 'Valentina', 'Isabella'];
+
+                    const isFemaleVoice = (voice) => {
+                        const voiceName = voice.name.toLowerCase();
+                        return femaleNames.some(name => voiceName.includes(name.toLowerCase()));
+                    };
+
+                    const selectedVoice =
+                        voices.find(voice => voice.lang === 'es-MX' && isFemaleVoice(voice)) ||
+                        voices.find(voice => voice.lang === 'es-MX') ||
+                        voices.find(voice => voice.lang.startsWith('es')) ||
+                        voices[0];
+
+                    utterance.voice = selectedVoice;
+                    utterance.lang = selectedVoice?.lang || "es-MX";
+                } else {
+                    utterance.lang = "es-MX";
+                }
+
+                utterance.rate = 0.9;
+                utterance.pitch = 1.15;
+                utterance.volume = 0.95;
+
+                utterance.onend = () => resolve();
+                utterance.onerror = () => resolve();
+
+                if (window.speechSynthesis.speaking) {
+                    window.speechSynthesis.cancel();
+                }
+
+                setTimeout(() => {
+                    try {
+                        window.speechSynthesis.speak(utterance);
+                    } catch (error) {
+                        resolve();
+                    }
+                }, 500);
+            });
+        };
+
+        if (window.speechSynthesis.getVoices().length === 0) {
+            return new Promise((resolve) => {
+                const voicesTimeout = setTimeout(() => {
+                    playAnnouncement().then(resolve);
+                }, 2000);
+
+                window.speechSynthesis.onvoiceschanged = () => {
+                    clearTimeout(voicesTimeout);
+                    window.speechSynthesis.onvoiceschanged = null;
+                    playAnnouncement().then(resolve);
+                };
+            });
+        } else {
+            return playAnnouncement();
+        }
+    }, []);
+
+    // Effect para manejo de anuncios
+    useEffect(() => {
+        if (!mounted || !callingPatient || !isCalling) return;
+
+        let isActive = true;
+        let audio = null;
+
+        const playAnnouncement = async () => {
+            try {
+                audio = new Audio("/airport-sound.mp3");
+                audio.volume = 0.7;
+
+                await audio.play().catch(err => {
+                    console.warn("No se pudo reproducir el sonido:", err);
+                });
+
+                if (!isActive) return;
+
+                await new Promise(resolve => setTimeout(resolve, 1500));
+
+                // Solo llamar una vez (el mensaje ya dice "Repito" internamente)
+                if (isActive) {
+                    await speakAnnouncement(callingPatient);
+                }
+
+                if (isActive) {
+                    await new Promise(resolve => setTimeout(resolve, 5000)); // Esperar 5 segundos para dar tiempo al anuncio
+                    // Actualizar el estado para cerrar el modal
+                    updateCallStatus();
+                }
+            } catch (error) {
+                console.error("Error en el proceso de llamado:", error);
+                // NO actualizar el estado en caso de error
+                // if (isActive) {
+                //     updateCallStatus();
+                // }
+            }
+        };
+
+        playAnnouncement();
+
+        return () => {
+            isActive = false;
+            if (audio) {
+                audio.pause();
+                audio.currentTime = 0;
+            }
+            if (window.speechSynthesis) {
+                window.speechSynthesis.cancel();
+            }
+        };
+    }, [mounted, callingPatient, isCalling, speakAnnouncement, updateCallStatus]);
+
+    // Función para formatear la hora
+    const formatTime = useCallback((date) => {
+        if (!date || !mounted) return "";
+        const hours = date.getHours().toString().padStart(2, '0');
+        const minutes = date.getMinutes().toString().padStart(2, '0');
+        const seconds = date.getSeconds().toString().padStart(2, '0');
+        return `${hours}:${minutes}:${seconds}`;
+    }, [mounted]);
+
+    // Función para formatear la fecha
+    const formatDate = useCallback((date) => {
+        if (!date || !mounted) return "";
+        const day = date.getDate().toString().padStart(2, '0');
+        const months = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+        const month = months[date.getMonth()];
+        const year = date.getFullYear();
+        return `${day} ${month} ${year}`;
+    }, [mounted]);
+
+    if (!mounted) {
+        return (
+            <ChakraProvider theme={theme}>
+                <Box h="100vh" display="flex" alignItems="center" justifyContent="center">
+                    <Text fontSize="lg" color="gray.600">Cargando sistema...</Text>
+                </Box>
+            </ChakraProvider>
+        );
+    }
+
+    if (error) {
+        return (
+            <ChakraProvider theme={theme}>
+                <Box h="100vh" display="flex" alignItems="center" justifyContent="center">
+                    <Text fontSize="lg" fontWeight="bold" color="red.600">{error}</Text>
+                </Box>
+            </ChakraProvider>
+        );
+    }
+
+    return (
+        <ChakraProvider theme={theme}>
+            <Box h="100vh" display="flex" flexDirection="column" bg="white" position="relative">
+
+                {/* Header Superior - Ultra compacto */}
+                <Box
+                    bgGradient="linear(135deg, #4F7DF3 0%, #6B73FF 100%)"
+                    color="white"
+                    px={4}
+                    py={3}
+                    h="70px"
+                    display="flex"
+                    alignItems="center"
+                >
+                    <Flex w="100%" justify="space-between" align="center">
+                        <Text fontSize="xl" fontWeight="bold" letterSpacing="wide">
+                            GESTIÓN DE TURNOS
+                        </Text>
+                        <Text fontSize="xl" fontWeight="bold">
+                            Instituto Nacional de Enfermedades Respiratorias
+                        </Text>
+                        <Box
+                            bg="white"
+                            color="#1E293B"
+                            px={3}
+                            py={1}
+                            borderRadius="md"
+                            textAlign="center"
+                            minW="140px"
+                        >
+                            <Text fontSize="md" fontWeight="bold">
+                                {currentTime ? formatTime(currentTime) : ""}
+                            </Text>
+                            <Text fontSize="xs" fontWeight="medium">
+                                {currentTime ? formatDate(currentTime) : ""}
+                            </Text>
+                        </Box>
+                    </Flex>
+                </Box>
+
+                {/* Contenido Principal - DOS COLUMNAS */}
+                <Flex flex="1" overflow="hidden" p={3} gap={3}>
+
+                    {/* COLUMNA IZQUIERDA - Pacientes en Atención */}
+                    <Box
+                        w="40%"
+                        bg="white"
+                        borderRadius="lg"
+                        border="1px solid"
+                        borderColor="gray.200"
+                        display="flex"
+                        flexDirection="column"
+                        overflow="hidden"
+                    >
+                        {/* Header de columna */}
+                        <Flex
+                            align="center"
+                            px={3}
+                            py={2}
+                            borderBottom="2px solid"
+                            borderColor="green.200"
+                            bg="#F0FDF4"
+                        >
+                            <Box as={FaHeartbeat} color="#10B981" fontSize="2xl" mr={2} />
+                            <Text fontSize="2xl" fontWeight="bold" color="#064E3B" flex="1">
+                                PACIENTES EN ATENCIÓN
+                            </Text>
+                            <Box
+                                bg="#10B981"
+                                color="white"
+                                px={4}
+                                py={2}
+                                borderRadius="full"
+                                fontSize="2xl"
+                                fontWeight="bold"
+                                minW="45px"
+                                textAlign="center"
+                            >
+                                {inProgressTurns.length}
+                            </Box>
+                        </Flex>
+
+                        {/* Lista de pacientes en atención */}
+                        <Box flex="1" overflowY="auto" px={2} py={2} bg="#F0FDF4">
+                            {inProgressTurns.length === 0 ? (
+                                <Text textAlign="center" color="gray.500" fontSize="sm" py={4}>
+                                    No hay pacientes en atención
+                                </Text>
+                            ) : (
+                                <VStack spacing={1} align="stretch">
+                                    {inProgressTurns.slice(0, 12).map((turn, index) => (
+                                        <Flex
+                                            key={turn.id}
+                                            align="center"
+                                            px={2}
+                                            py={1.5}
+                                            bg="white"
+                                            borderRadius="sm"
+                                            borderLeft="3px solid"
+                                            borderLeftColor="#10B981"
+                                            fontSize="xs"
+                                        >
+                                            <Text fontWeight="bold" color="#64748B" w="25px" fontSize="sm">
+                                                {index + 1}.
+                                            </Text>
+                                            <Box
+                                                bg="#10B981"
+                                                color="white"
+                                                px={2}
+                                                py={1}
+                                                borderRadius="sm"
+                                                fontSize="sm"
+                                                fontWeight="bold"
+                                                mr={2}
+                                            >
+                                                Cubículo {turn.cubicle?.name || '-'}
+                                            </Box>
+                                            <Text color="#1E293B" flex="1" fontWeight="bold" fontSize="md" isTruncated>
+                                                {turn.patientName}
+                                            </Text>
+                                            <Box
+                                                bg="gray.100"
+                                                color="gray.700"
+                                                px={2}
+                                                py={0.5}
+                                                borderRadius="sm"
+                                                fontSize="sm"
+                                                fontWeight="bold"
+                                            >
+                                                #{turn.assignedTurn}
+                                            </Box>
+                                        </Flex>
+                                    ))}
+                                </VStack>
+                            )}
+                        </Box>
+                    </Box>
+
+                    {/* COLUMNA DERECHA - Pacientes en Espera */}
+                    <Box
+                        flex="1"
+                        bg="white"
+                        borderRadius="lg"
+                        border="1px solid"
+                        borderColor="gray.200"
+                        display="flex"
+                        flexDirection="column"
+                        overflow="hidden"
+                    >
+                        {/* Header de columna */}
+                        <Flex
+                            align="center"
+                            px={3}
+                            py={2}
+                            borderBottom="2px solid"
+                            borderColor="orange.200"
+                            bg="#FFF7ED"
+                        >
+                            <Box as={FaClock} color="#F59E0B" fontSize="2xl" mr={2} />
+                            <Text fontSize="2xl" fontWeight="bold" color="#78350F" flex="1">
+                                PACIENTES EN ESPERA
+                            </Text>
+                            <Box
+                                bg="#F59E0B"
+                                color="white"
+                                px={4}
+                                py={2}
+                                borderRadius="full"
+                                fontSize="2xl"
+                                fontWeight="bold"
+                                minW="45px"
+                                textAlign="center"
+                            >
+                                {pendingTurns.length}
+                            </Box>
+                        </Flex>
+
+                        {/* Grid de pacientes en espera - 2 columnas */}
+                        <Box flex="1" overflowY="auto" px={2} py={2} bg="#FFF7ED">
+                            {pendingTurns.length === 0 ? (
+                                <Text textAlign="center" color="gray.500" fontSize="sm" py={4}>
+                                    No hay pacientes en espera
+                                </Text>
+                            ) : (
+                                <Flex gap={2}>
+                                    {/* Columna Izquierda - Primeros 10 pacientes */}
+                                    <VStack flex="1" spacing={1} align="stretch">
+                                        {pendingTurns.slice(0, 10).map((turn, index) => (
+                                            <Flex
+                                                key={turn.id}
+                                                align="center"
+                                                px={2}
+                                                py={1}
+                                                bg="white"
+                                                borderRadius="sm"
+                                                borderLeft="2px solid"
+                                                borderLeftColor={turn.tipoAtencion === "Special" ? "#EF4444" : "#F59E0B"}
+                                                fontSize="xs"
+                                            >
+                                                <Text fontWeight="bold" color="#F59E0B" fontSize="xs" mr={1}>
+                                                    #{turn.assignedTurn}
+                                                </Text>
+                                                <Text color="#1E293B" flex="1" fontWeight="medium" fontSize="sm" isTruncated>
+                                                    {turn.patientName}
+                                                </Text>
+                                                {turn.tipoAtencion === "Special" && (
+                                                    <Text color="#EF4444" fontWeight="bold" fontSize="sm" ml={1}>
+                                                        ♿
+                                                    </Text>
+                                                )}
+                                            </Flex>
+                                        ))}
+                                    </VStack>
+
+                                    {/* Columna Derecha - Siguientes 10 pacientes (11-20) */}
+                                    <VStack flex="1" spacing={1} align="stretch">
+                                        {pendingTurns.slice(10, 20).map((turn, index) => (
+                                            <Flex
+                                                key={turn.id}
+                                                align="center"
+                                                px={2}
+                                                py={1}
+                                                bg="white"
+                                                borderRadius="sm"
+                                                borderLeft="2px solid"
+                                                borderLeftColor={turn.tipoAtencion === "Special" ? "#EF4444" : "#F59E0B"}
+                                                fontSize="xs"
+                                            >
+                                                <Text fontWeight="bold" color="#F59E0B" fontSize="xs" mr={1}>
+                                                    #{turn.assignedTurn}
+                                                </Text>
+                                                <Text color="#1E293B" flex="1" fontWeight="medium" fontSize="sm" isTruncated>
+                                                    {turn.patientName}
+                                                </Text>
+                                                {turn.tipoAtencion === "Special" && (
+                                                    <Text color="#EF4444" fontWeight="bold" fontSize="sm" ml={1}>
+                                                        ♿
+                                                    </Text>
+                                                )}
+                                            </Flex>
+                                        ))}
+                                    </VStack>
+                                </Flex>
+                            )}
+
+                            {/* Indicador de más pacientes */}
+                            {pendingTurns.length > 20 && (
+                                <Box
+                                    mt={2}
+                                    p={2}
+                                    bg="orange.100"
+                                    borderRadius="sm"
+                                    textAlign="center"
+                                >
+                                    <Text fontSize="xs" fontWeight="bold" color="orange.700">
+                                        +{pendingTurns.length - 20} pacientes más en espera
+                                    </Text>
+                                </Box>
+                            )}
+                        </Box>
+                    </Box>
+                </Flex>
+
+                {/* Footer Inferior - Prominente */}
+                <Box
+                    bgGradient="linear(135deg, #E0F2FE 0%, #DBEAFE 100%)"
+                    borderTop="3px solid"
+                    borderColor="#3B82F6"
+                    px={4}
+                    py={4}
+                    h="98px"
+                >
+                    <Flex align="center" justify="space-between" h="100%">
+                        {/* QR con mejor diseño */}
+                        <HStack spacing={3}>
+                            <Box
+                                p={2}
+                                bg="white"
+                                border="2px solid"
+                                borderColor="#3B82F6"
+                                borderRadius="md"
+                                boxShadow="sm"
+                            >
+                                <QRCode
+                                    size={63}
+                                    value="https://redcap-iner.com.mx/surveys/?s=KXTEHHDT8C"
+                                    viewBox="0 0 256 256"
+                                />
+                            </Box>
+                            <VStack spacing={0} align="flex-start">
+                                <Text fontSize="md" color="#1E40AF" fontWeight="bold" textTransform="uppercase">
+                                    Califica el servicio
+                                </Text>
+                                <Text fontSize="md" color="#64748B">
+                                    Escanea el código
+                                </Text>
+                            </VStack>
+                        </HStack>
+
+                        {/* Mensaje motivacional PROMINENTE */}
+                        <Box
+                            flex="1"
+                            mx={6}
+                            textAlign="center"
+                        >
+                            <Text
+                                fontSize="xl"
+                                fontWeight="extrabold"
+                                color="#1E40AF"
+                                letterSpacing="wide"
+                                textShadow="0 1px 2px rgba(0,0,0,0.1)"
+                            >
+                                {phrases[currentPhraseIndex]}
+                            </Text>
+                        </Box>
+
+                        {/* Contador adicional mejorado */}
+                        {pendingTurns.length > 20 && (
+                            <Box
+                                bg="#FEF3C7"
+                                color="#D97706"
+                                px={4}
+                                py={2}
+                                borderRadius="md"
+                                border="2px solid"
+                                borderColor="#F59E0B"
+                                boxShadow="sm"
+                            >
+                                <Text fontSize="sm" fontWeight="extrabold">
+                                    +{pendingTurns.length - 20} en espera
+                                </Text>
+                            </Box>
+                        )}
+                    </Flex>
+                </Box>
+
+                {/* Modal de Llamado - Se mantiene igual pero con animación simple */}
+                {callingPatient && (
+                    <Box
+                        position="fixed"
+                        top="0"
+                        left="0"
+                        right="0"
+                        bottom="0"
+                        bg="rgba(0, 0, 0, 0.85)"
+                        display="flex"
+                        alignItems="center"
+                        justifyContent="center"
+                        zIndex="9999"
+                    >
+                        <Box
+                            p={8}
+                            borderRadius="xl"
+                            bg="white"
+                            boxShadow="2xl"
+                            textAlign="center"
+                            w="60%"
+                            maxW="600px"
+                        >
+                            <Box
+                                w={20}
+                                h={20}
+                                borderRadius="full"
+                                bgGradient="linear(135deg, #4F7DF3 0%, #6B73FF 100%)"
+                                display="flex"
+                                alignItems="center"
+                                justifyContent="center"
+                                mx="auto"
+                                mb={6}
+                            >
+                                <Box as={FaMicrophone} color="white" fontSize="3xl" />
+                            </Box>
+
+                            <Text fontSize="2xl" fontWeight="bold" color="gray.700" mb={3}>
+                                LLAMANDO A
+                            </Text>
+                            <Text fontSize="4xl" fontWeight="extrabold" color="#4F7DF3" mb={6}>
+                                {callingPatient.patientName}
+                            </Text>
+                            <Box
+                                bg="#E0F7FF"
+                                color="#0369A1"
+                                px={6}
+                                py={3}
+                                borderRadius="lg"
+                                display="inline-block"
+                                fontSize="2xl"
+                                fontWeight="bold"
+                                border="2px solid"
+                                borderColor="#0EA5E9"
+                            >
+                                CUBÍCULO {callingPatient.cubicle?.name || '-'}
+                            </Box>
+                        </Box>
+                    </Box>
+                )}
+
+            </Box>
+        </ChakraProvider>
+    );
+});
+
+export default Queue;

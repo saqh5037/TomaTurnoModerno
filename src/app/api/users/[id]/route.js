@@ -25,7 +25,7 @@ async function verifyAdmin(request) {
     where: { id: decodedToken.userId }
   });
 
-  if (!user || user.role !== 'admin') {
+  if (!user || user.role !== 'Administrador') {
     return { error: "Acceso denegado", status: 403 };
   }
 
@@ -154,7 +154,7 @@ export async function PUT(request, { params }) {
     }
 
     // Prevenir eliminar el último admin
-    if (currentUser.role === 'admin' && role !== 'admin') {
+    if (currentUser.role === 'Administrador' && role !== 'Administrador') {
       const adminCount = await prisma.user.count({
         where: { role: 'admin', isActive: true }
       });
@@ -325,7 +325,7 @@ export async function PATCH(request, { params }) {
       );
     }
 
-    if (field === 'role' && currentUser.role === 'admin' && value !== 'admin') {
+    if (field === 'role' && currentUser.role === 'Administrador' && value !== 'admin') {
       const adminCount = await prisma.user.count({
         where: { role: 'admin', isActive: true }
       });
@@ -421,7 +421,7 @@ export async function DELETE(request, { params }) {
     }
 
     // Prevenir eliminar el último admin
-    if (currentUser.role === 'admin') {
+    if (currentUser.role === 'Administrador') {
       const adminCount = await prisma.user.count({
         where: { role: 'admin', isActive: true }
       });

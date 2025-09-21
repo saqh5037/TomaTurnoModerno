@@ -33,7 +33,7 @@ export async function GET(request) {
       where: { id: decodedToken.userId }
     });
 
-    if (!requestingUser || requestingUser.role !== 'admin') {
+    if (!requestingUser || requestingUser.role !== 'Administrador') {
       return NextResponse.json(
         { success: false, error: "Acceso denegado. Se requieren permisos de administrador." },
         { status: 403 }

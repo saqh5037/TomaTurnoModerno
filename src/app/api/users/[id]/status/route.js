@@ -35,7 +35,7 @@ export async function PATCH(request, { params }) {
       where: { id: decodedToken.userId }
     });
 
-    if (!requestingUser || requestingUser.role !== 'admin') {
+    if (!requestingUser || requestingUser.role !== 'Administrador') {
       return NextResponse.json(
         { success: false, error: "Acceso denegado. Se requieren permisos de administrador." },
         { status: 403 }
@@ -73,7 +73,7 @@ export async function PATCH(request, { params }) {
     }
 
     // Si se está desactivando un admin, verificar que no sea el último
-    if (currentUser.role === 'admin' && !isActive) {
+    if (currentUser.role === 'Administrador' && !isActive) {
       const adminCount = await prisma.user.count({
         where: { role: 'admin', isActive: true }
       });
