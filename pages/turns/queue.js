@@ -247,9 +247,9 @@ const Queue = memo(function Queue() {
                 }
 
                 if (isActive) {
-                    await new Promise(resolve => setTimeout(resolve, 3000));
-                    // NO actualizar el estado para permitir que otras pantallas también anuncien
-                    // updateCallStatus();
+                    await new Promise(resolve => setTimeout(resolve, 5000)); // Esperar 5 segundos para dar tiempo al anuncio
+                    // Actualizar el estado para cerrar el modal
+                    updateCallStatus();
                 }
             } catch (error) {
                 console.error("Error en el proceso de llamado:", error);

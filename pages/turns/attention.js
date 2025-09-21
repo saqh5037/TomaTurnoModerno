@@ -9,7 +9,6 @@ import {
   Flex,
   Stack,
   ChakraProvider,
-  extendTheme,
   Grid,
   Badge,
   HStack,
@@ -40,6 +39,7 @@ import {
   Tooltip,
   Divider,
   useBreakpointValue,
+  Spinner,
 } from "@chakra-ui/react";
 import { keyframes } from "@emotion/react";
 import {
@@ -69,89 +69,23 @@ import {
   FaChartLine
 } from "react-icons/fa";
 import { useRouter } from 'next/router';
+import { modernTheme, fadeInUp, slideInFromLeft, slideInFromRight, GlassCard, ModernContainer, pulseGlow } from '../../components/theme/ModernTheme';
 
-// Tema personalizado minimalista
-const theme = extendTheme({
-  colors: {
-    primary: {
-      50: "#e6f2ff",
-      100: "#b3d9ff",
-      200: "#80bfff",
-      300: "#4da6ff",
-      400: "#1a8cff",
-      500: "#007AFF",
-      600: "#0066cc",
-      700: "#004d99",
-      800: "#003366",
-      900: "#001a33",
-    },
-    secondary: {
-      50: "#fafafa",
-      100: "#f5f5f5",
-      200: "#eeeeee",
-      300: "#e0e0e0",
-      400: "#bdbdbd",
-      500: "#9e9e9e",
-      600: "#757575",
-      700: "#616161",
-      800: "#424242",
-      900: "#212121",
-    },
-    success: "#34C759",
-    warning: "#FF9500",
-    danger: "#FF3B30",
-    info: "#007AFF",
-  },
-  fonts: {
-    heading: "'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-    body: "'SF Pro Text', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-  },
-  shadows: {
-    sm: "0 2px 8px rgba(0,0,0,0.08)",
-    md: "0 4px 12px rgba(0,0,0,0.12)",
-    lg: "0 8px 24px rgba(0,0,0,0.16)",
-    xl: "0 12px 48px rgba(0,0,0,0.20)",
-  },
-  styles: {
-    global: {
-      body: {
-        bg: '#F5F5F7',
-        color: '#1C1C1E',
-        fontFamily: "'SF Pro Text', sans-serif",
-        minHeight: '100vh',
-      },
-      '*:focus': {
-        boxShadow: '0 0 0 3px rgba(0, 122, 255, 0.3) !important',
-      },
-    },
-  },
-  components: {
-    Button: {
-      baseStyle: {
-        fontWeight: 'medium',
-        borderRadius: 'xl',
-        transition: 'all 0.3s ease',
-      },
-      sizes: {
-        xl: {
-          h: '60px',
-          fontSize: 'lg',
-          px: '32px',
-        },
-      },
-    },
-  },
-});
+// Animaciones adicionales específicas de esta página - más suaves
+const pulse = keyframes`
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(255, 149, 0, 0.4);
+  }
+  50% {
+    transform: scale(1.02);
+    box-shadow: 0 0 20px 10px rgba(255, 149, 0, 0);
+  }
+`;
 
-// Animaciones simplificadas
 const fadeIn = keyframes`
   from { opacity: 0; }
   to { opacity: 1; }
-`;
-
-const pulse = keyframes`
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.05); }
 `;
 
 const slideUp = keyframes`
@@ -707,43 +641,37 @@ export default function Attention() {
     window.history.back();
   };
 
-  // Componente CurrentPatientCard
+  // Componente CurrentPatientCard con Glassmorphism
   const CurrentPatientCard = ({ patient, onCall, onComplete, onRepeat, isProcessing, selectedCubicle, isActive }) => {
     if (!patient) {
       return (
-        <Box
-          bg="white"
-          borderRadius="xl"
+        <GlassCard
           p={{ base: 4, md: 6, lg: 8 }}
           minH={{ base: "250px", md: "400px", lg: "500px" }}
           display="flex"
           flexDirection="column"
           alignItems="center"
           justifyContent="center"
-          boxShadow="md"
         >
-          <FaUser fontSize="48px" color="#C7C7CC" mb={4} />
-          <Text fontSize="2xl" color="secondary.500" fontWeight="medium">
+          <FaUser fontSize="48px" color="#94a3b8" mb={4} />
+          <Text fontSize="2xl" color="secondary.500" fontWeight="semibold">
             No hay pacientes en espera
           </Text>
           <Text fontSize="md" color="secondary.400" mt={2}>
             Los nuevos turnos aparecerán aquí
           </Text>
-        </Box>
+        </GlassCard>
       );
     }
 
     return (
-      <Box
-        bg="white"
-        borderRadius="xl"
+      <GlassCard
         p={{ base: 4, sm: 6, md: 8 }}
         minH={{ base: "320px", md: "500px" }}
-        boxShadow="lg"
-        border={patient.isSpecial ? "3px solid" : "1px solid"}
-        borderColor={patient.isSpecial ? "warning" : "gray.200"}
+        border={patient.isSpecial ? "2px solid" : "1px solid"}
+        borderColor={patient.isSpecial ? "orange.400" : "rgba(255, 255, 255, 0.18)"}
         position="relative"
-        animation={patient.isSpecial ? `${pulse} 2s infinite` : undefined}
+        animation={patient.isSpecial ? `${pulse} 3s ease-in-out infinite` : undefined}
       >
         {patient.isSpecial && (
           <Badge
@@ -786,13 +714,16 @@ export default function Attention() {
                   size="lg"
                   h={{ base: "60px", md: "70px" }}
                   minW={{ base: "150px", md: "180px" }}
-                  colorScheme="orange"
+                  variant="warning"
+                  background="linear-gradient(135deg, #f59e0b 0%, #f97316 100%)"
+                  color="white"
                   leftIcon={<FaBell size="24" />}
                   onClick={() => onRepeat(patient.id)}
                   isLoading={isProcessing}
                   fontSize={{ base: "lg", md: "xl" }}
                   fontWeight="bold"
-                  _hover={{ transform: 'scale(1.02)' }}
+                  borderRadius="xl"
+                  _hover={{ transform: 'translateY(-2px)', boxShadow: 'xl' }}
                   _active={{ transform: 'scale(0.98)' }}
                 >
                   Repetir Llamado
@@ -801,13 +732,16 @@ export default function Attention() {
                   size="lg"
                   h={{ base: "60px", md: "70px" }}
                   minW={{ base: "150px", md: "180px" }}
-                  colorScheme="green"
+                  variant="success"
+                  background="linear-gradient(135deg, #10b981 0%, #059669 100%)"
+                  color="white"
                   leftIcon={<FaCheckCircle size="24" />}
                   onClick={() => onComplete(patient.id)}
                   isLoading={isProcessing}
                   fontSize={{ base: "lg", md: "xl" }}
                   fontWeight="bold"
-                  _hover={{ transform: 'scale(1.02)' }}
+                  borderRadius="xl"
+                  _hover={{ transform: 'translateY(-2px)', boxShadow: 'xl' }}
                   _active={{ transform: 'scale(0.98)' }}
                 >
                   Toma Finalizada
@@ -827,7 +761,9 @@ export default function Attention() {
                 h={{ base: "60px", md: "70px" }}
                 w="full"
                 maxW={{ base: "320px", md: "400px" }}
-                colorScheme="blue"
+                variant="gradient"
+                background="linear-gradient(135deg, #4F7DF3 0%, #6B73FF 100%)"
+                color="white"
                 leftIcon={<FaBell size="24" />}
                 onClick={() => {
                   onCall(patient.id);
@@ -836,7 +772,9 @@ export default function Attention() {
                 isDisabled={!selectedCubicle}
                 fontSize={{ base: "xl", md: "2xl" }}
                 fontWeight="bold"
-                _hover={{ transform: 'scale(1.02)' }}
+                borderRadius="xl"
+                boxShadow="lg"
+                _hover={{ transform: 'translateY(-2px)', boxShadow: 'xl' }}
                 _active={{ transform: 'scale(0.98)' }}
               >
                 LLAMAR PACIENTE
@@ -847,7 +785,7 @@ export default function Attention() {
             </>
           )}
         </VStack>
-      </Box>
+      </GlassCard>
     );
   };
 
@@ -1023,10 +961,11 @@ export default function Attention() {
     );
   };
 
-  // Componente StatsFooter
+  // Componente StatsFooter con Glassmorphism
   const StatsFooter = ({ stats }) => {
     return (
-      <SimpleGrid columns={{ base: 2, sm: 2, md: 4 }} spacing={{ base: 3, md: 4 }} p={4} bg="white" borderRadius="xl" boxShadow="sm">
+      <GlassCard p={4}>
+        <SimpleGrid columns={{ base: 2, sm: 2, md: 4 }} spacing={{ base: 3, md: 4 }}>
         <Stat>
           <StatLabel fontSize="xs" color="gray.600">Mis Atendidos Hoy</StatLabel>
           <StatNumber fontSize={{ base: "xl", md: "2xl" }} color="green.500">{stats.totalAttended}</StatNumber>
@@ -1055,21 +994,29 @@ export default function Attention() {
           <StatNumber fontSize="2xl" color="purple.500">{stats.totalInProgress}</StatNumber>
           <StatHelpText>Actualmente</StatHelpText>
         </Stat>
-      </SimpleGrid>
+        </SimpleGrid>
+      </GlassCard>
     );
   };
 
   if (!mounted) {
     return (
-      <ChakraProvider theme={theme}>
-        <Flex h="100vh" align="center" justify="center" bg="gray.50">
-          <VStack spacing={4}>
-            <Box className="loader" />
-            <Text fontSize="lg" color="gray.600">
-              Cargando panel de atención...
-            </Text>
-          </VStack>
-        </Flex>
+      <ChakraProvider theme={modernTheme}>
+        <ModernContainer>
+          <Box
+            display="flex"
+            alignItems="center"
+            justifyContent="center"
+            minHeight="100vh"
+          >
+            <GlassCard p={8} textAlign="center">
+              <Spinner size="xl" color="primary.500" thickness="4px" mb={4} />
+              <Text fontSize="xl" color="secondary.600">
+                Cargando panel de atención...
+              </Text>
+            </GlassCard>
+          </Box>
+        </ModernContainer>
       </ChakraProvider>
     );
   }
@@ -1084,20 +1031,18 @@ export default function Attention() {
   const currentPatient = inProgressTurns[0] || null;
 
   return (
-    <ChakraProvider theme={theme}>
-      <Box minH="100vh" bg="#F5F5F7" pb={{ base: isMobile ? "80px" : 0, md: 0 }}>
-        {/* Header Minimalista */}
-        <Box
+    <ChakraProvider theme={modernTheme}>
+      <ModernContainer pb={{ base: isMobile ? "80px" : 0, md: 0 }}>
+        {/* Header con Glassmorphism */}
+        <GlassCard
           h={{ base: "auto", md: "60px" }}
-          bg="white"
-          borderBottom="1px solid"
-          borderColor="gray.200"
+          borderRadius="2xl"
           px={{ base: 3, md: 6 }}
           py={{ base: 2, md: 0 }}
+          mb={4}
           position="sticky"
-          top={0}
+          top={4}
           zIndex={100}
-          boxShadow="sm"
         >
           <Flex
             h="full"
@@ -1130,7 +1075,13 @@ export default function Attention() {
                   colorScheme="gray"
                 />
               )}
-              <Heading size={{ base: "md", md: "lg" }} color="gray.800" fontWeight="semibold">
+              <Heading
+                size={{ base: "md", md: "lg" }}
+                fontWeight="bold"
+                background="linear-gradient(135deg, #4F7DF3 0%, #6B73FF 100%)"
+                backgroundClip="text"
+                color="transparent"
+              >
                 Panel de Atención
               </Heading>
 
@@ -1174,7 +1125,7 @@ export default function Attention() {
               </Box>
             </HStack>
           </Flex>
-        </Box>
+        </GlassCard>
 
         {/* Main Content */}
         <Container maxW="container.xl" py={{ base: 3, md: 6 }} px={{ base: 3, sm: 4, md: 6 }}>
@@ -1230,11 +1181,8 @@ export default function Attention() {
 
             {/* Panel Lateral - Desktop */}
             {!isMobile && (
-              <Box
-                bg="white"
-                borderRadius="xl"
+              <GlassCard
                 p={4}
-                boxShadow="md"
                 position="sticky"
                 top="80px"
               >
@@ -1266,7 +1214,7 @@ export default function Attention() {
                     <Badge colorScheme="blue" fontSize="md">{dailyStats.totalAttended}</Badge>
                   </HStack>
                 </VStack>
-              </Box>
+              </GlassCard>
             )}
           </Grid>
 
@@ -1361,7 +1309,7 @@ export default function Attention() {
             </HStack>
           </Box>
         )}
-      </Box>
+      </ModernContainer>
     </ChakraProvider>
   );
 }
