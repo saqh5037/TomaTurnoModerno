@@ -239,16 +239,35 @@ const Queue = memo(function Queue() {
 
                 if (!isActive) return;
 
+                // GARANTIZAR CIERRE DEL MODAL
+                let modalClosed = false;
+                const MODAL_TIMEOUT = 8000; // 8 segundos máximo
+                
+                // Timer de seguridad absoluto
+                const safetyTimer = setTimeout(() => {
+                    if (!modalClosed && isActive) {
+                        console.log("Modal cerrado por timeout de seguridad");
+                        modalClosed = true;
+                        updateCallStatus();
+                    }
+                }, MODAL_TIMEOUT);
+
                 await new Promise(resolve => setTimeout(resolve, 1500));
 
-                // Solo llamar una vez (el mensaje ya dice "Repito" internamente)
+                // Intentar reproducir voz
                 if (isActive) {
-                    await speakAnnouncement(callingPatient);
+                    try {
+                        await speakAnnouncement(callingPatient);
+                        await new Promise(resolve => setTimeout(resolve, 3000));
+                    } catch (voiceErr) {
+                        console.error("Error en síntesis de voz:", voiceErr);
+                    }
                 }
 
-                if (isActive) {
-                    await new Promise(resolve => setTimeout(resolve, 5000)); // Esperar 5 segundos para dar tiempo al anuncio
-                    // Actualizar el estado para cerrar el modal
+                // Cerrar modal si no se ha cerrado
+                if (!modalClosed && isActive) {
+                    clearTimeout(safetyTimer);
+                    modalClosed = true;
                     updateCallStatus();
                 }
             } catch (error) {
