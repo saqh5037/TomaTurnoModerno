@@ -1,5 +1,9 @@
 # CLAUDE.md
 
+**Last Updated**: September 25, 2024
+**Latest Release**: v2.5.0-prod250921
+**Status**: Production Ready
+
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## 🚀 Essential Commands

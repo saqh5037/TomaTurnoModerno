@@ -3,7 +3,7 @@
 **Proyecto**: TomaTurno - Sistema de Gestión de Turnos Médicos
 **Cliente**: Instituto Nacional de Enfermedades Respiratorias (INER)
 **Estado**: Producción Activa
-**Última Actualización**: 20 de Septiembre, 2024
+**Última Actualización**: 25 de Septiembre, 2024
 
 ---
 
@@ -640,6 +640,40 @@ const logger = winston.createLogger({
 - 🔄 Documentación API con OpenAPI
 - 🔄 Auditoria de seguridad completa
 - 🔄 Plan de disaster recovery
+
+---
+
+## 📅 HISTORIAL DE CAMBIOS TÉCNICOS
+
+### Release v2.5.0-prod250921 (25 Septiembre 2024)
+**Tipo**: Hotfix + Mejoras UI
+**Impacto**: Medio
+
+#### Cambios Implementados:
+- **Fix Modal de Llamado**: Corregido problema donde modal en `/turns/queue` no se cerraba
+  - Solución técnica: Habilitada función `updateCallStatus()` línea 252
+  - Timeout configurado: 5 segundos después del anuncio
+
+- **Modernización UI**: Migración a tema moderno en `/turns/attention`
+  - Componentes migrados de `Box` a `GlassCard`
+  - Implementación de glassmorphism effects
+  - Gradientes aplicados: `linear(135deg, #667eea 0%, #764ba2 100%)`
+
+- **Optimización de Animaciones**: Eliminación de flickering
+  - Animación pulse reducida: scale(1.05) → scale(1.02)
+  - Ciclo aumentado: 2s → 3s
+  - Eliminadas animaciones conflictivas `fadeInUp`
+
+#### Archivos Modificados:
+- `pages/turns/queue.js`
+- `pages/turns/attention.js`
+- `CLAUDE.md`
+
+#### Estado de Deployment:
+- ✅ Commit: 85a77a8
+- ✅ Tag: v2.5.0-prod250921
+- ✅ Branch: development → main
+- ✅ Push a GitHub completado
 
 ---
 

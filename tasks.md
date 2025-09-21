@@ -2,7 +2,7 @@
 
 **Sistema**: TomaTurno - Gestión de Turnos Médicos INER
 **Estado del Proyecto**: Producción Activa con Mejoras Continuas
-**Última Actualización**: 20 de Septiembre, 2024 - 18:55
+**Última Actualización**: 25 de Septiembre, 2024 - 11:30
 
 ---
 
@@ -22,6 +22,38 @@
 2. ⚡ **ALTO**: Optimización de performance
 3. 📚 **MEDIO**: Documentación técnica (✅ COMPLETADO)
 4. 🧪 **BAJO**: Implementación de testing
+
+---
+
+## 🚀 RELEASES COMPLETADOS
+
+### Release v2.5.0-prod250921 - 25 de Septiembre 2024
+**Estado**: ✅ Desplegado en producción
+**Branch**: development → main
+**Tag**: v2.5.0-prod250921
+
+#### Cambios Implementados:
+- ✅ **BUG-FIX-001**: Modal de llamado en `/turns/queue` se cierra automáticamente
+  - Problema: Modal quedaba pegado en pantalla indefinidamente
+  - Solución: Habilitada función `updateCallStatus()` después de 5 segundos
+  - Archivo: `pages/turns/queue.js` (línea 252)
+
+- ✅ **UI-001**: Implementación de tema moderno en panel de atención
+  - Aplicados estilos glassmorphism en `/turns/attention`
+  - Migración de componentes a `GlassCard`
+  - Gradientes aplicados en botones y títulos
+  - Archivo: `pages/turns/attention.js`
+
+- ✅ **PERF-UI-001**: Optimización de animaciones
+  - Eliminados parpadeos en cards de pacientes
+  - Reducida intensidad de animación pulse (1.05 → 1.02)
+  - Aumentado tiempo de ciclo (2s → 3s)
+  - Removidas animaciones conflictivas `fadeInUp`
+
+#### Métricas Post-Release:
+- Tiempo de cierre modal: 5 segundos (antes: indefinido)
+- Performance de UI: Sin flickering reportado
+- Consistencia visual: 100% con nuevo tema
 
 ---
 
