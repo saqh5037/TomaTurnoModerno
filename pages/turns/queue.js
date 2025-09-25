@@ -187,17 +187,40 @@ const Queue = memo(function Queue() {
                 utterance.pitch = 1.15;
                 utterance.volume = 0.95;
 
-                utterance.onend = () => resolve();
-                utterance.onerror = () => resolve();
+                // Configurar eventos para saber cuándo termina realmente el audio
+                let speechCompleted = false;
 
+                utterance.onend = () => {
+                    speechCompleted = true;
+                    resolve();
+                };
+
+                utterance.onerror = (event) => {
+                    console.warn('Error en síntesis de voz:', event);
+                    speechCompleted = true;
+                    resolve();
+                };
+
+                // Cancelar cualquier voz anterior
                 if (window.speechSynthesis.speaking) {
                     window.speechSynthesis.cancel();
                 }
 
+                // Pequeña pausa antes de hablar para asegurar que el sistema está listo
                 setTimeout(() => {
                     try {
                         window.speechSynthesis.speak(utterance);
+
+                        // Timeout de seguridad por si onend no se dispara (máximo 15 segundos)
+                        setTimeout(() => {
+                            if (!speechCompleted) {
+                                console.warn('Timeout de voz alcanzado, resolviendo...');
+                                window.speechSynthesis.cancel();
+                                resolve();
+                            }
+                        }, 15000);
                     } catch (error) {
+                        console.error('Error al iniciar síntesis de voz:', error);
                         resolve();
                     }
                 }, 500);
@@ -276,10 +299,16 @@ const Queue = memo(function Queue() {
                 // Intentar reproducir voz
                 if (isActive) {
                     try {
+                        // Esperar a que termine completamente el anuncio de voz
                         await speakAnnouncement(callingPatient);
-                        await new Promise(resolve => setTimeout(resolve, 3000));
+
+                        // Esperar un poco más después de que termine la voz para asegurar
+                        // que el usuario escuchó todo el mensaje antes de cerrar el modal
+                        await new Promise(resolve => setTimeout(resolve, 2000));
                     } catch (voiceErr) {
                         console.error("Error en síntesis de voz:", voiceErr);
+                        // Si hay error, esperar menos tiempo
+                        await new Promise(resolve => setTimeout(resolve, 1000));
                     }
                 }
 
