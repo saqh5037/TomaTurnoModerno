@@ -296,7 +296,19 @@ function UsersManagement() {
           window.location.href = '/login';
           return;
         }
-        throw new Error('Error al obtener usuarios');
+        if (response.status === 403) {
+          toast({
+            title: 'Acceso denegado',
+            description: 'No tienes permisos para ver esta página',
+            status: 'error',
+            duration: 5000,
+            isClosable: true,
+          });
+          return;
+        }
+        // Para otros errores, intentar obtener el mensaje del servidor
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Error del servidor: ${response.status}`);
       }
 
       const data = await response.json();
