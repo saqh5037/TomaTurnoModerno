@@ -70,9 +70,12 @@ model Cubicle {
   name         String        @unique
   isSpecial    Boolean       @default(false)
   type         CubicleType
+  isActive     Boolean       @default(true) // Estado activo/inactivo del cubículo
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
   turnRequests TurnRequest[] @relation("TurnRequestToCubicle")
+
+  @@index([isActive]) // Índice para consultas por estado
 }
 
 model Session {
