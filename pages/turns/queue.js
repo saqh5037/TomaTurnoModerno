@@ -230,12 +230,31 @@ const Queue = memo(function Queue() {
 
         const playAnnouncement = async () => {
             try {
+                // Crear audio con compatibilidad mejorada
                 audio = new Audio("/airport-sound.mp3");
                 audio.volume = 0.7;
+                audio.preload = "auto";
 
-                await audio.play().catch(err => {
-                    console.warn("No se pudo reproducir el sonido:", err);
-                });
+                // Detectar navegador y aplicar configuraciones específicas
+                const userAgent = navigator.userAgent.toLowerCase();
+                if (userAgent.includes('safari') && !userAgent.includes('chrome')) {
+                    // Safari requiere interacción previa del usuario
+                    audio.muted = false;
+                    audio.autoplay = false;
+                }
+
+                // Intentar reproducir con manejo de errores mejorado
+                const playPromise = audio.play();
+
+                if (playPromise !== undefined) {
+                    await playPromise.catch(err => {
+                        console.warn("Audio no soportado o bloqueado:", err);
+                        // Fallback: mostrar notificación visual si el audio falla
+                        if (err.name === 'NotAllowedError') {
+                            console.log("Reproducción bloqueada. Requiere interacción del usuario.");
+                        }
+                    });
+                }
 
                 if (!isActive) return;
 

@@ -501,9 +501,22 @@ export default function Attention() {
   };
 
   const handleCompleteAttention = async (turnId) => {
+    // Validar que hay un turno válido
+    if (!turnId) {
+      toast({
+        title: "Atención",
+        description: "Por favor seleccione un paciente antes de marcarlo como atendido.",
+        status: "warning",
+        duration: 3000,
+        isClosable: true,
+        position: "top",
+      });
+      return;
+    }
+
     // Prevenir clicks duplicados
     if (processingTurns.has(turnId)) return;
-    
+
     // Marcar como en proceso
     setProcessingTurns(prev => new Set(prev).add(turnId));
     
@@ -804,7 +817,16 @@ export default function Attention() {
         <Tooltip label="Saltar al siguiente paciente (mantiene orden original)" placement="top">
           <Button
             variant="outline"
-            colorScheme="gray"
+            borderWidth="3px"
+            borderColor="gray.400"
+            bg="gray.50"
+            color="gray.700"
+            _hover={{
+              bg: "gray.100",
+              borderColor: "gray.500",
+              transform: "translateY(-1px)",
+              boxShadow: "sm"
+            }}
             leftIcon={<MdSkipNext size="20" />}
             onClick={() => onSkip(patient.id)}
             isDisabled={isProcessing}
@@ -812,6 +834,7 @@ export default function Attention() {
             h={{ base: "50px", md: "60px" }}
             w={{ base: "full", sm: "auto" }}
             fontSize={{ base: "md", md: "lg" }}
+            fontWeight="500"
           >
             Saltar al siguiente
           </Button>

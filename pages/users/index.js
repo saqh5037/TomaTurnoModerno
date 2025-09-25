@@ -1205,12 +1205,26 @@ function UsersManagement() {
                   Cancelar
                 </Button>
                 <Button
-                  colorScheme="brand"
+                  bg="blue.500"
+                  color="white"
+                  _hover={{
+                    bg: "blue.600",
+                    transform: "translateY(-1px)",
+                    boxShadow: "lg"
+                  }}
+                  _active={{
+                    bg: "blue.700",
+                    transform: "translateY(0)"
+                  }}
                   onClick={handleSubmit}
                   isLoading={isSubmitting}
                   loadingText="Guardando..."
+                  size="md"
+                  fontWeight="600"
+                  px={6}
+                  boxShadow="md"
                 >
-                  {editingUser ? 'Actualizar' : 'Crear'}
+                  {editingUser ? 'Actualizar Usuario' : 'Crear Usuario'}
                 </Button>
               </DrawerFooter>
             </DrawerContent>
