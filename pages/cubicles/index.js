@@ -1,14 +1,14 @@
 import { useState, useEffect } from 'react';
-import { 
-  Box, 
-  Heading, 
-  VStack, 
-  Text, 
-  Button, 
-  FormControl, 
-  FormLabel, 
-  Input, 
-  Checkbox, 
+import {
+  Box,
+  Heading,
+  VStack,
+  Text,
+  Button,
+  FormControl,
+  FormLabel,
+  Input,
+  Checkbox,
   useToast,
   ChakraProvider,
   extendTheme,
@@ -28,18 +28,22 @@ import {
   useDisclosure
 } from '@chakra-ui/react';
 import { keyframes } from "@emotion/react";
-import { 
-  FaHospital, 
-  FaPlus, 
-  FaEdit, 
-  FaTrash, 
-  FaSave, 
+import {
+  FaHospital,
+  FaPlus,
+  FaEdit,
+  FaTrash,
+  FaSave,
   FaTimes,
   FaArrowLeft,
   FaHome,
   FaCog,
   FaCheck,
-  FaWheelchair
+  FaWheelchair,
+  FaToggleOn,
+  FaToggleOff,
+  FaUserMd,
+  FaExclamationTriangle
 } from 'react-icons/fa';
 
 // Tema personalizado (mismo que las otras pantallas)
@@ -183,8 +187,11 @@ export default function CubicleManagement() {
   const [currentTime, setCurrentTime] = useState(null);
   const [mounted, setMounted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [loadingStates, setLoadingStates] = useState({});
+  const [deleteModalCubicle, setDeleteModalCubicle] = useState(null);
   const toast = useToast();
   const { isOpen, onOpen, onClose } = useDisclosure();
+  const { isOpen: isDeleteOpen, onOpen: onDeleteOpen, onClose: onDeleteClose } = useDisclosure();
 
   // Efecto para manejar la hidratación
   useEffect(() => {
@@ -219,7 +226,20 @@ export default function CubicleManagement() {
     try {
       const response = await fetch('/api/cubicles');
       const data = await response.json();
-      setCubicles(data);
+      // Enrich cubicles data with patient counts for active ones
+      const enrichedCubicles = await Promise.all(
+        data.map(async (cubicle) => {
+          if (!cubicle.isActive) return { ...cubicle, pacientesEnCola: 0 };
+          try {
+            const res = await fetch(`/api/cubicles/${cubicle.id}`);
+            const details = await res.json();
+            return { ...cubicle, pacientesEnCola: details.pacientesEnCola || 0 };
+          } catch {
+            return { ...cubicle, pacientesEnCola: 0 };
+          }
+        })
+      );
+      setCubicles(enrichedCubicles);
     } catch (error) {
       console.error("Error al obtener los cubículos:", error);
       toast({
@@ -257,7 +277,7 @@ export default function CubicleManagement() {
       const response = await fetch('/api/cubicles', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: name.trim(), isSpecial }),
+        body: JSON.stringify({ name: name.trim(), isSpecial, isActive: true }),
       });
 
       if (response.ok) {
@@ -315,14 +335,20 @@ export default function CubicleManagement() {
 
     setIsSubmitting(true);
     try {
+      const cubicleToEdit = cubicles.find(c => c.id === editingCubicleId);
       const response = await fetch(`/api/cubicles/${editingCubicleId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: name.trim(), isSpecial }),
+        body: JSON.stringify({
+          name: name.trim(),
+          isSpecial,
+          isActive: cubicleToEdit?.isActive !== undefined ? cubicleToEdit.isActive : true
+        }),
       });
 
       if (response.ok) {
-        const updatedCubicle = await response.json();
+        const result = await response.json();
+        const updatedCubicle = result.data || result;
         setCubicles(cubicles.map(cubicle => (cubicle.id === editingCubicleId ? updatedCubicle : cubicle)));
         setName('');
         setIsSpecial(false);
@@ -362,13 +388,69 @@ export default function CubicleManagement() {
     }
   };
 
-  const handleDeleteCubicle = async (id, name) => {
-    if (!confirm(`¿Está seguro de eliminar el cubículo "${name}"?`)) {
-      return;
+  const handleToggleActive = async (cubicle) => {
+    const newStatus = !cubicle.isActive;
+    const cubicleId = cubicle.id;
+
+    setLoadingStates(prev => ({ ...prev, [cubicleId]: true }));
+
+    try {
+      const response = await fetch(`/api/cubicles/${cubicleId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isActive: newStatus }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setCubicles(cubicles.map(c =>
+          c.id === cubicleId ? { ...c, isActive: newStatus } : c
+        ));
+        toast({
+          title: `Cubículo ${newStatus ? 'Activado' : 'Desactivado'}`,
+          description: `${cubicle.name} ha sido ${newStatus ? 'activado' : 'desactivado'} exitosamente.`,
+          status: 'success',
+          duration: 3000,
+          isClosable: true,
+          position: 'top',
+        });
+        // Refetch to get updated patient counts
+        fetchCubicles();
+      } else {
+        toast({
+          title: 'Error',
+          description: data.details || data.error || 'No se pudo cambiar el estado del cubículo.',
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+          position: 'top',
+        });
+      }
+    } catch (error) {
+      console.error("Error al cambiar estado:", error);
+      toast({
+        title: 'Error de conexión',
+        description: 'No se pudo conectar con el servidor.',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+        position: 'top',
+      });
+    } finally {
+      setLoadingStates(prev => ({ ...prev, [cubicleId]: false }));
     }
+  };
+
+  const handleDeleteCubicle = async () => {
+    if (!deleteModalCubicle) return;
+
+    const { id, name } = deleteModalCubicle;
+    setIsSubmitting(true);
 
     try {
       const response = await fetch(`/api/cubicles/${id}`, { method: 'DELETE' });
+      const data = await response.json();
 
       if (response.ok) {
         setCubicles(cubicles.filter(cubicle => cubicle.id !== id));
@@ -380,15 +462,28 @@ export default function CubicleManagement() {
           isClosable: true,
           position: 'top',
         });
+        onDeleteClose();
       } else {
         toast({
-          title: 'Error',
-          description: 'No se pudo eliminar el cubículo.',
+          title: 'No se puede eliminar',
+          description: data.details || data.error || 'No se pudo eliminar el cubículo.',
           status: 'error',
-          duration: 5000,
+          duration: 6000,
           isClosable: true,
           position: 'top',
         });
+        if (data.sugerencia) {
+          setTimeout(() => {
+            toast({
+              title: 'Sugerencia',
+              description: data.sugerencia,
+              status: 'info',
+              duration: 5000,
+              isClosable: true,
+              position: 'top',
+            });
+          }, 1000);
+        }
       }
     } catch (error) {
       console.error("Error al eliminar el cubículo:", error);
@@ -400,7 +495,15 @@ export default function CubicleManagement() {
         isClosable: true,
         position: 'top',
       });
+    } finally {
+      setIsSubmitting(false);
+      setDeleteModalCubicle(null);
     }
+  };
+
+  const openDeleteModal = (cubicle) => {
+    setDeleteModalCubicle(cubicle);
+    onDeleteOpen();
   };
 
   const openForm = (cubicle = null) => {
@@ -545,12 +648,20 @@ export default function CubicleManagement() {
                 <Text fontSize="lg" fontWeight="bold" color="primary.600">{cubicles.length}</Text>
               </Box>
               <Box textAlign="center">
+                <Text fontSize="xs" color="secondary.600">Activos</Text>
+                <Text fontSize="lg" fontWeight="bold" color="success">{cubicles.filter(c => c.isActive).length}</Text>
+              </Box>
+              <Box textAlign="center">
+                <Text fontSize="xs" color="secondary.600">Inactivos</Text>
+                <Text fontSize="lg" fontWeight="bold" color="warning">{cubicles.filter(c => !c.isActive).length}</Text>
+              </Box>
+              <Box textAlign="center">
                 <Text fontSize="xs" color="secondary.600">Especiales</Text>
                 <Text fontSize="lg" fontWeight="bold" color="error">{cubicles.filter(c => c.isSpecial).length}</Text>
               </Box>
               <Box textAlign="center">
                 <Text fontSize="xs" color="secondary.600">Generales</Text>
-                <Text fontSize="lg" fontWeight="bold" color="success">{cubicles.filter(c => !c.isSpecial).length}</Text>
+                <Text fontSize="lg" fontWeight="bold" color="info">{cubicles.filter(c => !c.isSpecial).length}</Text>
               </Box>
             </HStack>
 
@@ -621,31 +732,62 @@ export default function CubicleManagement() {
               </Text>
             </Box>
           ) : (
-            <Grid templateColumns="repeat(auto-fill, minmax(300px, 1fr))" gap={4}>
+            <Grid templateColumns="repeat(auto-fill, minmax(340px, 1fr))" gap={4}>
               {cubicles.map((cubicle, index) => (
                 <Box
                   key={cubicle.id}
                   p={4}
-                  background="rgba(255, 255, 255, 0.7)"
+                  background={cubicle.isActive
+                    ? "rgba(255, 255, 255, 0.85)"
+                    : "rgba(245, 245, 245, 0.6)"}
                   backdropFilter="blur(10px)"
                   borderRadius="xl"
-                  border="1px solid rgba(255, 255, 255, 0.3)"
+                  border="2px solid"
+                  borderColor={cubicle.isActive
+                    ? (cubicle.isSpecial ? "red.200" : "green.200")
+                    : "gray.300"}
                   borderLeft="6px solid"
-                  borderLeftColor={cubicle.isSpecial ? "error" : "success"}
-                  boxShadow="md"
+                  borderLeftColor={cubicle.isActive
+                    ? (cubicle.isSpecial ? "error" : "success")
+                    : "warning"}
+                  boxShadow={cubicle.isActive ? "md" : "sm"}
                   transition="all 0.3s ease"
-                  _hover={{ 
-                    transform: 'translateY(-4px)', 
-                    boxShadow: 'xl' 
+                  opacity={cubicle.isActive ? 1 : 0.8}
+                  _hover={{
+                    transform: cubicle.isActive ? 'translateY(-4px)' : 'none',
+                    boxShadow: cubicle.isActive ? 'xl' : 'md',
+                    opacity: 1
                   }}
                   animation={`${fadeInUp} ${0.3 + index * 0.1}s ease-out`}
+                  position="relative"
                 >
+                  {/* Estado Badge - Posicionado arriba */}
+                  <Badge
+                    position="absolute"
+                    top={-2}
+                    right={3}
+                    colorScheme={cubicle.isActive ? "green" : "orange"}
+                    fontSize="xs"
+                    px={3}
+                    py={1}
+                    borderRadius="full"
+                    boxShadow="sm"
+                    display="flex"
+                    alignItems="center"
+                    gap={1}
+                  >
+                    <Box as={cubicle.isActive ? FaToggleOn : FaToggleOff} />
+                    {cubicle.isActive ? "ACTIVO" : "INACTIVO"}
+                  </Badge>
+
                   <Flex align="center" justify="space-between" mb={3}>
                     <Box
                       w={12}
                       h={12}
                       borderRadius="xl"
-                      background={cubicle.isSpecial 
+                      background={!cubicle.isActive
+                        ? "linear-gradient(135deg, #9ca3af 0%, #6b7280 100%)"
+                        : cubicle.isSpecial
                         ? "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)"
                         : "linear-gradient(135deg, #10b981 0%, #059669 100%)"
                       }
@@ -658,34 +800,78 @@ export default function CubicleManagement() {
                     >
                       <Box as={cubicle.isSpecial ? FaWheelchair : FaHome} />
                     </Box>
-                    
-                    <Badge 
-                      colorScheme={cubicle.isSpecial ? "red" : "green"}
-                      fontSize="xs"
-                      px={2}
-                      py={1}
-                      borderRadius="lg"
-                    >
-                      {cubicle.isSpecial ? "Especial" : "General"}
-                    </Badge>
+
+                    <VStack spacing={0} align="flex-end">
+                      <Badge
+                        colorScheme={cubicle.isSpecial ? "red" : "blue"}
+                        fontSize="xs"
+                        px={2}
+                        py={1}
+                        borderRadius="lg"
+                      >
+                        {cubicle.isSpecial ? "Especial" : "General"}
+                      </Badge>
+                      {cubicle.pacientesEnCola > 0 && cubicle.isActive && (
+                        <Badge
+                          colorScheme="purple"
+                          fontSize="xs"
+                          px={2}
+                          py={1}
+                          borderRadius="lg"
+                          mt={1}
+                        >
+                          <Box as={FaUserMd} display="inline" mr={1} />
+                          {cubicle.pacientesEnCola} en cola
+                        </Badge>
+                      )}
+                    </VStack>
                   </Flex>
 
                   <Box mb={4}>
-                    <Text 
-                      fontWeight="bold" 
-                      fontSize="xl" 
-                      color="secondary.800"
+                    <Text
+                      fontWeight="bold"
+                      fontSize="xl"
+                      color={cubicle.isActive ? "secondary.800" : "gray.500"}
                       mb={2}
+                      textDecoration={!cubicle.isActive ? "line-through" : "none"}
                     >
                       {cubicle.name}
                     </Text>
-                    <Text color="secondary.600" fontSize="sm">
+                    <Text color={cubicle.isActive ? "secondary.600" : "gray.400"} fontSize="sm">
                       <strong>Tipo:</strong> {cubicle.isSpecial ? "Atención Especializada" : "Atención General"}
                     </Text>
-                    <Text color="secondary.600" fontSize="sm">
+                    <Text color={cubicle.isActive ? "secondary.600" : "gray.400"} fontSize="sm">
                       <strong>ID:</strong> #{cubicle.id}
                     </Text>
+                    {!cubicle.isActive && (
+                      <Text color="orange.500" fontSize="xs" fontStyle="italic" mt={1}>
+                        ⚠️ Cubículo temporalmente fuera de servicio
+                      </Text>
+                    )}
                   </Box>
+
+                  {/* Toggle de Estado Activo/Inactivo */}
+                  <Flex
+                    align="center"
+                    justify="space-between"
+                    p={2}
+                    background={cubicle.isActive ? "green.50" : "orange.50"}
+                    borderRadius="lg"
+                    border="1px solid"
+                    borderColor={cubicle.isActive ? "green.200" : "orange.200"}
+                    mb={3}
+                  >
+                    <Text fontSize="sm" fontWeight="semibold" color="secondary.700">
+                      Estado del Cubículo
+                    </Text>
+                    <Switch
+                      colorScheme={cubicle.isActive ? "green" : "orange"}
+                      isChecked={cubicle.isActive}
+                      onChange={() => handleToggleActive(cubicle)}
+                      size="md"
+                      isDisabled={loadingStates[cubicle.id]}
+                    />
+                  </Flex>
 
                   <HStack spacing={2} justify="flex-end">
                     <IconButton
@@ -695,8 +881,10 @@ export default function CubicleManagement() {
                       aria-label="Editar"
                       onClick={() => openForm(cubicle)}
                       borderRadius="lg"
+                      isDisabled={!cubicle.isActive}
+                      opacity={cubicle.isActive ? 1 : 0.5}
                       _hover={{
-                        transform: 'scale(1.1)',
+                        transform: cubicle.isActive ? 'scale(1.1)' : 'none',
                       }}
                     />
                     <IconButton
@@ -704,10 +892,12 @@ export default function CubicleManagement() {
                       colorScheme="red"
                       size="sm"
                       aria-label="Eliminar"
-                      onClick={() => handleDeleteCubicle(cubicle.id, cubicle.name)}
+                      onClick={() => openDeleteModal(cubicle)}
                       borderRadius="lg"
+                      isDisabled={cubicle.pacientesEnCola > 0}
+                      opacity={cubicle.pacientesEnCola > 0 ? 0.5 : 1}
                       _hover={{
-                        transform: 'scale(1.1)',
+                        transform: cubicle.pacientesEnCola === 0 ? 'scale(1.1)' : 'none',
                       }}
                     />
                   </HStack>
@@ -810,6 +1000,85 @@ export default function CubicleManagement() {
                   }}
                 >
                   {editingCubicleId ? 'Actualizar' : 'Crear'}
+                </Button>
+              </HStack>
+            </ModalFooter>
+          </ModalContent>
+        </Modal>
+
+        {/* Modal de Confirmación de Eliminación */}
+        <Modal isOpen={isDeleteOpen} onClose={onDeleteClose} size="md">
+          <ModalOverlay backdropFilter="blur(10px)" />
+          <ModalContent
+            background="rgba(255, 255, 255, 0.95)"
+            backdropFilter="blur(20px)"
+            borderRadius="2xl"
+            border="1px solid rgba(255, 255, 255, 0.3)"
+          >
+            <ModalHeader>
+              <Flex align="center" gap={2} color="red.600">
+                <Box as={FaExclamationTriangle} />
+                Confirmar Eliminación
+              </Flex>
+            </ModalHeader>
+            <ModalCloseButton />
+            <ModalBody>
+              {deleteModalCubicle && (
+                <VStack spacing={4} align="stretch">
+                  <Box
+                    p={4}
+                    background="red.50"
+                    borderRadius="lg"
+                    border="1px solid"
+                    borderColor="red.200"
+                  >
+                    <Text fontWeight="semibold" color="red.800" mb={2}>
+                      ¿Está seguro de eliminar el cubículo?
+                    </Text>
+                    <Text color="red.700">
+                      <strong>Nombre:</strong> {deleteModalCubicle.name}
+                    </Text>
+                    <Text color="red.700">
+                      <strong>Tipo:</strong> {deleteModalCubicle.isSpecial ? "Especial" : "General"}
+                    </Text>
+                  </Box>
+
+                  <Box
+                    p={3}
+                    background="yellow.50"
+                    borderRadius="lg"
+                    border="1px solid"
+                    borderColor="yellow.300"
+                  >
+                    <Text fontSize="sm" color="yellow.800" display="flex" alignItems="center" gap={2}>
+                      <Box as={FaExclamationTriangle} />
+                      <strong>Advertencia:</strong> Esta acción no se puede deshacer.
+                    </Text>
+                  </Box>
+
+                  <Text fontSize="sm" color="gray.600">
+                    Si el cubículo tiene historial médico asociado, considere desactivarlo en lugar de eliminarlo.
+                  </Text>
+                </VStack>
+              )}
+            </ModalBody>
+            <ModalFooter>
+              <HStack spacing={3}>
+                <Button
+                  variant="outline"
+                  onClick={onDeleteClose}
+                  isDisabled={isSubmitting}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  colorScheme="red"
+                  onClick={handleDeleteCubicle}
+                  isLoading={isSubmitting}
+                  loadingText="Eliminando..."
+                  leftIcon={<FaTrash />}
+                >
+                  Eliminar Cubículo
                 </Button>
               </HStack>
             </ModalFooter>

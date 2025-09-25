@@ -3,11 +3,25 @@
 import prisma from '@/lib/prisma';
 
 // Obtener lista de cubículos
-export const GET = async () => {
+export const GET = async (request) => {
   try {
-    const cubicles = await prisma.cubicle.findMany();
+    const { searchParams } = new URL(request.url);
+    const activeOnly = searchParams.get('activeOnly');
+
+    // Si activeOnly=true, filtrar solo cubículos activos
+    const whereCondition = activeOnly === 'true' ? { isActive: true } : {};
+
+    const cubicles = await prisma.cubicle.findMany({
+      where: whereCondition,
+      orderBy: [
+        { isActive: 'desc' }, // Activos primero
+        { name: 'asc' } // Luego por nombre
+      ]
+    });
+
     return new Response(JSON.stringify(cubicles), { status: 200 });
   } catch (error) {
+    console.error('Error al obtener los cubículos:', error);
     return new Response(JSON.stringify({ error: 'Error al obtener los cubículos' }), { status: 500 });
   }
 };
