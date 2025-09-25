@@ -25,7 +25,14 @@ async function verifyAdmin(request) {
     where: { id: decodedToken.userId }
   });
 
-  if (!user || user.role !== 'Administrador') {
+  // Aceptar tanto 'admin' como 'Administrador' para compatibilidad
+  const isAdmin = user && (
+    user.role === 'Administrador' ||
+    user.role === 'admin' ||
+    user.role?.toLowerCase() === 'admin'
+  );
+
+  if (!isAdmin) {
     return { error: "Acceso denegado", status: 403 };
   }
 

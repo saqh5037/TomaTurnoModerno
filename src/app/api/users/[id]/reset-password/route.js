@@ -57,7 +57,14 @@ export async function POST(request, { params }) {
       where: { id: decodedToken.userId }
     });
 
-    if (!requestingUser || requestingUser.role !== 'Administrador') {
+    // Aceptar tanto 'admin' como 'Administrador' para compatibilidad
+    const isAdmin = requestingUser && (
+      requestingUser.role === 'Administrador' ||
+      requestingUser.role === 'admin' ||
+      requestingUser.role?.toLowerCase() === 'admin'
+    );
+
+    if (!isAdmin) {
       return NextResponse.json(
         { success: false, error: "Acceso denegado. Se requieren permisos de administrador." },
         { status: 403 }
