@@ -154,7 +154,8 @@ const Queue = memo(function Queue() {
         }
 
         const cubiculoName = patient.cubicle?.name || 'uno';
-        const messageText = `Atención, paciente ${patient.patientName}, favor de dirigirse al cubículo número ${cubiculoName}. Repito, paciente ${patient.patientName}, cubículo número ${cubiculoName}.`;
+        // Agregar pausa natural con puntos para que la voz haga pausas
+        const messageText = `Atención, paciente ${patient.patientName}, favor de dirigirse al cubículo número ${cubiculoName}... Repito... paciente ${patient.patientName}, cubículo número ${cubiculoName}.`;
 
         const playAnnouncement = () => {
             return new Promise((resolve) => {
@@ -183,9 +184,10 @@ const Queue = memo(function Queue() {
                     utterance.lang = "es-MX";
                 }
 
-                utterance.rate = 0.9;
-                utterance.pitch = 1.15;
-                utterance.volume = 0.95;
+                // Configurar voz más lenta y clara para que se escuche completo
+                utterance.rate = 0.85;  // Más lento para mayor claridad
+                utterance.pitch = 1.15; // Tono ligeramente más alto (femenino)
+                utterance.volume = 1.0;  // Volumen al máximo
 
                 // Configurar eventos para saber cuándo termina realmente el audio
                 let speechCompleted = false;
@@ -283,8 +285,13 @@ const Queue = memo(function Queue() {
 
                 // GARANTIZAR CIERRE DEL MODAL
                 let modalClosed = false;
-                const MODAL_TIMEOUT = 8000; // 8 segundos máximo
-                
+                // Aumentar timeout para permitir ciclo completo:
+                // - Música inicial: ~3 segundos
+                // - Primer llamado: ~4-5 segundos
+                // - "Repito" + Segundo llamado: ~4-5 segundos
+                // - Buffer adicional: ~2 segundos
+                const MODAL_TIMEOUT = 18000; // 18 segundos para ciclo completo
+
                 // Timer de seguridad absoluto
                 const safetyTimer = setTimeout(() => {
                     if (!modalClosed && isActive) {
@@ -294,7 +301,8 @@ const Queue = memo(function Queue() {
                     }
                 }, MODAL_TIMEOUT);
 
-                await new Promise(resolve => setTimeout(resolve, 1500));
+                // Esperar a que termine la música inicial (airport-sound.mp3 dura ~3 segundos)
+                await new Promise(resolve => setTimeout(resolve, 3000));
 
                 // Intentar reproducir voz
                 if (isActive) {
