@@ -201,11 +201,11 @@ export default function Attention() {
     }
   }, [mounted]);
 
-  // Cargar cubículos
+  // Cargar cubículos (solo activos para atención)
   useEffect(() => {
     const fetchCubicles = async () => {
       try {
-        const response = await fetch("/api/cubicles");
+        const response = await fetch("/api/cubicles?activeOnly=true");
         if (response.ok) {
           const data = await response.json();
           setCubicles(data);
@@ -214,7 +214,7 @@ export default function Attention() {
         console.error("Error al cargar cubículos:", error);
       }
     };
-    
+
     if (mounted) {
       fetchCubicles();
     }
