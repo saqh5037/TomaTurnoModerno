@@ -527,13 +527,32 @@ function UsersManagement() {
         });
         fetchUsers();
       } else {
-        throw new Error(data.error || 'Error al cambiar estado');
+        // Manejar casos específicos de error sin lanzar excepción
+        if (data.error === "No puedes desactivar tu propia cuenta") {
+          toast({
+            title: 'Operación no permitida',
+            description: 'No puedes desactivar tu propia cuenta por razones de seguridad.',
+            status: 'warning',
+            duration: 5000,
+            isClosable: true,
+          });
+        } else {
+          toast({
+            title: 'Error al cambiar estado',
+            description: data.error || 'No se pudo actualizar el estado del usuario',
+            status: 'error',
+            duration: 5000,
+            isClosable: true,
+          });
+        }
+        // No lanzar error, ya se mostró el toast
+        return;
       }
     } catch (error) {
       console.error('Error toggling status:', error);
       toast({
-        title: 'Error',
-        description: error.message,
+        title: 'Error de conexión',
+        description: 'No se pudo conectar con el servidor',
         status: 'error',
         duration: 5000,
         isClosable: true,
