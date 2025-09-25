@@ -18,15 +18,15 @@ export async function POST(req) {
 
     // Consultar datos agrupados por día (normalizando la fecha)
     const turnRequests = await prisma.$queryRaw`
-      SELECT 
-        DATE("createdAt") AS "day",
+      SELECT
+        DATE("finishedAt") AS "day",
         COUNT(*)::INT AS "count" -- Convertir a INT explícitamente
       FROM "TurnRequest"
       WHERE "attendedBy" = ${parseInt(phlebotomistId)}
-        AND "status" = 'Completed'
-        AND "createdAt" BETWEEN ${startDate} AND ${endDate}
-      GROUP BY DATE("createdAt")
-      ORDER BY DATE("createdAt");
+        AND "status" = 'Attended'
+        AND "finishedAt" BETWEEN ${startDate} AND ${endDate}
+      GROUP BY DATE("finishedAt")
+      ORDER BY DATE("finishedAt");
     `;
 
     // Formatear datos para enviar al frontend

@@ -80,91 +80,54 @@ const StatisticsDashboard = memo(function StatisticsDashboard() {
     setMounted(true);
   }, []);
 
-  // Cargar datos simulados - Optimizado con useCallback
-  const loadDashboardData = useCallback(() => {
-    setTimeout(() => {
+  // Cargar datos reales desde la API - Optimizado con useCallback
+  const loadDashboardData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const response = await fetch('/api/statistics/dashboard');
+      if (!response.ok) {
+        throw new Error('Error fetching dashboard data');
+      }
+
+      const result = await response.json();
+      if (result.success) {
+        setDashboardData(result.data);
+      } else {
+        throw new Error(result.error || 'Unknown error');
+      }
+    } catch (error) {
+      console.error('Error loading dashboard data:', error);
+      toast({
+        title: 'Error al cargar datos',
+        description: 'No se pudieron cargar las estadísticas. Usando datos por defecto.',
+        status: 'warning',
+        duration: 5000,
+        isClosable: true,
+        position: 'top-right'
+      });
+
+      // Datos de fallback
       setDashboardData({
         overview: {
-          totalPatients: 2847,
-          totalToday: 127,
-          averageWaitTime: 18.5,
-          efficiency: 94.2,
-          activePhlebotomists: 8,
-          completedToday: 96,
-          trendsPatients: 12.5,
-          trendsEfficiency: 3.2,
-          trendsWaitTime: -8.1
+          totalPatients: 0,
+          totalToday: 0,
+          averageWaitTime: 0,
+          efficiency: 0,
+          activePhlebotomists: 0,
+          completedToday: 0,
+          trendsPatients: 0,
+          trendsEfficiency: 0,
+          trendsWaitTime: 0
         },
-        monthlyData: [
-          { month: 'Ene', pacientes: 245, promedio: 16.2, porcentaje: 60 },
-          { month: 'Feb', pacientes: 289, promedio: 15.8, porcentaje: 70 },
-          { month: 'Mar', pacientes: 324, promedio: 17.1, porcentaje: 80 },
-          { month: 'Abr', pacientes: 298, promedio: 16.9, porcentaje: 73 },
-          { month: 'May', pacientes: 387, promedio: 18.2, porcentaje: 95 },
-          { month: 'Jun', pacientes: 412, promedio: 17.5, porcentaje: 100 },
-          { month: 'Jul', pacientes: 456, promedio: 19.1, porcentaje: 88 },
-          { month: 'Ago', pacientes: 431, promedio: 18.7, porcentaje: 84 }
-        ],
-        dailyData: [
-          { day: 'Lun', pacientes: 45, tiempo: 17.2, porcentaje: 90 },
-          { day: 'Mar', pacientes: 52, tiempo: 16.8, porcentaje: 100 },
-          { day: 'Mié', pacientes: 48, tiempo: 18.1, porcentaje: 85 },
-          { day: 'Jue', pacientes: 41, tiempo: 17.5, porcentaje: 75 },
-          { day: 'Vie', pacientes: 38, tiempo: 16.9, porcentaje: 70 },
-          { day: 'Sáb', pacientes: 28, tiempo: 15.2, porcentaje: 55 },
-          { day: 'Dom', pacientes: 22, tiempo: 14.8, porcentaje: 40 }
-        ],
-        phlebotomistData: [
-          { 
-            name: 'María García', 
-            pacientes: 156, 
-            tiempo: 16.2, 
-            eficiencia: 96.5,
-            status: 'active',
-            especialidad: 'Pediatría',
-            rating: 4.9
-          },
-          { 
-            name: 'Carlos López', 
-            pacientes: 142, 
-            tiempo: 17.8, 
-            eficiencia: 94.2,
-            status: 'active',
-            especialidad: 'General',
-            rating: 4.7
-          },
-          { 
-            name: 'Ana Rodríguez', 
-            pacientes: 134, 
-            tiempo: 15.9, 
-            eficiencia: 97.1,
-            status: 'break',
-            especialidad: 'Geriatría',
-            rating: 4.8
-          },
-          { 
-            name: 'Luis Martínez', 
-            pacientes: 128, 
-            tiempo: 18.5, 
-            eficiencia: 92.8,
-            status: 'active',
-            especialidad: 'General',
-            rating: 4.6
-          },
-          { 
-            name: 'Sofia Hernández', 
-            pacientes: 119, 
-            tiempo: 16.7, 
-            eficiencia: 95.3,
-            status: 'inactive',
-            especialidad: 'Urgencias',
-            rating: 4.5
-          }
-        ]
+        monthlyData: [],
+        dailyData: [],
+        phlebotomistData: [],
+        trends: {}
       });
+    } finally {
       setLoading(false);
-    }, 1500);
-  }, []);
+    }
+  }, [toast]);
 
   useEffect(() => {
     if (mounted) {

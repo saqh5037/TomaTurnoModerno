@@ -20,23 +20,28 @@ export async function POST(req) {
       filters.attendedBy = phlebotomistId;
     }
 
-    // Obtener datos agrupados por mes
-    const data = await prisma.turnRequest.groupBy({
-      by: ["createdAt"],
+    // Obtener datos agrupados por mes usando finishedAt para turnos atendidos
+    const data = await prisma.turnRequest.findMany({
       where: {
-        status: "Completed",
-        ...filters,
+        status: "Attended",
+        finishedAt: filters.createdAt ? {
+          gte: filters.createdAt.gte,
+          lte: filters.createdAt.lte,
+        } : undefined,
+        attendedBy: filters.attendedBy,
       },
-      _count: {
-        id: true,
+      select: {
+        finishedAt: true,
       },
     });
 
-    // Calcular totales por mes
+    // Calcular totales por mes usando finishedAt
     const monthlyData = data.reduce((acc, item) => {
-      const date = new Date(item.createdAt);
-      const month = monthNames[date.getMonth()]; // Traducir el mes al nombre
-      acc[month] = (acc[month] || 0) + item._count.id;
+      if (item.finishedAt) {
+        const date = new Date(item.finishedAt);
+        const month = monthNames[date.getMonth()]; // Traducir el mes al nombre
+        acc[month] = (acc[month] || 0) + 1;
+      }
       return acc;
     }, {});
 

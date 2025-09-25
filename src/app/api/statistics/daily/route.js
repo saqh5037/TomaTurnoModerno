@@ -110,27 +110,33 @@ export async function POST(req) {
       };
     }
 
-    const data = await prisma.turnRequest.groupBy({
-      by: ["createdAt"],
+    // First, let's get the data grouped by day for the specified period
+    const data = await prisma.turnRequest.findMany({
       where: {
-        status: "Completed",
-        ...filters,
+        status: "Attended",
+        finishedAt: filters.createdAt || {
+          gte: new Date(year || new Date().getFullYear(), month ? month - 1 : 0, 1),
+          lt: new Date(year || new Date().getFullYear(), month ? month : 12, 1),
+        },
       },
-      _count: {
+      select: {
         id: true,
+        finishedAt: true,
       },
     });
 
-    // Agrupar por días del mes
+    // Agrupar por días del mes usando finishedAt
     const dailyData = data.reduce((acc, item) => {
-      const date = new Date(item.createdAt);
-      const day = date.getDate();
-      acc[day] = (acc[day] || 0) + item._count.id;
+      if (item.finishedAt) {
+        const date = new Date(item.finishedAt);
+        const day = date.getDate();
+        acc[day] = (acc[day] || 0) + 1;
+      }
       return acc;
     }, {});
 
     // Calcular el total general
-    const totalPatients = Object.values(dailyData).reduce((sum, count) => sum + count, 0);
+    const totalPatients = data.length;
 
     return new Response(
       JSON.stringify({

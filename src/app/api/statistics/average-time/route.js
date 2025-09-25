@@ -9,7 +9,7 @@ export async function GET(req) {
     const monthParam = searchParams.get('month');
 
     const filters = {
-      status: 'Completed',
+      status: 'Attended',
     };
 
     let startFilterDate, endFilterDate;
