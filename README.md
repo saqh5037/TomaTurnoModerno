@@ -2,6 +2,8 @@
 
 Sistema moderno de gestión de turnos médicos con estadísticas avanzadas y reportes PDF profesionales.
 
+**Versión:** 2.5.0 | **Última actualización:** 25 de Septiembre de 2025 | **Estado:** Producción INER
+
 ## 📋 Características
 
 ### 🎯 Gestión de Turnos
@@ -33,20 +35,22 @@ Sistema moderno de gestión de turnos médicos con estadísticas avanzadas y rep
 
 ## 🛠 Stack Tecnológico
 
-- **Framework**: Next.js 14 (Pages Router)
-- **Base de datos**: PostgreSQL con Prisma ORM
-- **Estilos**: TailwindCSS
+- **Framework**: Next.js 15.0.3 (Hybrid: App Router + Pages Router)
+- **Base de datos**: PostgreSQL 14+ con Prisma ORM
+- **Estilos**: Chakra UI + TailwindCSS
 - **PDF**: jsPDF con diseño personalizado
-- **Autenticación**: JWT con contexto React
-- **Iconos**: Lucide React
+- **Autenticación**: NextAuth + JWT con contexto React
+- **Iconos**: Lucide React + React Icons
 - **Fechas**: date-fns
+- **Gestión de procesos**: PM2 (producción)
 
 ## 🚀 Instalación
 
 ### Prerrequisitos
-- Node.js 18+
-- PostgreSQL
-- npm o yarn
+- Node.js 18.17.0+
+- PostgreSQL 14+
+- npm 9.0+ o yarn
+- PM2 (para producción)
 
 ### Configuración
 
@@ -69,8 +73,10 @@ Sistema moderno de gestión de turnos médicos con estadísticas avanzadas y rep
    Editar `.env.local` con tus credenciales:
    ```
    DATABASE_URL="postgresql://usuario:password@localhost:5432/toma_turno"
-   NEXTAUTH_SECRET="tu-clave-secreta"
+   NEXTAUTH_SECRET="tu-clave-secreta-segura"
    NEXTAUTH_URL="http://localhost:3000"
+   NODE_ENV="development"
+   PORT=3000
    ```
 
 4. **Configurar la base de datos**
@@ -86,25 +92,56 @@ Sistema moderno de gestión de turnos médicos con estadísticas avanzadas y rep
 
 6. **Iniciar el servidor**
    ```bash
+   # Desarrollo
    npm run dev
+
+   # Producción (puerto 3005)
+   PORT=3005 npm run start:prod
+
+   # Con PM2
+   pm2 start ecosystem.config.js --env production
    ```
 
 ## 📁 Estructura del Proyecto
 
 ```
-├── components/          # Componentes reutilizables
-│   ├── ProtectedRoute.js # Protección de rutas
-│   └── theme/           # Componentes de tema
-├── context/             # Contextos de React
+├── .next/                # Build de producción (generado)
+├── components/           # Componentes React reutilizables
+│   ├── docs/            # Componentes de documentación
+│   ├── theme/           # Tema y estilos globales
+│   └── ProtectedRoute.js # Protección de rutas
+├── contexts/            # Context API de React
 │   └── AuthContext.js   # Contexto de autenticación
-├── pages/               # Páginas de Next.js
-│   ├── statistics/      # Módulo de estadísticas
+├── lib/                 # Utilidades y configuraciones
+│   ├── docs/           # Contenido de documentación
+│   └── prisma.js       # Cliente Prisma singleton
+├── pages/              # Pages Router (Frontend)
+│   ├── api/            # API Routes (legacy)
+│   ├── cubicles/       # Gestión de cubículos
+│   ├── docs/           # Sistema de documentación
+│   ├── statistics/     # Módulo de estadísticas
 │   ├── turns/          # Gestión de turnos
-│   └── users/          # Gestión de usuarios
-├── prisma/             # Esquema y migraciones
-├── scripts/            # Scripts de utilidad y datos
-├── src/app/api/        # API Routes de Next.js
-└── styles/             # Estilos globales
+│   ├── users/          # Gestión de usuarios
+│   └── index.js        # Página principal
+├── prisma/
+│   ├── schema.prisma   # Esquema de base de datos
+│   └── migrations/     # Migraciones de DB
+├── public/             # Assets estáticos
+├── scripts/            # Scripts de utilidad
+├── src/app/api/        # App Router API (nuevo)
+│   ├── attention/      # APIs de atención
+│   ├── auth/           # APIs de autenticación
+│   ├── cubicles/       # APIs de cubículos
+│   ├── docs/           # APIs de documentación
+│   ├── profile/        # APIs de perfil
+│   ├── statistics/     # APIs de estadísticas
+│   ├── turns/          # APIs de turnos
+│   └── users/          # APIs de usuarios
+├── tests/              # Tests unitarios y E2E
+├── .env.production     # Variables de entorno
+├── ecosystem.config.js # Configuración PM2
+├── package.json        # Dependencias
+└── next.config.js      # Configuración Next.js
 ```
 
 ## 📊 Datos de Prueba
@@ -128,11 +165,31 @@ node scripts/testStatistics.js
 ## 🔧 Scripts Disponibles
 
 ```bash
-npm run dev          # Servidor de desarrollo
-npm run build        # Build de producción
-npm run start        # Servidor de producción
-npm run lint         # Linting con ESLint
-npm run prisma:studio # Interfaz gráfica de BD
+# Desarrollo
+npm run dev              # Servidor de desarrollo (puerto 3000)
+PORT=3005 npm run dev    # Puerto personalizado
+
+# Producción
+npm run build:prod       # Build optimizado de producción
+npm run start:prod       # Iniciar servidor de producción
+pm2 start ecosystem.config.js  # Iniciar con PM2
+
+# Base de Datos
+npx prisma generate      # Regenerar cliente Prisma
+npx prisma migrate dev   # Crear/aplicar migraciones (dev)
+npx prisma migrate deploy # Aplicar migraciones (prod)
+npx prisma studio        # Interfaz gráfica de BD
+npx prisma db seed       # Cargar datos de prueba
+
+# Calidad
+npm run lint             # Ejecutar ESLint
+npm test                 # Ejecutar tests
+
+# PM2 (Producción)
+pm2 status               # Ver estado de procesos
+pm2 logs toma-turno      # Ver logs
+pm2 monit                # Monitor en tiempo real
+pm2 restart toma-turno   # Reiniciar aplicación
 ```
 
 ## 📈 Características del Sistema de Estadísticas

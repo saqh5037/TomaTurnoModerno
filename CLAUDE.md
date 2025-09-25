@@ -1,7 +1,7 @@
 # CLAUDE.md
 
-**Last Updated**: September 25, 2024
-**Latest Release**: v2.5.0-prod250921
+**Last Updated**: September 25, 2025
+**Latest Release**: v2.5.0-prod250925
 **Status**: Production Ready
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
@@ -23,6 +23,9 @@ npx prisma db seed           # Seed database with test data
 # Build & Production
 npm run build:prod           # Production build with NODE_ENV=production
 npm run start:prod           # Start production server
+pm2 start ecosystem.config.js # Start with PM2 process manager
+pm2 logs toma-turno          # View PM2 logs
+pm2 monit                    # Real-time PM2 monitoring
 
 # Quality & Testing
 npm run lint                 # Run ESLint
