@@ -48,8 +48,16 @@ export async function GET(request) {
       );
     }
 
+    // Obtener parámetros de query para filtros
+    const { searchParams } = new URL(request.url);
+    const includeBlocked = searchParams.get('includeBlocked') === 'true';
+
+    // Configurar filtro de status
+    const whereCondition = includeBlocked ? {} : { status: { not: 'BLOCKED' } };
+
     // Obtener todos los usuarios con información extendida
     const users = await prisma.user.findMany({
+      where: whereCondition,
       select: {
         id: true,
         username: true,
@@ -58,6 +66,7 @@ export async function GET(request) {
         email: true,
         phone: true,
         isActive: true,
+        status: true,
         lastLogin: true,
         passwordChangedAt: true,
         failedAttempts: true,
@@ -76,6 +85,7 @@ export async function GET(request) {
         }
       },
       orderBy: [
+        { status: 'asc' },
         { isActive: 'desc' },
         { role: 'asc' },
         { name: 'asc' }
@@ -124,6 +134,7 @@ export async function GET(request) {
         lastLoginColor,
         passwordNeedsChange,
         isLocked: user.lockedUntil && new Date(user.lockedUntil) > new Date(),
+        isBlocked: user.status === 'BLOCKED',
         turnsAttended: user._count.turnRequests
       };
     }));
@@ -131,8 +142,9 @@ export async function GET(request) {
     // Calcular estadísticas generales
     const stats = {
       total: users.length,
-      active: users.filter(u => u.isActive).length,
-      inactive: users.filter(u => !u.isActive).length,
+      active: users.filter(u => u.status === 'ACTIVE').length,
+      inactive: users.filter(u => u.status === 'INACTIVE').length,
+      blocked: users.filter(u => u.status === 'BLOCKED').length,
       byRole: {
         admin: users.filter(u => u.role === 'Administrador').length,
         supervisor: users.filter(u => u.role === 'supervisor').length,

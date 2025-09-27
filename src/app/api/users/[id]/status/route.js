@@ -93,11 +93,12 @@ export async function PATCH(request, { params }) {
       }
     }
 
-    // Actualizar estado
+    // Actualizar estado y status
     const updatedUser = await prisma.user.update({
       where: { id: parseInt(id) },
       data: {
         isActive,
+        status: isActive ? 'ACTIVE' : 'INACTIVE',
         updatedAt: new Date()
       },
       select: {
@@ -106,6 +107,7 @@ export async function PATCH(request, { params }) {
         name: true,
         role: true,
         isActive: true,
+        status: true,
         updatedAt: true
       }
     });

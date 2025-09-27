@@ -1,10 +1,10 @@
 # CLAUDE.md
 
-**Last Updated**: September 25, 2025
-**Latest Release**: v2.5.0-prod250925
-**Status**: Production Ready
-
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+**Last Updated**: September 27, 2025
+**Latest Release**: v2.5.0-prod250925
+**Status**: Production Ready - Active deployment at INER Medical Institute
 
 ## 🚀 Essential Commands
 
@@ -30,9 +30,22 @@ pm2 monit                    # Real-time PM2 monitoring
 # Quality & Testing
 npm run lint                 # Run ESLint
 npm test                     # Run tests (limited coverage)
+
+# Data Generation Scripts
+node scripts/seedFullYearData.js    # Generate realistic full year test data
+node scripts/testStatistics.js       # Test statistics calculations
+node scripts/seedDocumentationData.js # Seed documentation system data
 ```
 
 ## 🏗️ Architecture Overview
+
+### Technology Stack
+- **Framework**: Next.js 15.0.3 with React 18.3.1
+- **Database**: PostgreSQL 14+ with Prisma ORM 6.11.1
+- **Styling**: Chakra UI 2.10.9 + Tailwind CSS 3.4.17 (hybrid approach)
+- **Charts**: Chart.js and Recharts for visualizations
+- **PDF Generation**: jsPDF with custom INER branding
+- **Process Manager**: PM2 for production deployment
 
 ### Hybrid Next.js Architecture
 - **App Router** (`src/app/api/`): All API endpoints using Next.js 15 App Router
@@ -80,6 +93,13 @@ const turn = await prisma.turnRequest.findUnique({
     attendedBy: { select: { id: true, name: true } }
   }
 });
+
+// Key database models
+// User: Staff with roles (Admin, Flebotomista)
+// TurnRequest: Patient appointments with status tracking
+// Cubicle: Physical locations (GENERAL/SPECIAL types, ACTIVE/INACTIVE status)
+// Session: JWT session management with expiry tracking
+// AuditLog: Complete action tracking for compliance
 ```
 
 ### Frontend Architecture
@@ -104,11 +124,13 @@ const turn = await prisma.turnRequest.findUnique({
 ### Security Considerations
 - Rate limiting: 100 req/min per IP in middleware.ts
 - Security headers configured in middleware
-- Account lockout after 5 failed login attempts
+- Account lockout after 5 failed login attempts (30-minute lock)
 - Session timeout after 20 minutes of inactivity
 - All user actions logged in AuditLog table
+- Cross-tab synchronization via localStorage events
+- JWT tokens: 8-hour main token, 30-day refresh token
 
-## 🔑 Critical Workflows
+## 🔑 Critical Workflows & Features
 
 ### 1. Appointment (Turn) Creation Flow
 ```
@@ -125,6 +147,13 @@ Real-time statistics calculated from TurnRequest table with status filtering and
 
 ### 4. Documentation System
 Complete CMS in `/api/docs` with modules, events, bookmarks, and feedback tracking.
+
+### 5. Key Business Features
+- **Real-time Queue Management**: Patient turn assignment and tracking
+- **Cubicle Management**: Support for GENERAL and SPECIAL cubicle types
+- **Performance Analytics**: Daily, monthly, and per-phlebotomist statistics
+- **PDF Reports**: Professional reports with INER branding and recommendations
+- **Role-Based Access**: Admin and Flebotomista specific workflows
 
 ## ⚠️ Production Considerations
 
@@ -146,7 +175,15 @@ DATABASE_URL              # PostgreSQL connection string
 NEXTAUTH_SECRET          # JWT signing secret (critical)
 NODE_ENV                 # production/development
 PORT                     # Server port (3005 in production)
+NEXTAUTH_URL             # Base URL for authentication
 ```
+
+### PM2 Configuration
+The system uses PM2 with automatic restarts and memory limits:
+- Daily restart at 3 AM
+- 1GB memory limit
+- Automatic restart on failure
+- Logs available via `pm2 logs toma-turno`
 
 ## 📁 Project Structure
 
@@ -165,6 +202,16 @@ public/                # Static assets
 ```
 
 ## 🔧 Development Patterns
+
+### API Response Pattern
+All API responses follow this consistent structure:
+```javascript
+// Success response
+Response.json({ success: true, data: result })
+
+// Error response
+Response.json({ success: false, error: errorMessage }, { status: errorCode })
+```
 
 ### TypeScript Migration
 - Gradual migration in progress
@@ -227,3 +274,30 @@ await prisma.auditLog.create({
 2. Verify database: `npx prisma studio --port 5555`
 3. Check active sessions and system status
 4. Review recent AuditLog entries for anomalies
+
+### Running Tests
+```bash
+# Run all tests
+npm test
+
+# Run specific test file
+npm test -- tests/functional/turns.test.js
+
+# Generate test data for manual testing
+node scripts/seedFullYearData.js
+```
+
+## 📌 Important Notes
+
+### Medical Context
+This is a **medical appointment system** actively used at INER (Instituto Nacional de Enfermedades Respiratorias). Changes should consider:
+- Patient flow and wait times
+- Medical staff workflows
+- Compliance and audit requirements
+- System availability during hospital hours (7 AM - 7 PM)
+
+### Performance Considerations
+- Database queries should use proper indexing (already configured)
+- Large datasets need pagination (currently missing in some areas)
+- Real-time updates via SSE for TV displays
+- PDF generation can be resource-intensive for large reports

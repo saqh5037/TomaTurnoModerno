@@ -5,6 +5,41 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.6.0] - 2025-09-27
+
+### ✨ Agregado
+- **Sistema de Estado de Usuarios (ACTIVE/INACTIVE/BLOCKED)**: Nueva gestión de eliminación lógica de usuarios
+  - Nuevo campo `status` en modelo User con enum UserStatus
+  - Estados diferenciados: ACTIVE (activo), INACTIVE (desactivado temporalmente), BLOCKED (eliminado/bloqueado)
+  - Filtro para mostrar/ocultar usuarios bloqueados en listado
+  - Switch configurable en UI para incluir usuarios eliminados
+  - Opción de restauración para usuarios bloqueados
+
+### 🐛 Corregido
+- **Gestión de usuarios eliminados**: Los usuarios eliminados ahora se marcan como BLOQUEADOS en lugar de solo desactivarse
+- **Filtros de estado**: Actualización de filtros para diferenciar entre usuarios inactivos y bloqueados
+- **Sincronización de estados**: El campo `isActive` ahora se sincroniza correctamente con el campo `status`
+
+### 🔧 Mejorado
+- **UI de Gestión de Usuarios**:
+  - Diferenciación clara entre desactivar (temporal) y eliminar (permanente)
+  - Nuevo badge de estado que muestra BLOCKED para usuarios eliminados
+  - Estadística adicional mostrando cantidad de usuarios bloqueados
+  - Modal de confirmación actualizado con explicación clara de las acciones
+  - Botón de restauración para usuarios bloqueados en menú de acciones
+- **API de usuarios**:
+  - Endpoint GET ahora soporta parámetro `includeBlocked` para filtrado
+  - Endpoint DELETE actualizado para marcar usuarios como BLOCKED
+  - Endpoint de status actualizado para sincronizar campo status con isActive
+- **Base de datos**:
+  - Migración aplicada para agregar campo status con valores por defecto
+  - Índice agregado para optimizar consultas por status
+
+### 📚 Documentación
+- Actualizado CLAUDE.md con nuevos comandos y patrones de desarrollo
+- Documentación mejorada sobre el sistema de gestión de usuarios
+- Agregadas notas sobre diferencias entre desactivación y eliminación
+
 ## [2.5.0] - 2025-09-25
 
 ### ✨ Agregado

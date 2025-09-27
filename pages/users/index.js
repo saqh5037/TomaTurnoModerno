@@ -140,8 +140,8 @@ const PasswordStrengthIndicator = ({ password }) => {
 };
 
 // Componente de Badge de Estado de Usuario
-const UserStatusBadge = ({ isActive, isLocked }) => {
-  if (isLocked) {
+const UserStatusBadge = ({ status, isActive, isLocked }) => {
+  if (status === 'BLOCKED') {
     return (
       <Badge colorScheme="red" variant="solid">
         <FaLock style={{ marginRight: '4px' }} />
@@ -149,19 +149,26 @@ const UserStatusBadge = ({ isActive, isLocked }) => {
       </Badge>
     );
   }
+  if (isLocked) {
+    return (
+      <Badge colorScheme="orange" variant="solid">
+        <FaLock style={{ marginRight: '4px' }} />
+        Cuenta Bloqueada
+      </Badge>
+    );
+  }
+  if (status === 'INACTIVE' || !isActive) {
+    return (
+      <Badge colorScheme="gray" variant="solid">
+        <FaUserTimes style={{ marginRight: '4px' }} />
+        Inactivo
+      </Badge>
+    );
+  }
   return (
-    <Badge colorScheme={isActive ? 'green' : 'gray'} variant="solid">
-      {isActive ? (
-        <>
-          <FaCheckCircle style={{ marginRight: '4px' }} />
-          Activo
-        </>
-      ) : (
-        <>
-          <FaUserTimes style={{ marginRight: '4px' }} />
-          Inactivo
-        </>
-      )}
+    <Badge colorScheme="green" variant="solid">
+      <FaCheckCircle style={{ marginRight: '4px' }} />
+      Activo
     </Badge>
   );
 };
@@ -224,6 +231,7 @@ function UsersManagement() {
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [includeBlocked, setIncludeBlocked] = useState(false);
   const [sortConfig, setSortConfig] = useState({ key: 'name', direction: 'asc' });
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [refreshInterval, setRefreshInterval] = useState(30000); // 30 segundos
@@ -276,7 +284,8 @@ function UsersManagement() {
         return;
       }
 
-      const response = await fetch('/api/users', {
+      const url = includeBlocked ? '/api/users?includeBlocked=true' : '/api/users';
+      const response = await fetch(url, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -332,7 +341,7 @@ function UsersManagement() {
     } finally {
       setLoading(false);
     }
-  }, [toast]);
+  }, [toast, includeBlocked]);
 
   // Efecto para cargar usuarios al montar el componente
   useEffect(() => {
@@ -382,11 +391,13 @@ function UsersManagement() {
 
     // Filtrar por estado
     if (statusFilter === 'active') {
-      filtered = filtered.filter(user => user.isActive && !user.isLocked);
+      filtered = filtered.filter(user => user.status === 'ACTIVE' || (user.isActive && !user.isLocked && user.status !== 'BLOCKED'));
     } else if (statusFilter === 'inactive') {
-      filtered = filtered.filter(user => !user.isActive);
+      filtered = filtered.filter(user => user.status === 'INACTIVE' || (!user.isActive && user.status !== 'BLOCKED'));
+    } else if (statusFilter === 'blocked') {
+      filtered = filtered.filter(user => user.status === 'BLOCKED');
     } else if (statusFilter === 'locked') {
-      filtered = filtered.filter(user => user.isLocked);
+      filtered = filtered.filter(user => user.isLocked && user.status !== 'BLOCKED');
     } else if (statusFilter === 'needPasswordChange') {
       filtered = filtered.filter(user => user.passwordNeedsChange);
     }
@@ -578,8 +589,8 @@ function UsersManagement() {
 
       if (response.ok && data.success) {
         toast({
-          title: 'Usuario desactivado',
-          description: data.message,
+          title: 'Usuario eliminado',
+          description: data.message || 'Usuario bloqueado exitosamente',
           status: 'success',
           duration: 5000,
           isClosable: true,
@@ -861,7 +872,7 @@ function UsersManagement() {
 
             {/* Estadísticas con Glassmorphism */}
             {stats && (
-              <SimpleGrid columns={{ base: 2, md: 4, lg: 6 }} spacing={4}>
+              <SimpleGrid columns={{ base: 2, md: 4, lg: 7 }} spacing={4}>
                 <GlassCard p={4} animation={`${slideInFromLeft} 0.8s ease-out`}>
                     <Stat>
                       <StatLabel>Total</StatLabel>
@@ -878,6 +889,12 @@ function UsersManagement() {
                     <Stat>
                       <StatLabel>Inactivos</StatLabel>
                       <StatNumber color="gray.500">{stats.inactive}</StatNumber>
+                    </Stat>
+                </GlassCard>
+                <GlassCard p={4} animation={`${slideInFromLeft} 0.9s ease-out`}>
+                    <Stat>
+                      <StatLabel>Bloqueados</StatLabel>
+                      <StatNumber color="red.500">{stats.blocked || 0}</StatNumber>
                     </Stat>
                 </GlassCard>
                 <GlassCard p={4} animation={`${slideInFromLeft} 0.9s ease-out`}>
@@ -936,9 +953,21 @@ function UsersManagement() {
                     <option value="all">Todos los estados</option>
                     <option value="active">Activos</option>
                     <option value="inactive">Inactivos</option>
-                    <option value="locked">Bloqueados</option>
+                    <option value="blocked">Eliminados (Bloqueados)</option>
+                    <option value="locked">Cuenta Bloqueada</option>
                     <option value="needPasswordChange">Requieren cambio contraseña</option>
                   </Select>
+
+                  <Tooltip label="Mostrar/ocultar usuarios eliminados en el listado principal">
+                    <HStack>
+                      <Switch
+                        isChecked={includeBlocked}
+                        onChange={(e) => setIncludeBlocked(e.target.checked)}
+                        colorScheme="red"
+                      />
+                      <Text fontSize="sm">Mostrar eliminados</Text>
+                    </HStack>
+                  </Tooltip>
 
                   <Spacer />
 
@@ -1039,12 +1068,17 @@ function UsersManagement() {
                             <UserRoleBadge role={user.role} />
                           </Td>
                           <Td>
-                            <Switch
-                              isChecked={user.isActive}
-                              onChange={() => handleToggleStatus(user.id, user.isActive)}
-                              colorScheme="green"
-                              size="md"
-                            />
+                            <VStack align="start" spacing={1}>
+                              <UserStatusBadge status={user.status} isActive={user.isActive} isLocked={user.isLocked} />
+                              {user.status !== 'BLOCKED' && (
+                                <Switch
+                                  isChecked={user.isActive}
+                                  onChange={() => handleToggleStatus(user.id, user.isActive)}
+                                  colorScheme="green"
+                                  size="sm"
+                                />
+                              )}
+                            </VStack>
                           </Td>
                           <Td>
                             <LastActivityIndicator
@@ -1092,12 +1126,18 @@ function UsersManagement() {
                                   Resetear contraseña
                                 </MenuItem>
                                 <MenuDivider />
-                                <MenuItem icon={<FaTrash />} color="red.500" onClick={() => {
-                                  setDeletingUser(user);
-                                  onDeleteOpen();
-                                }}>
-                                  Eliminar
-                                </MenuItem>
+                                {user.status !== 'BLOCKED' ? (
+                                  <MenuItem icon={<FaTrash />} color="red.500" onClick={() => {
+                                    setDeletingUser(user);
+                                    onDeleteOpen();
+                                  }}>
+                                    Eliminar (Bloquear)
+                                  </MenuItem>
+                                ) : (
+                                  <MenuItem icon={<FaUnlock />} color="green.500" onClick={() => handleToggleStatus(user.id, true)}>
+                                    Restaurar Usuario
+                                  </MenuItem>
+                                )}
                               </MenuList>
                             </Menu>
                           </Td>
@@ -1270,13 +1310,17 @@ function UsersManagement() {
             <AlertDialogOverlay>
               <AlertDialogContent>
                 <AlertDialogHeader fontSize="lg" fontWeight="bold">
-                  Desactivar Usuario
+                  Eliminar Usuario
                 </AlertDialogHeader>
 
                 <AlertDialogBody>
-                  ¿Estás seguro de que deseas desactivar al usuario <strong>{deletingUser?.name}</strong>?
+                  ¿Estás seguro de que deseas eliminar al usuario <strong>{deletingUser?.name}</strong>?
                   <br /><br />
-                  Esta acción desactivará la cuenta y cerrará todas las sesiones activas del usuario.
+                  Esta acción marcará al usuario como BLOQUEADO y no se mostrará en el listado a menos que se active el filtro correspondiente. Todas las sesiones activas serán cerradas.
+                  <br /><br />
+                  <Text fontSize="sm" color="gray.500">
+                    Nota: Si solo deseas desactivar temporalmente al usuario, usa el switch de activación en su lugar.
+                  </Text>
                 </AlertDialogBody>
 
                 <AlertDialogFooter>
@@ -1284,7 +1328,7 @@ function UsersManagement() {
                     Cancelar
                   </Button>
                   <Button colorScheme="red" onClick={handleDelete} ml={3}>
-                    Desactivar
+                    Eliminar (Bloquear)
                   </Button>
                 </AlertDialogFooter>
               </AlertDialogContent>

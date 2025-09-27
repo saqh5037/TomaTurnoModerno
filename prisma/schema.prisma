@@ -17,6 +17,7 @@ model User {
   email             String?
   failedAttempts    Int           @default(0)
   isActive          Boolean       @default(true)
+  status            UserStatus    @default(ACTIVE)
   lastLogin         DateTime?
   lockedUntil       DateTime?
   passwordChangedAt DateTime?
@@ -27,8 +28,15 @@ model User {
   turnRequests      TurnRequest[] @relation("UserTurnRequests")
 
   @@index([isActive])
+  @@index([status])
   @@index([lastLogin])
   @@index([role])
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  BLOCKED
 }
 
 model TurnRequest {

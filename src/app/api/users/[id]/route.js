@@ -394,7 +394,7 @@ export async function PATCH(request, { params }) {
   }
 }
 
-// DELETE - Eliminación lógica (soft delete)
+// DELETE - Eliminación lógica (marcar como BLOQUEADO)
 export async function DELETE(request, { params }) {
   try {
     const { id } = params;
@@ -430,7 +430,10 @@ export async function DELETE(request, { params }) {
     // Prevenir eliminar el último admin
     if (currentUser.role === 'Administrador') {
       const adminCount = await prisma.user.count({
-        where: { role: 'admin', isActive: true }
+        where: {
+          role: 'admin',
+          status: { not: 'BLOCKED' }
+        }
       });
 
       if (adminCount <= 1) {
@@ -441,17 +444,19 @@ export async function DELETE(request, { params }) {
       }
     }
 
-    // Eliminación lógica (desactivar usuario)
+    // Eliminación lógica (marcar usuario como BLOQUEADO)
     const deletedUser = await prisma.user.update({
       where: { id: parseInt(id) },
       data: {
+        status: 'BLOCKED',
         isActive: false,
         updatedAt: new Date()
       },
       select: {
         id: true,
         username: true,
-        name: true
+        name: true,
+        status: true
       }
     });
 
@@ -471,9 +476,11 @@ export async function DELETE(request, { params }) {
         oldValue: {
           username: currentUser.username,
           name: currentUser.name,
-          isActive: true
+          status: currentUser.status,
+          isActive: currentUser.isActive
         },
         newValue: {
+          status: 'BLOCKED',
           isActive: false
         },
         ipAddress: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip')
@@ -483,7 +490,7 @@ export async function DELETE(request, { params }) {
     return NextResponse.json({
       success: true,
       data: deletedUser,
-      message: "Usuario desactivado exitosamente"
+      message: "Usuario bloqueado exitosamente"
     });
 
   } catch (error) {

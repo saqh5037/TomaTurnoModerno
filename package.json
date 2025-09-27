@@ -1,6 +1,6 @@
 {
   "name": "toma-turno",
-  "version": "2.5.0",
+  "version": "2.6.0",
   "private": true,
   "description": "Sistema de gestión de turnos médicos para INER",
   "author": "Samuel Quiroz <saqh5037@gmail.com>",
