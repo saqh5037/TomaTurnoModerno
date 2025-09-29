@@ -145,6 +145,7 @@ export async function GET(request) {
       active: users.filter(u => u.status === 'ACTIVE').length,
       inactive: users.filter(u => u.status === 'INACTIVE').length,
       blocked: users.filter(u => u.status === 'BLOCKED').length,
+      locked: enrichedUsers.filter(u => u.isLocked && u.status !== 'BLOCKED').length,
       byRole: {
         admin: users.filter(u => u.role === 'Administrador').length,
         supervisor: users.filter(u => u.role === 'supervisor').length,

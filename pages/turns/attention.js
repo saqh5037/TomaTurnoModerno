@@ -839,36 +839,6 @@ export default function Attention() {
             Saltar al siguiente
           </Button>
         </Tooltip>
-
-        <Tooltip label="Toma Finalizada (F)" placement="top">
-          <Button
-            colorScheme="green"
-            leftIcon={<FaCheckCircle size="20" />}
-            onClick={() => onComplete(patient.id)}
-            isDisabled={isProcessing}
-            size="lg"
-            h={{ base: "50px", md: "60px" }}
-            w={{ base: "full", sm: "auto" }}
-            fontSize={{ base: "md", md: "lg" }}
-          >
-            Paciente atendido
-          </Button>
-        </Tooltip>
-
-        <Tooltip label="Modo emergencia (Ctrl+E)" placement="top">
-          <Button
-            variant="solid"
-            colorScheme="orange"
-            leftIcon={<FaExclamationTriangle size="20" />}
-            onClick={onEmergency}
-            size="lg"
-            h={{ base: "50px", md: "60px" }}
-            w={{ base: "full", sm: "auto" }}
-            fontSize={{ base: "md", md: "lg" }}
-          >
-            Emergencia
-          </Button>
-        </Tooltip>
       </Stack>
     );
   };

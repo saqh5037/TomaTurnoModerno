@@ -7,7 +7,7 @@ const prisma = new PrismaClient();
 // PATCH - Activar/desactivar usuario
 export async function PATCH(request, { params }) {
   try {
-    const { id } = params;
+    const { id } = await params;
 
     // Verificar autorización
     const authHeader = request.headers.get("authorization");

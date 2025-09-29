@@ -2,8 +2,8 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-**Last Updated**: September 27, 2025
-**Latest Release**: v2.5.0-prod250925
+**Last Updated**: September 29, 2025
+**Latest Release**: v2.6.0
 **Status**: Production Ready - Active deployment at INER Medical Institute
 
 ## 🚀 Essential Commands
@@ -94,12 +94,13 @@ const turn = await prisma.turnRequest.findUnique({
   }
 });
 
-// Key database models
-// User: Staff with roles (Admin, Flebotomista)
-// TurnRequest: Patient appointments with status tracking
-// Cubicle: Physical locations (GENERAL/SPECIAL types, ACTIVE/INACTIVE status)
-// Session: JWT session management with expiry tracking
-// AuditLog: Complete action tracking for compliance
+// Key database models and enums
+// User: Staff with roles (Admin, Flebotomista), UserStatus enum (ACTIVE, INACTIVE, BLOCKED)
+// TurnRequest: Patient appointments with status tracking and timestamps (createdAt, attendedAt, calledAt, finishedAt)
+// Cubicle: Physical locations with CubicleType enum (GENERAL, SPECIAL) and ACTIVE/INACTIVE status
+// Session: JWT session management with expiry tracking and refresh tokens
+// AuditLog: Complete action tracking for compliance with oldValue/newValue JSON fields
+// SatisfactionSurvey: Patient feedback with rating and comment
 ```
 
 ### Frontend Architecture
@@ -122,13 +123,14 @@ const turn = await prisma.turnRequest.findUnique({
 ```
 
 ### Security Considerations
-- Rate limiting: 100 req/min per IP in middleware.ts
-- Security headers configured in middleware
-- Account lockout after 5 failed login attempts (30-minute lock)
-- Session timeout after 20 minutes of inactivity
-- All user actions logged in AuditLog table
+- Rate limiting: 100 req/min per IP in middleware.ts (applies to all /api/* routes)
+- Security headers configured in middleware (X-Content-Type-Options, X-Frame-Options, X-XSS-Protection, Referrer-Policy)
+- Account lockout after 5 failed login attempts (30-minute lock via User.lockedUntil field)
+- Session timeout after 20 minutes of inactivity (tracked via Session.lastActivity)
+- User status system: ACTIVE (can login), INACTIVE (soft disabled), BLOCKED (hard disabled)
+- All user actions logged in AuditLog table with oldValue/newValue JSON tracking
 - Cross-tab synchronization via localStorage events
-- JWT tokens: 8-hour main token, 30-day refresh token
+- JWT tokens: 8-hour main token, 30-day refresh token stored in Session table
 
 ## 🔑 Critical Workflows & Features
 
@@ -143,7 +145,12 @@ Cubicle User → Call Patient → Update Status → Broadcast via SSE → TV Dis
 ```
 
 ### 3. Statistics Generation
-Real-time statistics calculated from TurnRequest table with status filtering and date ranges.
+Real-time statistics calculated from TurnRequest table with status filtering and date ranges. Key APIs:
+- `/api/statistics/daily` - Daily patient counts with date range filtering
+- `/api/statistics/monthly` - Monthly aggregated statistics by year
+- `/api/statistics/phlebotomists` - Per-phlebotomist performance metrics
+- `/api/statistics/average-time` - Average attention time calculations
+- `/api/statistics/dashboard` - Overview metrics for admin dashboard
 
 ### 4. Documentation System
 Complete CMS in `/api/docs` with modules, events, bookmarks, and feedback tracking.
@@ -188,17 +195,34 @@ The system uses PM2 with automatic restarts and memory limits:
 ## 📁 Project Structure
 
 ```
-src/app/api/            # API routes (App Router)
+src/app/api/            # API routes (App Router) - all backend logic
+  ├── attention/        # Patient attention flow APIs
+  ├── auth/            # Authentication (login, refresh, verify)
+  ├── cubicles/        # Cubicle management
+  ├── docs/            # Documentation system
+  ├── profile/         # User profile management
+  ├── queue/           # Queue management (call, list, update)
+  ├── statistics/      # Statistics and analytics
+  ├── turns/           # Turn creation and management
+  └── users/           # User CRUD and status management
 pages/                  # Frontend pages (Pages Router)
-components/             # React components
-contexts/              # React Context providers
-lib/                   # Utilities and helpers
+  ├── api/            # Legacy API routes (being migrated)
+  ├── cubicles/       # Cubicle management UI
+  ├── docs/           # Documentation system UI
+  ├── statistics/     # Statistics dashboards
+  ├── turns/          # Turn management UI
+  └── users/          # User management UI
+components/             # React components (Chakra UI + Tailwind)
+contexts/              # React Context providers (AuthContext is primary)
+lib/                   # Utilities, helpers, and prisma client
 prisma/
-  ├── schema.prisma    # Database schema
+  ├── schema.prisma    # Database schema (User, TurnRequest, Cubicle, Session, AuditLog, SatisfactionSurvey)
   └── migrations/      # Database migrations
-scripts/               # Utility scripts
+scripts/               # Utility scripts (seedFullYearData.js, testStatistics.js, seedDocumentationData.js)
 tests/                 # Test files (limited coverage)
 public/                # Static assets
+ecosystem.config.js    # PM2 configuration (fork mode, 1GB limit, 3AM restart)
+middleware.ts          # Rate limiting and security headers
 ```
 
 ## 🔧 Development Patterns
@@ -233,14 +257,17 @@ try {
 ```
 
 ### Audit Logging
-All sensitive operations must create audit log entries:
+All sensitive operations must create audit log entries with oldValue/newValue tracking:
 ```javascript
 await prisma.auditLog.create({
   data: {
     userId,
-    action: 'TURN_CREATED',
-    details: JSON.stringify({ turnId, patientName }),
-    ipAddress: request.headers.get('x-forwarded-for')
+    action: 'USER_STATUS_CHANGED', // Action types: USER_CREATED, USER_UPDATED, USER_STATUS_CHANGED, TURN_CREATED, etc.
+    entity: 'User',               // Entity type being modified
+    entityId: targetUserId,        // ID of the entity
+    oldValue: { status: 'ACTIVE' }, // Previous state (JSON)
+    newValue: { status: 'BLOCKED' }, // New state (JSON)
+    ipAddress: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip')
   }
 });
 ```
@@ -291,10 +318,11 @@ node scripts/seedFullYearData.js
 
 ### Medical Context
 This is a **medical appointment system** actively used at INER (Instituto Nacional de Enfermedades Respiratorias). Changes should consider:
-- Patient flow and wait times
-- Medical staff workflows
-- Compliance and audit requirements
-- System availability during hospital hours (7 AM - 7 PM)
+- Patient flow and wait times (tracked via TurnRequest timestamps: createdAt → calledAt → attendedAt → finishedAt)
+- Medical staff workflows (Flebotomista role for phlebotomists, Admin role for management)
+- Compliance and audit requirements (all actions logged in AuditLog with oldValue/newValue)
+- System availability during hospital hours (7 AM - 7 PM, daily restart at 3 AM via PM2 cron)
+- User status management: ACTIVE users can work normally, INACTIVE users are soft-disabled, BLOCKED users are hard-disabled
 
 ### Performance Considerations
 - Database queries should use proper indexing (already configured)

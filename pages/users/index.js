@@ -145,15 +145,15 @@ const UserStatusBadge = ({ status, isActive, isLocked }) => {
     return (
       <Badge colorScheme="red" variant="solid">
         <FaLock style={{ marginRight: '4px' }} />
-        Bloqueado
+        Eliminado
       </Badge>
     );
   }
   if (isLocked) {
     return (
       <Badge colorScheme="orange" variant="solid">
-        <FaLock style={{ marginRight: '4px' }} />
-        Cuenta Bloqueada
+        <FaExclamationTriangle style={{ marginRight: '4px' }} />
+        Bloqueada por seguridad
       </Badge>
     );
   }
@@ -872,7 +872,7 @@ function UsersManagement() {
 
             {/* Estadísticas con Glassmorphism */}
             {stats && (
-              <SimpleGrid columns={{ base: 2, md: 4, lg: 7 }} spacing={4}>
+              <SimpleGrid columns={{ base: 2, md: 4, lg: 8 }} spacing={4}>
                 <GlassCard p={4} animation={`${slideInFromLeft} 0.8s ease-out`}>
                     <Stat>
                       <StatLabel>Total</StatLabel>
@@ -893,26 +893,32 @@ function UsersManagement() {
                 </GlassCard>
                 <GlassCard p={4} animation={`${slideInFromLeft} 0.9s ease-out`}>
                     <Stat>
-                      <StatLabel>Bloqueados</StatLabel>
+                      <StatLabel>Eliminados</StatLabel>
                       <StatNumber color="red.500">{stats.blocked || 0}</StatNumber>
                     </Stat>
                 </GlassCard>
-                <GlassCard p={4} animation={`${slideInFromLeft} 0.9s ease-out`}>
+                <GlassCard p={4} animation={`${slideInFromLeft} 0.95s ease-out`}>
+                    <Stat>
+                      <StatLabel>Bloq. Seguridad</StatLabel>
+                      <StatNumber color="orange.500">{stats.locked || 0}</StatNumber>
+                    </Stat>
+                </GlassCard>
+                <GlassCard p={4} animation={`${slideInFromLeft} 1.0s ease-out`}>
                     <Stat>
                       <StatLabel>Administradores</StatLabel>
                       <StatNumber color="purple.500">{stats.byRole?.admin || 0}</StatNumber>
                     </Stat>
                 </GlassCard>
-                <GlassCard p={4} animation={`${slideInFromLeft} 0.9s ease-out`}>
+                <GlassCard p={4} animation={`${slideInFromLeft} 1.05s ease-out`}>
                     <Stat>
                       <StatLabel>Flebotomistas</StatLabel>
                       <StatNumber color="teal.500">{stats.byRole?.flebotomista || 0}</StatNumber>
                     </Stat>
                 </GlassCard>
-                <GlassCard p={4} animation={`${slideInFromLeft} 0.9s ease-out`}>
+                <GlassCard p={4} animation={`${slideInFromLeft} 1.1s ease-out`}>
                     <Stat>
                       <StatLabel>Cambio Contraseña</StatLabel>
-                      <StatNumber color="orange.500">{stats.needPasswordChange || 0}</StatNumber>
+                      <StatNumber color="yellow.600">{stats.needPasswordChange || 0}</StatNumber>
                     </Stat>
                 </GlassCard>
               </SimpleGrid>
@@ -953,19 +959,19 @@ function UsersManagement() {
                     <option value="all">Todos los estados</option>
                     <option value="active">Activos</option>
                     <option value="inactive">Inactivos</option>
-                    <option value="blocked">Eliminados (Bloqueados)</option>
-                    <option value="locked">Cuenta Bloqueada</option>
+                    <option value="blocked">Eliminados</option>
+                    <option value="locked">Bloqueada por seguridad</option>
                     <option value="needPasswordChange">Requieren cambio contraseña</option>
                   </Select>
 
-                  <Tooltip label="Mostrar/ocultar usuarios eliminados en el listado principal">
+                  <Tooltip label="Incluir usuarios eliminados en el listado (estado BLOCKED)">
                     <HStack>
                       <Switch
                         isChecked={includeBlocked}
                         onChange={(e) => setIncludeBlocked(e.target.checked)}
                         colorScheme="red"
                       />
-                      <Text fontSize="sm">Mostrar eliminados</Text>
+                      <Text fontSize="sm">Incluir eliminados</Text>
                     </HStack>
                   </Tooltip>
 
@@ -1131,7 +1137,7 @@ function UsersManagement() {
                                     setDeletingUser(user);
                                     onDeleteOpen();
                                   }}>
-                                    Eliminar (Bloquear)
+                                    Eliminar Usuario
                                   </MenuItem>
                                 ) : (
                                   <MenuItem icon={<FaUnlock />} color="green.500" onClick={() => handleToggleStatus(user.id, true)}>
@@ -1316,10 +1322,18 @@ function UsersManagement() {
                 <AlertDialogBody>
                   ¿Estás seguro de que deseas eliminar al usuario <strong>{deletingUser?.name}</strong>?
                   <br /><br />
-                  Esta acción marcará al usuario como BLOQUEADO y no se mostrará en el listado a menos que se active el filtro correspondiente. Todas las sesiones activas serán cerradas.
-                  <br /><br />
-                  <Text fontSize="sm" color="gray.500">
-                    Nota: Si solo deseas desactivar temporalmente al usuario, usa el switch de activación en su lugar.
+                  <Text color="red.600" fontWeight="medium">
+                    Esta acción marcará al usuario como "Eliminado" (estado BLOCKED) y:
+                  </Text>
+                  <Box as="ul" pl={5} mt={2}>
+                    <li>No se mostrará en el listado por defecto</li>
+                    <li>No podrá iniciar sesión</li>
+                    <li>Todas sus sesiones activas serán cerradas</li>
+                    <li>Puede ser restaurado posteriormente si es necesario</li>
+                  </Box>
+                  <br />
+                  <Text fontSize="sm" color="orange.500" fontWeight="medium">
+                    💡 Tip: Si solo necesitas desactivar temporalmente al usuario, usa el switch de "Activo/Inactivo" en su lugar.
                   </Text>
                 </AlertDialogBody>
 
@@ -1328,7 +1342,7 @@ function UsersManagement() {
                     Cancelar
                   </Button>
                   <Button colorScheme="red" onClick={handleDelete} ml={3}>
-                    Eliminar (Bloquear)
+                    Eliminar Usuario
                   </Button>
                 </AlertDialogFooter>
               </AlertDialogContent>

@@ -29,7 +29,7 @@ function generateRandomPassword() {
 // POST - Generar nueva contraseña temporal
 export async function POST(request, { params }) {
   try {
-    const { id } = params;
+    const { id } = await params;
 
     // Verificar autorización
     const authHeader = request.headers.get("authorization");

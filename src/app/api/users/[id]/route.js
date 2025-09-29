@@ -42,7 +42,7 @@ async function verifyAdmin(request) {
 // GET - Obtener usuario específico con historial
 export async function GET(request, { params }) {
   try {
-    const { id } = params;
+    const { id } = await params;
     const authCheck = await verifyAdmin(request);
 
     if (authCheck.error) {
@@ -127,7 +127,7 @@ export async function GET(request, { params }) {
 // PUT - Actualizar usuario completo
 export async function PUT(request, { params }) {
   try {
-    const { id } = params;
+    const { id } = await params;
     const authCheck = await verifyAdmin(request);
 
     if (authCheck.error) {
@@ -290,7 +290,7 @@ export async function PUT(request, { params }) {
 // PATCH - Actualizar campos específicos
 export async function PATCH(request, { params }) {
   try {
-    const { id } = params;
+    const { id } = await params;
     const authCheck = await verifyAdmin(request);
 
     if (authCheck.error) {
@@ -397,7 +397,7 @@ export async function PATCH(request, { params }) {
 // DELETE - Eliminación lógica (marcar como BLOQUEADO)
 export async function DELETE(request, { params }) {
   try {
-    const { id } = params;
+    const { id } = await params;
     const authCheck = await verifyAdmin(request);
 
     if (authCheck.error) {
