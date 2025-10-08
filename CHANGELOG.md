@@ -5,6 +5,58 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.6.1] - 2025-10-07
+
+### 🎨 Agregado
+- **Rediseño del Panel de Atención**: Nueva distribución visual más clara y profesional
+  - Número de turno reubicado en esquina superior izquierda con tamaño reducido
+  - Badge "EN ATENCIÓN EN [N]" centrado en la parte superior
+  - Nombre del paciente con mayor prominencia (fuente aumentada)
+  - Botones rediseñados con nuevos colores corporativos
+
+### ✅ Mejorado
+- **Permisos de Finalización de Toma**: Botón "Toma Finalizada" ahora disponible para todos los roles
+  - Permite a Flebotomistas finalizar tomas sin requerir Supervisor
+  - Mayor autonomía operacional para el personal médico
+  - Reducción de tiempos de espera en el flujo de trabajo
+
+### 🔐 Agregado
+- **Sistema de Ocupación de Cubículos**: Prevención de conflictos de asignación
+  - Tracking en tiempo real de cubículos ocupados
+  - Validación de disponibilidad al seleccionar cubículo
+  - Auto-actualización cada 5 segundos del estado
+  - Indicadores visuales de ocupación (rojo, itálico)
+  - Muestra nombre del usuario ocupante
+  - Nueva API `/api/session/update-cubicle` para sincronización
+  - Campo `selectedCubicleId` en modelo Session
+
+### 🎨 Mejorado
+- **Diseño de Botones en Panel de Atención**:
+  - Botón "Regresar a Cola": Cambio de rojo a azul cyan (#2ccbd2), ancho optimizado 280-320px
+  - Botón "Cambiar a Especial": Cambio de naranja a morado (#b45ad9), ancho optimizado 280-320px
+  - Mejora en la jerarquía visual y consistencia del diseño
+
+### 🐛 Corregido
+- **Campo `isActive` en API de cubículos**: Ahora incluido en respuesta de `/api/cubicles/status`
+- **Type coercion en selección de cubículos**: Conversión correcta de string a number
+- **Cliente Prisma regenerado**: Sincronización con campo `selectedCubicleId` agregado al schema
+- **Lógica de sesión más reciente**: Solo considera última sesión activa por usuario para ocupación
+
+### 📝 Archivos Modificados
+- `/pages/turns/attention.js` - Rediseño visual y permisos
+- `/pages/select-cubicle.js` - Sistema de ocupación y validación
+- `/src/app/api/cubicles/status/route.js` - Lógica de tracking
+- `/src/app/api/session/update-cubicle/route.js` - Endpoint de actualización (previamente creado)
+- `/prisma/schema.prisma` - Campo `selectedCubicleId` (previamente agregado)
+
+### 🎯 Impacto
+- **Mejora de UX**: Panel más claro y ordenado visualmente
+- **Prevención de conflictos**: Evita que múltiples usuarios seleccionen el mismo cubículo
+- **Mayor eficiencia**: Flebotomistas con autonomía completa para finalizar tomas
+- **Retrocompatibilidad**: Sin breaking changes, actualización transparente
+
+---
+
 ## [2.6.0] - 2025-09-27
 
 ### ✨ Agregado

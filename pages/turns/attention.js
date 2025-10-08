@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef, memo, useMemo, useLayoutEffect } from "react";
 import {
   Box,
   Heading,
@@ -18,6 +18,14 @@ import {
   FormLabel,
   Container,
   Tabs,
+  useDisclosure,
+  Modal,
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+  ModalCloseButton,
   TabList,
   TabPanels,
   Tab,
@@ -29,7 +37,6 @@ import {
   DrawerOverlay,
   DrawerContent,
   DrawerCloseButton,
-  useDisclosure,
   Stat,
   StatLabel,
   StatNumber,
@@ -58,6 +65,7 @@ import {
   FaWheelchair,
   FaUserMd,
   FaClock,
+  FaHourglass,
   FaHospital,
   FaBell,
   FaCheckCircle,
@@ -66,7 +74,8 @@ import {
   FaForward,
   FaExclamationTriangle,
   FaBars,
-  FaChartLine
+  FaChartLine,
+  FaExchangeAlt
 } from "react-icons/fa";
 import { useRouter } from 'next/router';
 import { modernTheme, fadeInUp, slideInFromLeft, slideInFromRight, GlassCard, ModernContainer, pulseGlow } from '../../components/theme/ModernTheme';
@@ -99,9 +108,9 @@ export default function Attention() {
 
   // Estados existentes
   const [userId, setUserId] = useState(null);
+  const [userRole, setUserRole] = useState(null);
   const [pendingTurns, setPendingTurns] = useState([]);
   const [inProgressTurns, setInProgressTurns] = useState([]);
-  const [currentTime, setCurrentTime] = useState(null);
   const [mounted, setMounted] = useState(false);
   const [selectedCubicle, setSelectedCubicle] = useState("");
   const [cubicles, setCubicles] = useState([]);
@@ -122,6 +131,14 @@ export default function Attention() {
   const [isMobile, setIsMobile] = useState(false);
   const [sidePanelTabIndex, setSidePanelTabIndex] = useState(0);
   const [activePatient, setActivePatient] = useState(null); // Paciente actualmente en atención
+
+  // Estado para modal de confirmación de toma diferida
+  const { isOpen: isConfirmDeferOpen, onOpen: onConfirmDeferOpen, onClose: onConfirmDeferClose } = useDisclosure();
+  const [patientToDefer, setPatientToDefer] = useState(null);
+
+  // Estado para modal de cambio de prioridad
+  const { isOpen: isChangePriorityOpen, onOpen: onChangePriorityOpen, onClose: onChangePriorityClose } = useDisclosure();
+  const [patientToChangePriority, setPatientToChangePriority] = useState(null);
 
   const toast = useToast();
   const { isOpen, onOpen, onClose } = useDisclosure();
@@ -171,44 +188,50 @@ export default function Attention() {
   // Efecto para manejar la hidratación
   useEffect(() => {
     setMounted(true);
-    setCurrentTime(new Date());
-    
+
     // Obtener usuario del token
     const token = localStorage.getItem("token");
     if (token) {
       try {
         const payload = JSON.parse(atob(token.split(".")[1]));
         setUserId(payload.userId);
+        setUserRole(payload.role);
       } catch (error) {
         console.error("Error al decodificar token:", error);
       }
     }
 
-    // Obtener cubículo seleccionado
+    // Obtener cubículo seleccionado y sincronizar con backend
     const savedCubicle = localStorage.getItem("selectedCubicle");
-    if (savedCubicle) {
-      setSelectedCubicle(savedCubicle);
+    if (savedCubicle && token) {
+      setSelectedCubicle(parseInt(savedCubicle)); // Convert to number for Select
+
+      // Sincronizar con backend
+      fetch("/api/session/update-cubicle", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ cubicleId: parseInt(savedCubicle) })
+      }).catch(error => {
+        console.error("Error al sincronizar cubículo:", error);
+      });
     }
   }, []);
 
-  // Actualizar hora cada segundo
-  useEffect(() => {
-    if (mounted) {
-      const timeInterval = setInterval(() => {
-        setCurrentTime(new Date());
-      }, 1000);
-      return () => clearInterval(timeInterval);
-    }
-  }, [mounted]);
+  // El reloj ahora está en un componente separado (Clock) para evitar re-renders
 
-  // Cargar cubículos (solo activos para atención)
+  // Cargar cubículos con estado de ocupación
   useEffect(() => {
     const fetchCubicles = async () => {
       try {
-        const response = await fetch("/api/cubicles?activeOnly=true");
+        const response = await fetch("/api/cubicles/status");
         if (response.ok) {
-          const data = await response.json();
-          setCubicles(data);
+          const result = await response.json();
+          if (result.success) {
+            setCubicles(result.data);
+          }
         }
       } catch (error) {
         console.error("Error al cargar cubículos:", error);
@@ -217,13 +240,18 @@ export default function Attention() {
 
     if (mounted) {
       fetchCubicles();
+      // Actualizar estado de cubículos cada 5 segundos para detectar ocupación rápidamente
+      const intervalId = setInterval(fetchCubicles, 5000);
+      return () => clearInterval(intervalId);
     }
   }, [mounted]);
 
   // Función refactorizada para cargar turnos
   const fetchTurns = useCallback(async () => {
     try {
-      const response = await fetch("/api/attention/list");
+      // Incluir userId en la petición para obtener sugerencias personalizadas
+      const url = userId ? `/api/attention/list?userId=${userId}` : "/api/attention/list";
+      const response = await fetch(url);
       if (!response.ok) throw new Error("Error al cargar los turnos.");
       const data = await response.json();
       setPendingTurns(data.pendingTurns || []);
@@ -239,7 +267,16 @@ export default function Attention() {
         position: "top",
       });
     }
-  }, [toast]);
+  }, [toast, userId]);
+
+  // Función para asignar sugerencias automáticamente
+  const assignSuggestions = useCallback(async () => {
+    try {
+      await fetch("/api/queue/assignSuggestions", { method: "POST" });
+    } catch (error) {
+      console.error("Error al asignar sugerencias:", error);
+    }
+  }, []);
 
   // Cargar turnos con polling
   useEffect(() => {
@@ -250,12 +287,20 @@ export default function Attention() {
     }
   }, [mounted, fetchTurns]);
 
+  // Asignar sugerencias automáticamente cada 15 segundos
+  useEffect(() => {
+    if (mounted && userId) {
+      assignSuggestions(); // Llamada inicial
+      const intervalId = setInterval(assignSuggestions, 15000);
+      return () => clearInterval(intervalId);
+    }
+  }, [mounted, userId, assignSuggestions]);
+
   const formatTime = (date) => {
-    if (!date || !mounted) return "--:--:--";
+    if (!date || !mounted) return "--:--";
     return date.toLocaleTimeString('es-ES', {
       hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit'
+      minute: '2-digit'
     });
   };
 
@@ -274,9 +319,79 @@ export default function Attention() {
     return name.split(' ').map(word => word[0]).join('').substring(0, 2).toUpperCase();
   };
 
-  const handleCubicleChange = (value) => {
-    setSelectedCubicle(value);
+  const handleCubicleChange = async (value) => {
+    // Si ya hay un cubículo seleccionado y el usuario NO es admin/supervisor, no permitir el cambio
+    if (selectedCubicle && !isSupervisorOrAdmin()) {
+      toast({
+        title: "Cubículo bloqueado",
+        description: "Para cambiar de cubículo debes cerrar sesión y volver a ingresar. Esto garantiza la integridad de las estadísticas.",
+        status: "warning",
+        duration: 6000,
+        isClosable: true,
+        position: "top",
+      });
+      return;
+    }
+
+    // Verificar si el cubículo está ocupado por otro usuario
+    const cubicle = cubicles.find(c => c.id === parseInt(value));
+    if (cubicle && cubicle.isOccupied) {
+      // Si el cubículo está ocupado por el usuario actual, permitir selección
+      if (cubicle.occupiedBy && cubicle.occupiedBy.userId === userId) {
+        // Es el mismo usuario, permitir
+      } else {
+        // Es otro usuario, no permitir
+        toast({
+          title: "Cubículo ocupado",
+          description: `${cubicle.name} está siendo utilizado por ${cubicle.occupiedBy?.userName || 'otro usuario'}.`,
+          status: "error",
+          duration: 5000,
+          isClosable: true,
+          position: "top",
+        });
+        return;
+      }
+    }
+
+    // Actualizar el cubículo en la sesión del backend
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch("/api/session/update-cubicle", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ cubicleId: parseInt(value) })
+      });
+
+      if (!response.ok) {
+        throw new Error("Error al actualizar cubículo en sesión");
+      }
+    } catch (error) {
+      console.error("Error al actualizar cubículo:", error);
+      // Continuar aunque falle, se guardará en localStorage
+    }
+
+    const cubicleId = parseInt(value);
+    setSelectedCubicle(cubicleId); // Store as number for Select
     localStorage.setItem("selectedCubicle", value);
+
+    toast({
+      title: "Cubículo seleccionado",
+      description: `Ahora estás trabajando en ${cubicle?.name || 'el cubículo seleccionado'}.`,
+      status: "success",
+      duration: 3000,
+      isClosable: true,
+      position: "top",
+    });
+  };
+
+  // Función para verificar si el usuario es supervisor o administrador
+  const isSupervisorOrAdmin = () => {
+    if (!userRole) return false;
+    const role = userRole.toLowerCase();
+    return role === 'supervisor' || role === 'admin' || role === 'administrador';
   };
 
   // Nueva función para saltar turno (sin modificar orden en BD)
@@ -284,20 +399,37 @@ export default function Attention() {
     if (!turnId) return;
 
     // Agregar el turno a la lista de saltados para este flebotomista
-    setSkippedTurns(prev => new Set(prev).add(turnId));
+    const newSkippedTurns = new Set(skippedTurns).add(turnId);
+
+    // Verificar si hemos saltado todos los turnos pendientes
+    const availableTurnsAfterSkip = pendingTurns.filter(turn => !newSkippedTurns.has(turn.id));
+
+    if (availableTurnsAfterSkip.length === 0 && pendingTurns.length > 0) {
+      // Si ya saltamos todos, limpiar la lista y volver al primero
+      setSkippedTurns(new Set());
+      toast({
+        title: "Ciclo completado",
+        description: "Volviendo al primer paciente",
+        status: "info",
+        duration: 2000,
+        position: "top",
+      });
+    } else {
+      // Si aún hay pacientes disponibles, agregar a saltados
+      setSkippedTurns(newSkippedTurns);
+      toast({
+        title: "Turno saltado",
+        description: "Mostrando siguiente paciente disponible",
+        status: "info",
+        duration: 2000,
+        position: "top",
+      });
+    }
 
     // Limpiar paciente activo si estaba activo
     if (activePatient && activePatient.id === turnId) {
       setActivePatient(null);
     }
-
-    toast({
-      title: "Turno saltado",
-      description: "Mostrando siguiente paciente disponible",
-      status: "info",
-      duration: 2000,
-      position: "top",
-    });
   };
 
   // Nueva función para modo emergencia
@@ -597,6 +729,153 @@ export default function Attention() {
     }
   };
 
+  // Función para abrir modal de confirmación
+  const handleDeferTurn = (turnId) => {
+    if (!turnId) {
+      toast({
+        title: "Atención",
+        description: "Por favor seleccione un paciente.",
+        status: "warning",
+        duration: 3000,
+        isClosable: true,
+        position: "top",
+      });
+      return;
+    }
+    setPatientToDefer(turnId);
+    onConfirmDeferOpen();
+  };
+
+  // Función para ejecutar la toma diferida después de confirmación
+  const confirmDeferTurn = async () => {
+    const turnId = patientToDefer;
+
+    if (!turnId) return;
+
+    // Cerrar modal
+    onConfirmDeferClose();
+
+    // Prevenir clicks duplicados
+    if (processingTurns.has(turnId)) return;
+
+    // Marcar como en proceso
+    setProcessingTurns(prev => new Set(prev).add(turnId));
+
+    try {
+      const response = await fetch("/api/queue/defer", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ turnId }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        toast({
+          title: "✓ Toma diferida",
+          description: "El paciente ha sido regresado a la cola de espera.",
+          status: "success",
+          duration: 3000,
+          isClosable: true,
+          position: "top",
+        });
+
+        // Limpiar paciente activo
+        setActivePatient(null);
+        setPatientToDefer(null);
+
+        // Refrescar listas
+        fetchTurns();
+      } else {
+        throw new Error(data.error || "Error al diferir la toma.");
+      }
+    } catch (error) {
+      console.error("Error al diferir toma:", error);
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo regresar el paciente a la cola.",
+        status: "error",
+        duration: 3000,
+        isClosable: true,
+        position: "top",
+      });
+    } finally {
+      // Limpiar el estado de procesamiento
+      setProcessingTurns(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(turnId);
+        return newSet;
+      });
+    }
+  };
+
+  // Función para abrir modal de cambio de prioridad
+  const handleChangePriority = (patient) => {
+    if (!patient) {
+      toast({
+        title: "Error",
+        description: "No se pudo identificar el paciente",
+        status: "error",
+        duration: 3000,
+        isClosable: true,
+      });
+      return;
+    }
+    setPatientToChangePriority(patient);
+    onChangePriorityOpen();
+  };
+
+  // Función para confirmar cambio de prioridad
+  const confirmChangePriority = async () => {
+    const patient = patientToChangePriority;
+    if (!patient) return;
+
+    // Determinar la nueva prioridad (toggle)
+    const newPriority = patient.tipoAtencion === "Special" ? "General" : "Special";
+
+    onChangePriorityClose();
+
+    try {
+      const response = await fetch("/api/turns/changePriority", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          turnId: patient.id,
+          newPriority: newPriority
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Error al cambiar prioridad");
+      }
+
+      toast({
+        title: "Prioridad cambiada",
+        description: `Paciente ${patient.patientName} ahora es ${newPriority === "Special" ? "ESPECIAL" : "GENERAL"}`,
+        status: "success",
+        duration: 3000,
+        isClosable: true,
+      });
+
+      // Actualizar los datos
+      await fetchTurns();
+
+    } catch (error) {
+      console.error("Error al cambiar prioridad:", error);
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo cambiar la prioridad",
+        status: "error",
+        duration: 4000,
+        isClosable: true,
+      });
+    } finally {
+      setPatientToChangePriority(null);
+    }
+  };
+
   // Atajos de teclado
   useEffect(() => {
     const handleKeyPress = (e) => {
@@ -655,7 +934,7 @@ export default function Attention() {
   };
 
   // Componente CurrentPatientCard con Glassmorphism
-  const CurrentPatientCard = ({ patient, onCall, onComplete, onRepeat, isProcessing, selectedCubicle, isActive }) => {
+  const CurrentPatientCard = ({ patient, onCall, onComplete, onRepeat, onDefer, isProcessing, selectedCubicle, isActive, isSupervisor }) => {
     if (!patient) {
       return (
         <GlassCard
@@ -686,6 +965,35 @@ export default function Attention() {
         position="relative"
         animation={patient.isSpecial ? `${pulse} 3s ease-in-out infinite` : undefined}
       >
+        {/* Número de turno - superior izquierda */}
+        <Text
+          position="absolute"
+          top={4}
+          left={4}
+          fontSize={{ base: "2xl", md: "3xl" }}
+          fontWeight="bold"
+          color="primary.500"
+        >
+          #{patient.assignedTurn}
+        </Text>
+
+        {/* Badge "En atención" - centro superior */}
+        {patient.cubicle && (
+          <Badge
+            position="absolute"
+            top={4}
+            left="50%"
+            transform="translateX(-50%)"
+            colorScheme="blue"
+            fontSize="md"
+            px={3}
+            py={1}
+          >
+            EN ATENCIÓN EN {patient.cubicle.name}
+          </Badge>
+        )}
+
+        {/* Badge Prioritario - superior derecha */}
         {patient.isSpecial && (
           <Badge
             position="absolute"
@@ -697,17 +1005,14 @@ export default function Attention() {
             py={1}
           >
             <FaWheelchair style={{ marginRight: '4px', display: 'inline' }} />
-            Prioritario
+            PRIORITARIO
           </Badge>
         )}
 
         <VStack spacing={{ base: 4, md: 6 }} align="center" h="full" justify="center">
-          <Text fontSize={{ base: "4xl", sm: "5xl", md: "6xl" }} fontWeight="bold" color="primary.500">
-            #{patient.assignedTurn}
-          </Text>
-
-          <Box textAlign="center">
-            <Text fontSize={{ base: "xl", sm: "2xl", md: "3xl" }} fontWeight="semibold" color="gray.800">
+          {/* Nombre del paciente - aumentado tamaño */}
+          <Box textAlign="center" mt={{ base: 8, md: 10 }}>
+            <Text fontSize={{ base: "2xl", sm: "3xl", md: "4xl" }} fontWeight="semibold" color="gray.800">
               {patient.patientName}
             </Text>
             {patient.waitTime && (
@@ -722,7 +1027,7 @@ export default function Attention() {
           {isActive ? (
             // Paciente activo - mostrar botones de repetir y finalizar
             <VStack spacing={4} w="full" align="center">
-              <HStack spacing={4}>
+              <HStack spacing={4} flexWrap="wrap" justify="center">
                 <Button
                   size="lg"
                   h={{ base: "60px", md: "70px" }}
@@ -741,6 +1046,7 @@ export default function Attention() {
                 >
                   Repetir Llamado
                 </Button>
+
                 <Button
                   size="lg"
                   h={{ base: "60px", md: "70px" }}
@@ -760,10 +1066,77 @@ export default function Attention() {
                   Toma Finalizada
                 </Button>
               </HStack>
-              {patient.cubicle && (
-                <Badge colorScheme="blue" fontSize="md" px={3} py={1}>
-                  En atención en {patient.cubicle.name}
-                </Badge>
+
+              {/* ✅ Botón Regresar a cola - aparece siempre que hay "Repetir Llamado" */}
+              {onDefer && (
+                <Button
+                  size="lg"
+                  h={{ base: "60px", md: "70px" }}
+                  w={{ base: "280px", md: "320px" }}
+                  variant="solid"
+                  background="linear-gradient(135deg, #2ccbd2 0%, #26a8ad 100%)"
+                  color="white"
+                  border="3px solid"
+                  borderColor="cyan.600"
+                  leftIcon={<FaHourglass size="24" />}
+                  onClick={() => onDefer(patient.id)}
+                  isLoading={isProcessing}
+                  fontSize={{ base: "lg", md: "xl" }}
+                  fontWeight="bold"
+                  borderRadius="xl"
+                  boxShadow="0 4px 14px 0 rgba(44, 203, 210, 0.5)"
+                  _hover={{
+                    transform: 'translateY(-2px)',
+                    boxShadow: '0 6px 20px 0 rgba(44, 203, 210, 0.6)',
+                    bg: 'linear-gradient(135deg, #26a8ad 0%, #1f8b8f 100%)'
+                  }}
+                  _active={{ transform: 'scale(0.98)' }}
+                >
+                  Regresar a Cola
+                </Button>
+              )}
+
+              {/* ✅ Botón Cambiar Prioridad - solo para supervisores */}
+              {isSupervisor && (
+                <Button
+                  size="lg"
+                  h={{ base: "60px", md: "70px" }}
+                  w={{ base: "280px", md: "320px" }}
+                  variant="solid"
+                  background={patient.tipoAtencion === "Special"
+                    ? "linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)"
+                    : "linear-gradient(135deg, #b45ad9 0%, #9333ea 100%)"
+                  }
+                  color="white"
+                  border="3px solid"
+                  borderColor={patient.tipoAtencion === "Special" ? "indigo.600" : "purple.600"}
+                  leftIcon={patient.tipoAtencion === "Special" ? <FaUser size="16" /> : <FaWheelchair size="16" />}
+                  rightIcon={<FaExchangeAlt size="14" />}
+                  onClick={() => handleChangePriority(patient)}
+                  fontSize={{ base: "lg", md: "xl" }}
+                  fontWeight="bold"
+                  borderRadius="xl"
+                  boxShadow={patient.tipoAtencion === "Special"
+                    ? "0 4px 14px 0 rgba(99, 102, 241, 0.5)"
+                    : "0 4px 14px 0 rgba(180, 90, 217, 0.5)"
+                  }
+                  _hover={{
+                    transform: 'translateY(-2px)',
+                    boxShadow: patient.tipoAtencion === "Special"
+                      ? '0 6px 20px 0 rgba(99, 102, 241, 0.6)'
+                      : '0 6px 20px 0 rgba(180, 90, 217, 0.6)',
+                  }}
+                  _active={{ transform: 'scale(0.98)' }}
+                >
+                  {patient.tipoAtencion === "Special" ? "Cambiar a General" : "Cambiar a Especial"}
+                </Button>
+              )}
+
+              {/* ✅ Indicador de llamados realizados */}
+              {patient.callCount > 0 && (
+                <Text fontSize="sm" color="gray.600">
+                  Llamados realizados: {patient.callCount}
+                </Text>
               )}
             </VStack>
           ) : (
@@ -843,14 +1216,70 @@ export default function Attention() {
     );
   };
 
-  // Componente SidePanel
-  const SidePanel = ({ pendingTurns, inProgressTurns, onCall, onComplete, onRepeat, processingTurns, tabIndex, onTabChange }) => {
+  // Componente SidePanel (memoizado para evitar re-renders innecesarios)
+  const SidePanel = memo(({ pendingTurns, inProgressTurns, onCall, onComplete, onRepeat, onDefer, processingTurns, tabIndex, onTabChange, isSupervisor }) => {
+    const pendingScrollRef = useRef(null);
+    const inProgressScrollRef = useRef(null);
+    const pendingScrollPosition = useRef(0);
+    const inProgressScrollPosition = useRef(0);
+
+    // Guardar posición del scroll constantemente
+    useEffect(() => {
+      const pendingPanel = pendingScrollRef.current;
+      const inProgressPanel = inProgressScrollRef.current;
+
+      const savePendingScroll = () => {
+        if (pendingPanel) {
+          pendingScrollPosition.current = pendingPanel.scrollTop;
+        }
+      };
+
+      const saveInProgressScroll = () => {
+        if (inProgressPanel) {
+          inProgressScrollPosition.current = inProgressPanel.scrollTop;
+        }
+      };
+
+      if (pendingPanel) {
+        pendingPanel.addEventListener('scroll', savePendingScroll, { passive: true });
+      }
+      if (inProgressPanel) {
+        inProgressPanel.addEventListener('scroll', saveInProgressScroll, { passive: true });
+      }
+
+      return () => {
+        if (pendingPanel) {
+          pendingPanel.removeEventListener('scroll', savePendingScroll);
+        }
+        if (inProgressPanel) {
+          inProgressPanel.removeEventListener('scroll', saveInProgressScroll);
+        }
+      };
+    }, []);
+
+    // Restaurar posición del scroll inmediatamente después de re-render (antes del paint)
+    useLayoutEffect(() => {
+      if (pendingScrollRef.current) {
+        pendingScrollRef.current.scrollTop = pendingScrollPosition.current;
+      }
+    }, [pendingTurns]);
+
+    useLayoutEffect(() => {
+      if (inProgressScrollRef.current) {
+        inProgressScrollRef.current.scrollTop = inProgressScrollPosition.current;
+      }
+    }, [inProgressTurns]);
+
     return (
       <Tabs
         colorScheme="blue"
         size="md"
         index={tabIndex}
         onChange={onTabChange}
+        display="flex"
+        flexDirection="column"
+        flex="1"
+        overflow="hidden"
       >
         <TabList>
           <Tab fontWeight="semibold" fontSize="md">
@@ -861,30 +1290,79 @@ export default function Attention() {
           </Tab>
         </TabList>
 
-        <TabPanels>
-          <TabPanel px={0} maxH="400px" overflowY="auto">
-            <VStack spacing={2} align="stretch">
+        <TabPanels flex="1" overflow="hidden">
+          <TabPanel
+            ref={pendingScrollRef}
+            px={0}
+            py={2}
+            h="100%"
+            maxH="400px"
+            overflowY="scroll"
+            overscrollBehavior="none"
+            position="relative"
+            css={{
+              '&::-webkit-scrollbar': {
+                width: '8px',
+              },
+              '&::-webkit-scrollbar-track': {
+                background: '#f1f1f1',
+                borderRadius: '10px',
+              },
+              '&::-webkit-scrollbar-thumb': {
+                background: '#888',
+                borderRadius: '10px',
+              },
+              '&::-webkit-scrollbar-thumb:hover': {
+                background: '#555',
+              },
+              overscrollBehaviorY: 'none',
+              WebkitOverflowScrolling: 'auto',
+              touchAction: 'pan-y',
+              scrollbarWidth: 'thin',
+            }}
+          >
+            <VStack spacing={2} align="stretch" pb={4}>
               {pendingTurns.map((turn, index) => (
                 <HStack
                   key={turn.id}
                   p={4}
-                  bg={index === 0 ? "blue.50" : "gray.50"}
+                  bg={
+                    turn.isSuggestedForMe ? "green.50" :
+                    turn.isDeferred ? "yellow.100" :
+                    index === 0 ? "blue.50" : "gray.50"
+                  }
                   borderRadius="lg"
                   justify="space-between"
                   borderLeft="4px solid"
-                  borderLeftColor={turn.isSpecial ? "orange.400" : "blue.400"}
+                  borderLeftColor={
+                    turn.isSuggestedForMe ? "green.500" :
+                    turn.isDeferred ? "orange.400" :
+                    turn.isSpecial ? "orange.400" : "blue.400"
+                  }
                   minH="60px"
+                  boxShadow={turn.isSuggestedForMe ? "0 0 0 2px #48BB78" : "none"}
                 >
                   <HStack spacing={3}>
-                    <Badge colorScheme="blue" fontSize="lg" px={2} py={1}>#{turn.assignedTurn}</Badge>
+                    {/* Indicador de paciente sugerido para mí */}
+                    {turn.isSuggestedForMe && (
+                      <Badge colorScheme="green" fontSize="xs" px={2}>
+                        TU TURNO
+                      </Badge>
+                    )}
+                    {/* Ícono de reloj de arena para pacientes diferidos */}
+                    {turn.isDeferred && <FaHourglass color="#f59e0b" size={18} />}
+                    {/* Ícono de silla de ruedas para pacientes especiales */}
+                    {turn.isSpecial && <FaWheelchair color="#FF9500" size={18} />}
+                    <Badge colorScheme={turn.isSuggestedForMe ? "green" : "blue"} fontSize="lg" px={2} py={1}>
+                      #{turn.assignedTurn}
+                    </Badge>
                     <Text fontWeight="medium" fontSize="md">{turn.patientName}</Text>
-                    {turn.isSpecial && <FaWheelchair color="#FF9500" />}
                   </HStack>
                   {index === 0 && (
                     <IconButton
                       size="md"
                       icon={<FaBell />}
-                      colorScheme="blue"
+                      colorScheme={turn.isSuggestedForMe ? "green" : "blue"}
                       variant="solid"
                       onClick={() => onCall(turn.id)}
                       isDisabled={processingTurns.has(turn.id)}
@@ -901,8 +1379,37 @@ export default function Attention() {
             </VStack>
           </TabPanel>
 
-          <TabPanel px={0} maxH="400px" overflowY="auto">
-            <VStack spacing={2} align="stretch">
+          <TabPanel
+            ref={inProgressScrollRef}
+            px={0}
+            py={2}
+            h="100%"
+            maxH="400px"
+            overflowY="scroll"
+            overscrollBehavior="none"
+            position="relative"
+            css={{
+              '&::-webkit-scrollbar': {
+                width: '8px',
+              },
+              '&::-webkit-scrollbar-track': {
+                background: '#f1f1f1',
+                borderRadius: '10px',
+              },
+              '&::-webkit-scrollbar-thumb': {
+                background: '#888',
+                borderRadius: '10px',
+              },
+              '&::-webkit-scrollbar-thumb:hover': {
+                background: '#555',
+              },
+              overscrollBehaviorY: 'none',
+              WebkitOverflowScrolling: 'auto',
+              touchAction: 'pan-y',
+              scrollbarWidth: 'thin',
+            }}
+          >
+            <VStack spacing={2} align="stretch" pb={4}>
               {inProgressTurns.map((turn) => (
                 <Box
                   key={turn.id}
@@ -927,13 +1434,24 @@ export default function Attention() {
                       />
                       <IconButton
                         size="md"
-                        icon={<FaCheckCircle />}
-                        colorScheme="green"
+                        icon={<FaHourglass />}
+                        colorScheme="red"
                         variant="solid"
-                        onClick={() => onComplete(turn.id)}
+                        onClick={() => onDefer(turn.id)}
                         isDisabled={processingTurns.has(turn.id)}
-                        aria-label="Toma Finalizada"
+                        aria-label="Regresar a Cola"
                       />
+                      {isSupervisor && (
+                        <IconButton
+                          size="md"
+                          icon={<FaCheckCircle />}
+                          colorScheme="green"
+                          variant="solid"
+                          onClick={() => onComplete(turn.id)}
+                          isDisabled={processingTurns.has(turn.id)}
+                          aria-label="Toma Finalizada"
+                        />
+                      )}
                     </HStack>
                   </HStack>
                   <Text fontWeight="medium" fontSize="md">{turn.patientName}</Text>
@@ -952,7 +1470,30 @@ export default function Attention() {
         </TabPanels>
       </Tabs>
     );
-  };
+  });
+
+  // Componente Clock separado para evitar re-renders
+  const Clock = memo(() => {
+    const [time, setTime] = useState(new Date());
+
+    useEffect(() => {
+      const interval = setInterval(() => {
+        setTime(new Date());
+      }, 5000);
+      return () => clearInterval(interval);
+    }, []);
+
+    return (
+      <>
+        <Text fontSize="lg" fontWeight="bold" color="gray.700">
+          {formatTime(time)}
+        </Text>
+        <Text fontSize="xs" color="gray.500">
+          {formatDate(time)}
+        </Text>
+      </>
+    );
+  });
 
   // Componente StatsFooter con Glassmorphism
   const StatsFooter = ({ stats }) => {
@@ -1025,7 +1566,13 @@ export default function Attention() {
 
   return (
     <ChakraProvider theme={modernTheme}>
-      <ModernContainer pb={{ base: isMobile ? "80px" : 0, md: 0 }}>
+      <ModernContainer
+        pb={{ base: isMobile ? "80px" : 0, md: 0 }}
+        sx={{
+          overscrollBehavior: 'none',
+          overscrollBehaviorY: 'none',
+        }}
+      >
         {/* Header con Glassmorphism */}
         <GlassCard
           h={{ base: "auto", md: "60px" }}
@@ -1080,16 +1627,16 @@ export default function Attention() {
 
               {/* Reloj Digital para móvil */}
               {isMobile && (
-                <Text fontSize="sm" fontWeight="medium" color="gray.600">
-                  {currentTime ? formatTime(currentTime) : "--:--:--"}
-                </Text>
+                <Box fontSize="sm">
+                  <Clock />
+                </Box>
               )}
             </HStack>
 
             {/* Selector de Cubículo */}
             <HStack spacing={4} w={{ base: "full", sm: "auto" }}>
               <Select
-                value={selectedCubicle}
+                value={selectedCubicle || ""}
                 onChange={(e) => handleCubicleChange(e.target.value)}
                 placeholder="Seleccionar cubículo"
                 size="md"
@@ -1099,22 +1646,39 @@ export default function Attention() {
                 borderColor="gray.300"
                 _focus={{ borderColor: "primary.500" }}
                 fontSize={{ base: "md", md: "lg" }}
+                isDisabled={selectedCubicle && !isSupervisorOrAdmin()}
+                opacity={selectedCubicle && !isSupervisorOrAdmin() ? 0.7 : 1}
+                cursor={selectedCubicle && !isSupervisorOrAdmin() ? "not-allowed" : "pointer"}
               >
-                {cubicles.map((cubicle) => (
-                  <option key={cubicle.id} value={cubicle.id}>
-                    {cubicle.name} {cubicle.isSpecial && "(★)"}
-                  </option>
-                ))}
+                {cubicles.map((cubicle) => {
+                  const isOccupiedByOther = cubicle.isOccupied && cubicle.occupiedBy?.userId !== userId;
+                  return (
+                    <option
+                      key={cubicle.id}
+                      value={cubicle.id}
+                      disabled={isOccupiedByOther}
+                      style={{
+                        color: isOccupiedByOther ? '#cbd5e0' : 'inherit',
+                        fontStyle: isOccupiedByOther ? 'italic' : 'normal'
+                      }}
+                    >
+                      {cubicle.name} {cubicle.isSpecial && "(★)"} {isOccupiedByOther && `(Ocupado por ${cubicle.occupiedBy.userName})`}
+                    </option>
+                  );
+                })}
               </Select>
+              {/* Indicador visual para flebotomistas cuando el cubículo está bloqueado */}
+              {selectedCubicle && !isSupervisorOrAdmin() && (
+                <Tooltip label="Cubículo bloqueado. Cierra sesión para cambiar." placement="bottom">
+                  <Box>
+                    <FaHospital color="#718096" size={20} />
+                  </Box>
+                </Tooltip>
+              )}
 
               {/* Reloj Digital Desktop */}
               <Box display={{ base: "none", md: "block" }}>
-                <Text fontSize="lg" fontWeight="bold" color="gray.700">
-                  {currentTime ? formatTime(currentTime) : "--:--:--"}
-                </Text>
-                <Text fontSize="xs" color="gray.500">
-                  {currentTime ? formatDate(currentTime) : ""}
-                </Text>
+                <Clock />
               </Box>
             </HStack>
           </Flex>
@@ -1135,9 +1699,11 @@ export default function Attention() {
                 onCall={handleCallPatient}
                 onComplete={handleCompleteAttention}
                 onRepeat={handleRepeatCall}
+                onDefer={handleDeferTurn}
                 isProcessing={processingTurns.has(displayPatient?.id)}
                 selectedCubicle={selectedCubicle}
                 isActive={!!activePatient && displayPatient?.id === activePatient?.id}
+                isSupervisor={isSupervisorOrAdmin()}
               />
 
               {/* Indicador de turnos saltados */}
@@ -1160,14 +1726,14 @@ export default function Attention() {
                 </Box>
               )}
 
-              {/* Quick Actions - Solo mostrar cuando no hay paciente activo */}
-              {!activePatient && (nextPatient || currentPatient) && (
+              {/* Quick Actions - Solo mostrar cuando no hay paciente activo y hay próximo paciente */}
+              {!activePatient && nextPatient && (
                 <QuickActionsBar
-                  patient={currentPatient || nextPatient}
+                  patient={nextPatient}
                   onSkip={handleSkipPatient}
                   onComplete={handleCompleteAttention}
                   onEmergency={handleEmergency}
-                  isProcessing={processingTurns.has(currentPatient?.id || nextPatient?.id)}
+                  isProcessing={processingTurns.has(nextPatient?.id)}
                 />
               )}
             </VStack>
@@ -1178,6 +1744,9 @@ export default function Attention() {
                 p={4}
                 position="sticky"
                 top="80px"
+                maxH="calc(100vh - 100px)"
+                display="flex"
+                flexDirection="column"
               >
                 <SidePanel
                   pendingTurns={pendingTurns}
@@ -1185,9 +1754,11 @@ export default function Attention() {
                   onCall={handleCallPatient}
                   onComplete={handleCompleteAttention}
                   onRepeat={handleRepeatCall}
+                  onDefer={handleDeferTurn}
                   processingTurns={processingTurns}
                   tabIndex={sidePanelTabIndex}
                   onTabChange={setSidePanelTabIndex}
+                  isSupervisor={isSupervisorOrAdmin()}
                 />
 
                 <Divider my={4} />
@@ -1236,9 +1807,11 @@ export default function Attention() {
                 onCall={handleCallPatient}
                 onComplete={handleCompleteAttention}
                 onRepeat={handleRepeatCall}
+                onDefer={handleDeferTurn}
                 processingTurns={processingTurns}
                 tabIndex={sidePanelTabIndex}
                 onTabChange={setSidePanelTabIndex}
+                isSupervisor={isSupervisorOrAdmin()}
               />
             </DrawerBody>
             <DrawerFooter>
@@ -1302,6 +1875,135 @@ export default function Attention() {
             </HStack>
           </Box>
         )}
+
+        {/* Modal de confirmación para toma diferida */}
+        <Modal isOpen={isConfirmDeferOpen} onClose={onConfirmDeferClose} isCentered>
+          <ModalOverlay bg="blackAlpha.700" backdropFilter="blur(10px)" />
+          <ModalContent mx={4}>
+            <ModalHeader>
+              <HStack spacing={3}>
+                <FaExclamationTriangle color="#ef4444" size={24} />
+                <Text>Confirmar toma diferida</Text>
+              </HStack>
+            </ModalHeader>
+            <ModalCloseButton />
+            <ModalBody pb={6}>
+              <Text fontSize="lg" mb={2}>
+                ¿Estás seguro que deseas regresar este paciente a la cola?
+              </Text>
+              <Text fontSize="md" color="gray.600">
+                El paciente será marcado como toma diferida y regresará al inicio de la cola de espera.
+              </Text>
+            </ModalBody>
+            <ModalFooter>
+              <Button
+                variant="ghost"
+                mr={3}
+                onClick={onConfirmDeferClose}
+                size="lg"
+              >
+                Cancelar
+              </Button>
+              <Button
+                colorScheme="red"
+                onClick={confirmDeferTurn}
+                leftIcon={<FaHourglass />}
+                size="lg"
+                fontWeight="bold"
+              >
+                Aceptar
+              </Button>
+            </ModalFooter>
+          </ModalContent>
+        </Modal>
+
+        <Modal isOpen={isChangePriorityOpen} onClose={onChangePriorityClose} isCentered>
+          <ModalOverlay bg="blackAlpha.700" backdropFilter="blur(10px)" />
+          <ModalContent mx={4}>
+            <ModalHeader>
+              <HStack spacing={3}>
+                <FaExchangeAlt color="#6366f1" size={24} />
+                <Text>Cambiar Prioridad de Atención</Text>
+              </HStack>
+            </ModalHeader>
+            <ModalCloseButton />
+            <ModalBody pb={6}>
+              {patientToChangePriority && (
+                <VStack spacing={4} align="stretch">
+                  <Box>
+                    <Text fontSize="lg" fontWeight="bold" mb={2}>
+                      Paciente: {patientToChangePriority.patientName}
+                    </Text>
+                    <Text fontSize="md" color="gray.600">
+                      Turno #{patientToChangePriority.assignedTurn}
+                    </Text>
+                  </Box>
+                  <Divider />
+                  <Box>
+                    <Text fontSize="md" mb={2}>
+                      <strong>Prioridad actual:</strong>{" "}
+                      {patientToChangePriority.tipoAtencion === "Special" ? (
+                        <Badge colorScheme="orange" fontSize="md" ml={2}>
+                          <HStack spacing={1}>
+                            <FaWheelchair />
+                            <Text>ESPECIAL</Text>
+                          </HStack>
+                        </Badge>
+                      ) : (
+                        <Badge colorScheme="blue" fontSize="md" ml={2}>
+                          <HStack spacing={1}>
+                            <FaUser />
+                            <Text>GENERAL</Text>
+                          </HStack>
+                        </Badge>
+                      )}
+                    </Text>
+                    <Text fontSize="md">
+                      <strong>Nueva prioridad:</strong>{" "}
+                      {patientToChangePriority.tipoAtencion === "Special" ? (
+                        <Badge colorScheme="blue" fontSize="md" ml={2}>
+                          <HStack spacing={1}>
+                            <FaUser />
+                            <Text>GENERAL</Text>
+                          </HStack>
+                        </Badge>
+                      ) : (
+                        <Badge colorScheme="orange" fontSize="md" ml={2}>
+                          <HStack spacing={1}>
+                            <FaWheelchair />
+                            <Text>ESPECIAL</Text>
+                          </HStack>
+                        </Badge>
+                      )}
+                    </Text>
+                  </Box>
+                  <Text fontSize="sm" color="gray.600">
+                    ¿Estás seguro que deseas cambiar la prioridad de este paciente?
+                  </Text>
+                </VStack>
+              )}
+            </ModalBody>
+            <ModalFooter>
+              <Button
+                variant="ghost"
+                mr={3}
+                onClick={onChangePriorityClose}
+                size="lg"
+              >
+                Cancelar
+              </Button>
+              <Button
+                colorScheme={patientToChangePriority?.tipoAtencion === "Special" ? "blue" : "orange"}
+                onClick={confirmChangePriority}
+                leftIcon={<FaExchangeAlt />}
+                size="lg"
+                fontWeight="bold"
+              >
+                Confirmar Cambio
+              </Button>
+            </ModalFooter>
+          </ModalContent>
+        </Modal>
       </ModernContainer>
     </ChakraProvider>
   );
