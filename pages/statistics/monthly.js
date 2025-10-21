@@ -14,7 +14,6 @@ import {
   FormControl,
   FormLabel,
   IconButton,
-  ChakraProvider,
   Spinner,
   Text,
   VStack,
@@ -23,16 +22,14 @@ import {
   Tooltip
 } from "@chakra-ui/react";
 import { Bar } from "react-chartjs-2";
-import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip as ChartTooltip, Legend } from "chart.js";
+// ChartJS is now registered globally in _app.js via lib/chartConfig.js
 import { FaFileExcel, FaFilePdf, FaArrowLeft, FaCalendarAlt, FaChartBar, FaDownload } from "react-icons/fa";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
 import { useRouter } from "next/router";
 import { useAuth } from "../../contexts/AuthContext";
-import { modernTheme, fadeInUp, slideInFromLeft, slideInFromRight, GlassCard, ModernContainer, ModernHeader } from '../../components/theme/ModernTheme';
-
-ChartJS.register(CategoryScale, LinearScale, BarElement, Title, ChartTooltip, Legend);
+import { fadeInUp, slideInFromLeft, slideInFromRight, GlassCard, ModernContainer, ModernHeader } from '../../components/theme/ModernTheme';
 
 const MonthlyStatistics = memo(function MonthlyStatistics() {
   const [filteredStats, setFilteredStats] = useState(null);
@@ -338,8 +335,7 @@ const MonthlyStatistics = memo(function MonthlyStatistics() {
   // No renderizar hasta que esté montado para evitar errores de hidratación
   if (!mounted) {
     return (
-      <ChakraProvider theme={modernTheme}>
-        <ModernContainer>
+      <ModernContainer>
           <Box
             display="flex"
             alignItems="center"
@@ -354,14 +350,12 @@ const MonthlyStatistics = memo(function MonthlyStatistics() {
             </GlassCard>
           </Box>
         </ModernContainer>
-      </ChakraProvider>
     );
   }
 
   if (!filteredStats) {
     return (
-      <ChakraProvider theme={modernTheme}>
-        <ModernContainer>
+      <ModernContainer>
           <Box
             display="flex"
             alignItems="center"
@@ -381,7 +375,6 @@ const MonthlyStatistics = memo(function MonthlyStatistics() {
             </GlassCard>
           </Box>
         </ModernContainer>
-      </ChakraProvider>
     );
   }
 
@@ -391,8 +384,7 @@ const MonthlyStatistics = memo(function MonthlyStatistics() {
   const monthWithMostPatients = Object.entries(filteredStats.monthlyData).find(([_, count]) => count === maxMonthValue);
 
   return (
-    <ChakraProvider theme={modernTheme}>
-      <ModernContainer>
+    <ModernContainer>
         {/* Header Principal con Glassmorphism */}
         <ModernHeader
           title="Estadísticas Mensuales"
@@ -759,7 +751,6 @@ const MonthlyStatistics = memo(function MonthlyStatistics() {
           </Text>
         </Box>
       </ModernContainer>
-    </ChakraProvider>
   );
 });
 

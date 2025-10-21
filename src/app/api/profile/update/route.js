@@ -39,10 +39,11 @@ export async function PUT(req) {
       );
     }
 
-    if (!username || !username.trim()) {
+    // IMPORTANTE: El username NO puede ser modificado por razones de seguridad
+    if (username !== undefined) {
       return NextResponse.json(
-        { success: false, error: 'El nombre de usuario es obligatorio' },
-        { status: 400 }
+        { success: false, error: 'El nombre de usuario no puede ser modificado' },
+        { status: 403 }
       );
     }
 
@@ -66,24 +67,7 @@ export async function PUT(req) {
       );
     }
 
-    // Verificar que el username no esté en uso por otro usuario
-    if (username !== existingUser.username) {
-      const usernameExists = await prisma.user.findFirst({
-        where: {
-          username: username,
-          id: { not: decodedToken.userId }
-        }
-      });
-
-      if (usernameExists) {
-        return NextResponse.json(
-          { success: false, error: 'El nombre de usuario ya está en uso' },
-          { status: 400 }
-        );
-      }
-    }
-
-    // Verificar que el email no esté en uso por otro usuario (si se proporciona)
+    // Verificar que el email no esté en uso por otro usuario (si se proporciona y es diferente)
     if (email && email !== existingUser.email) {
       const emailExists = await prisma.user.findFirst({
         where: {
@@ -100,12 +84,12 @@ export async function PUT(req) {
       }
     }
 
-    // Actualizar usuario
+    // Actualizar usuario (username NO se incluye, nunca se modifica)
     const updatedUser = await prisma.user.update({
       where: { id: decodedToken.userId },
       data: {
         name: name.trim(),
-        username: username.trim(),
+        // username NO se modifica
         email: email ? email.trim() : null,
         phone: phone ? phone.trim() : null,
         updatedAt: new Date()
@@ -132,7 +116,6 @@ export async function PUT(req) {
           details: JSON.stringify({
             updatedFields: {
               name: name !== existingUser.name,
-              username: username !== existingUser.username,
               email: email !== existingUser.email,
               phone: phone !== existingUser.phone
             }

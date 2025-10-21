@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import {
-  ChakraProvider,
   Box,
   VStack,
   HStack,
@@ -98,7 +97,7 @@ import {
 } from 'react-icons/fa';
 import { useRouter } from 'next/router';
 import { useAuth } from '../../contexts/AuthContext';
-import { modernTheme, GlassCard, ModernContainer } from '../../components/theme/ModernTheme';
+import { GlassCard, ModernContainer } from '../../components/theme/ModernTheme';
 import ProtectedRoute from '../../components/ProtectedRoute';
 
 // Animaciones
@@ -341,8 +340,7 @@ const ReportsDocumentation = () => {
 
   return (
     <ProtectedRoute allowedRoles={['admin', 'flebotomista', 'usuario']}>
-      <ChakraProvider theme={modernTheme}>
-        <ModernContainer maxW="container.xl">
+      <ModernContainer maxW="container.xl">
           <VStack spacing={0} align="center" width="100%">
             <MotionBox
               initial={{ opacity: 0, y: 20 }}
@@ -1336,7 +1334,6 @@ const ReportsDocumentation = () => {
           </Modal>
           </VStack>
         </ModernContainer>
-      </ChakraProvider>
     </ProtectedRoute>
   );
 };

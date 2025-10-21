@@ -1,1302 +1,514 @@
-import React, { useState } from 'react';
-import {
-  ChakraProvider,
-  Box,
-  VStack,
-  HStack,
-  Text,
-  Heading,
-  Button,
-  Badge,
-  Progress,
-  Alert,
-  AlertIcon,
-  AlertTitle,
-  AlertDescription,
-  List,
-  ListItem,
-  ListIcon,
-  Code,
-  Tabs,
-  TabList,
-  TabPanels,
-  Tab,
-  TabPanel,
-  Accordion,
-  AccordionItem,
-  AccordionButton,
-  AccordionPanel,
-  AccordionIcon,
-  SimpleGrid,
-  Stat,
-  StatLabel,
-  StatNumber,
-  StatHelpText,
-  Flex,
-  Icon,
-  Circle,
-  Divider,
-  Table,
-  Thead,
-  Tbody,
-  Tr,
-  Th,
-  Td,
-  TableContainer,
-  useToast,
-  Tooltip
-} from '@chakra-ui/react';
-import { keyframes } from '@emotion/react';
-import { motion } from 'framer-motion';
-import {
-  FaUserMd,
-  FaClipboardCheck,
-  FaClock,
-  FaExclamationTriangle,
-  FaCheckCircle,
-  FaArrowRight,
-  FaPlay,
-  FaPause,
-  FaStop,
-  FaBell,
-  FaHistory,
-  FaChartLine,
-  FaMicrophone,
-  FaDesktop,
-  FaHandPaper,
-  FaUsers,
-  FaDoorOpen,
-  FaFileAlt,
-  FaLightbulb,
-  FaKey,
-  FaShieldAlt,
-  FaStethoscope,
-  FaSyringe,
-  FaHospitalUser,
-  FaVideo,
-  FaQuestionCircle
-} from 'react-icons/fa';
+import React from 'react';
 import { useRouter } from 'next/router';
-import { useAuth } from '../../contexts/AuthContext';
-import { modernTheme, GlassCard, ModernContainer } from '../../components/theme/ModernTheme';
+import {
+  Box, Container, Heading, Text, VStack, HStack, Image, Badge, Button,
+  List, ListItem, ListIcon, Alert, AlertIcon, AlertTitle, SimpleGrid,
+  Icon, useColorModeValue, Accordion, AccordionItem, AccordionButton,
+  AccordionPanel, AccordionIcon, Code, Grid, Breadcrumb, BreadcrumbItem,
+  BreadcrumbLink, Divider, Table, Tbody, Tr, Td, Th, Thead, Flex, Circle
+} from '@chakra-ui/react';
+import {
+  FaArrowLeft, FaCheckCircle, FaLightbulb, FaExclamationTriangle,
+  FaClock, FaBook, FaImage, FaChevronRight, FaHome, FaInfoCircle, FaStethoscope
+} from 'react-icons/fa';
+import ReactMarkdown from 'react-markdown';
 import ProtectedRoute from '../../components/ProtectedRoute';
+import { GlassCard, ModernHeader, fadeInUp, slideInFromLeft } from '../../components/theme/ModernTheme';
 
-// Animaciones
-const fadeInUp = keyframes`
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-`;
-
-const slideIn = keyframes`
-  from {
-    opacity: 0;
-    transform: translateX(-20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-`;
-
-const pulse = keyframes`
-  0% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.05);
-  }
-  100% {
-    transform: scale(1);
-  }
-`;
-
-const MotionBox = motion(Box);
-
-const AttentionDocumentation = () => {
+const AtencionDocumentation = ({ moduleData }) => {
   const router = useRouter();
-  const { user } = useAuth();
-  const toast = useToast();
-  const [selectedStep, setSelectedStep] = useState(null);
-  const [activeScenario, setActiveScenario] = useState(0);
+  // Colores con glassmorphism style
+  const glassCardBg = 'rgba(255, 255, 255, 0.25)';
+  const glassBorder = 'rgba(255, 255, 255, 0.18)';
+  const codeBlockBg = 'rgba(255, 255, 255, 0.5)';
+  const infoBg = 'rgba(191, 219, 254, 0.3)'; // blue.200 con transparencia
+  const warningBg = 'rgba(254, 243, 199, 0.3)'; // yellow.200 con transparencia
+  const successBg = 'rgba(209, 250, 229, 0.3)'; // green.200 con transparencia
 
-  // Flujo de atención paso a paso
-  const attentionFlow = [
-    {
-      id: 1,
-      title: 'Selección de Cubículo',
-      icon: FaDoorOpen,
-      color: 'blue',
-      description: 'Selecciona tu cubículo de trabajo al inicio del turno',
-      details: [
-        'Verifica la disponibilidad del cubículo',
-        'Selecciona entre cubículo GENERAL o ESPECIAL',
-        'El sistema recordará tu selección durante todo el turno',
-        'Puedes cambiar de cubículo en cualquier momento'
-      ],
-      code: `// Ejemplo de selección de cubículo
-const selectCubicle = async (cubiculoId, tipo) => {
-  const response = await fetch('/api/cubicles/select', {
-    method: 'POST',
-    body: JSON.stringify({
-      cubiculoId,
-      tipo, // "GENERAL" o "ESPECIAL"
-      userId: currentUser.id
-    })
-  });
-  return response.json();
-};`,
-      warnings: [
-        'No selecciones un cubículo ya ocupado',
-        'Verifica que el tipo de cubículo sea apropiado para tu función'
-      ]
-    },
-    {
-      id: 2,
-      title: 'Llamar Paciente',
-      icon: FaMicrophone,
-      color: 'green',
-      description: 'Llama al siguiente paciente en la cola de espera',
-      details: [
-        'Haz clic en el botón "Llamar Siguiente"',
-        'El sistema anunciará automáticamente por altavoz',
-        'Se mostrará la información del paciente en pantalla',
-        'El paciente será notificado en la sala de espera'
-      ],
-      code: `// Llamar al siguiente paciente
-const callNextPatient = async () => {
-  const response = await fetch('/api/attention/call-next', {
-    method: 'POST',
-    body: JSON.stringify({
-      cubiculoId: currentCubicle.id,
-      phlebotomistId: currentUser.id
-    })
-  });
-
-  const data = await response.json();
-  // data.patient contiene la información del paciente llamado
-  announcePatient(data.patient);
-  return data;
-};`,
-      tips: [
-        'Espera 30 segundos antes de volver a llamar',
-        'Verifica que el paciente anterior haya sido atendido'
-      ]
-    },
-    {
-      id: 3,
-      title: 'Atender Paciente',
-      icon: FaStethoscope,
-      color: 'purple',
-      description: 'Registra el inicio de la atención del paciente',
-      details: [
-        'Confirma la identidad del paciente',
-        'Marca el inicio de la atención',
-        'El temporizador comenzará automáticamente',
-        'El sistema registrará la hora exacta'
-      ],
-      code: `// Iniciar atención del paciente
-const startAttention = async (turnId) => {
-  const response = await fetch('/api/attention/start', {
-    method: 'POST',
-    body: JSON.stringify({
-      turnId,
-      startTime: new Date().toISOString(),
-      status: 'attending'
-    })
-  });
-  return response.json();
-};`,
-      bestPractices: [
-        'Verifica los datos del paciente antes de comenzar',
-        'Asegúrate de tener todos los materiales necesarios',
-        'Informa al paciente sobre el procedimiento'
-      ]
-    },
-    {
-      id: 4,
-      title: 'Finalizar Atención',
-      icon: FaClipboardCheck,
-      color: 'orange',
-      description: 'Completa y registra la atención del paciente',
-      details: [
-        'Marca la atención como completada',
-        'El sistema calculará el tiempo total',
-        'Se actualizarán las estadísticas automáticamente',
-        'El cubículo quedará disponible para el siguiente paciente'
-      ],
-      code: `// Finalizar atención
-const finishAttention = async (turnId) => {
-  const response = await fetch('/api/attention/finish', {
-    method: 'POST',
-    body: JSON.stringify({
-      turnId,
-      endTime: new Date().toISOString(),
-      status: 'completed',
-      observations: 'Atención completada exitosamente'
-    })
-  });
-
-  // Actualizar estadísticas
-  updateStatistics();
-  return response.json();
-};`,
-      metrics: [
-        'Tiempo promedio de atención: 5-7 minutos',
-        'Pacientes atendidos por hora: 8-10',
-        'Tasa de satisfacción objetivo: >95%'
-      ]
-    },
-    {
-      id: 5,
-      title: 'No Presentado',
-      icon: FaExclamationTriangle,
-      color: 'red',
-      description: 'Manejo de pacientes que no se presentan',
-      details: [
-        'Espera el tiempo reglamentario (2 minutos)',
-        'Marca al paciente como "No Presentado"',
-        'El sistema liberará el turno automáticamente',
-        'Procede con el siguiente paciente'
-      ],
-      code: `// Marcar paciente como no presentado
-const markNoShow = async (turnId) => {
-  const response = await fetch('/api/attention/no-show', {
-    method: 'POST',
-    body: JSON.stringify({
-      turnId,
-      status: 'no_show',
-      waitTime: 120, // segundos esperados
-      timestamp: new Date().toISOString()
-    })
-  });
-  return response.json();
-};`,
-      protocol: [
-        'Llama al paciente 3 veces',
-        'Espera 2 minutos entre llamadas',
-        'Documenta la hora de cada llamada',
-        'Procede con el siguiente después del tercer llamado'
-      ]
-    }
-  ];
-
-  // Escenarios comunes
-  const commonScenarios = [
-    {
-      title: 'Paciente Prioritario',
-      icon: FaShieldAlt,
-      situation: 'Llega un paciente con prioridad alta (adulto mayor, embarazada, discapacidad)',
-      actions: [
-        'Identificar la prioridad del paciente',
-        'Usar el filtro de pacientes prioritarios',
-        'Llamar inmediatamente sin importar el orden',
-        'Registrar el motivo de la prioridad'
-      ],
-      code: `// Atender paciente prioritario
-const attendPriorityPatient = async () => {
-  const priorityPatients = await getPriorityPatients();
-  if (priorityPatients.length > 0) {
-    await callPatient(priorityPatients[0].id);
-  }
-};`
-    },
-    {
-      title: 'Múltiples Llamadas',
-      icon: FaBell,
-      situation: 'El paciente no responde al primer llamado',
-      actions: [
-        'Esperar 30 segundos',
-        'Realizar segundo llamado',
-        'Esperar otros 30 segundos',
-        'Tercer y último llamado',
-        'Marcar como no presentado si no responde'
-      ],
-      code: `// Sistema de múltiples llamadas
-const multipleCallSystem = async (patientId, attempt = 1) => {
-  if (attempt > 3) {
-    return markNoShow(patientId);
+  if (!moduleData) {
+    return (
+      <Container maxW="container.xl" py={8}>
+        <Alert status="error">
+          <AlertIcon />
+          <AlertTitle>Módulo no encontrado</AlertTitle>
+        </Alert>
+      </Container>
+    );
   }
 
-  await callPatient(patientId);
-  await wait(30000); // 30 segundos
+  const { title, description, content, difficulty, estimatedTime, tags } = moduleData;
 
-  const responded = await checkPatientResponse(patientId);
-  if (!responded) {
-    return multipleCallSystem(patientId, attempt + 1);
-  }
-};`
+  // Custom markdown theme for better spacing and formatting (Anthropic-style)
+  const markdownTheme = {
+    h1: (props) => <Heading as="h1" size="2xl" mt={10} mb={6} fontWeight="bold" {...props} />,
+    h2: (props) => <Heading as="h2" size="xl" mt={8} mb={5} fontWeight="bold" {...props} />,
+    h3: (props) => <Heading as="h3" size="lg" mt={6} mb={4} fontWeight="semibold" {...props} />,
+    h4: (props) => <Heading as="h4" size="md" mt={5} mb={3} fontWeight="semibold" {...props} />,
+    p: (props) => <Text fontSize="md" lineHeight="1.8" mb={5} {...props} />,
+    ul: (props) => <List spacing={3} mb={6} pl={4} {...props} />,
+    ol: (props) => <List as="ol" spacing={3} mb={6} pl={4} styleType="decimal" {...props} />,
+    li: (props) => <ListItem fontSize="md" lineHeight="1.8" {...props} />,
+    code: (props) => {
+      const { inline, children } = props;
+      if (inline) {
+        return (
+          <Code
+            px={2}
+            py={1}
+            bg={codeBlockBg}
+            color="purple.600"
+            fontSize="0.9em"
+            borderRadius="md"
+            fontWeight="semibold"
+            {...props}
+          >
+            {children}
+          </Code>
+        );
+      }
+      return (
+        <Box
+          as="pre"
+          bg={codeBlockBg}
+          p={5}
+          borderRadius="xl"
+          overflowX="auto"
+          mb={6}
+          fontSize="sm"
+          lineHeight="1.6"
+          border="1px solid"
+          borderColor={glassBorder}
+          backdropFilter="blur(10px)"
+        >
+          <Code bg="transparent" color="inherit" p={0} {...props}>
+            {children}
+          </Code>
+        </Box>
+      );
     },
-    {
-      title: 'Cambio de Cubículo',
-      icon: FaDoorOpen,
-      situation: 'Necesitas cambiar de cubículo durante el turno',
-      actions: [
-        'Finalizar cualquier atención en curso',
-        'Liberar el cubículo actual',
-        'Seleccionar el nuevo cubículo',
-        'Continuar con la atención normal'
-      ],
-      code: `// Cambiar de cubículo
-const changeCubicle = async (newCubicleId) => {
-  await releaseCubicle(currentCubicle.id);
-  await selectCubicle(newCubicleId);
-  updateInterface();
-};`
-    }
-  ];
+    blockquote: (props) => {
+      const text = String(props.children);
+      let status = 'info';
+      let icon = FaInfoCircle;
+      let bg = infoBg;
 
-  // Estadísticas clave
-  const keyMetrics = [
-    {
-      label: 'Tiempo Promedio',
-      value: '6:30',
-      unit: 'min',
-      icon: FaClock,
-      color: 'blue',
-      description: 'Tiempo promedio de atención por paciente'
-    },
-    {
-      label: 'Pacientes/Hora',
-      value: '9.2',
-      unit: 'pac',
-      icon: FaUsers,
-      color: 'green',
-      description: 'Promedio de pacientes atendidos por hora'
-    },
-    {
-      label: 'Tasa de Presentación',
-      value: '94%',
-      unit: '',
-      icon: FaCheckCircle,
-      color: 'purple',
-      description: 'Porcentaje de pacientes que se presentan'
-    },
-    {
-      label: 'Satisfacción',
-      value: '4.7',
-      unit: '/5',
-      icon: FaChartLine,
-      color: 'orange',
-      description: 'Calificación promedio de satisfacción'
-    }
-  ];
+      if (text.includes('💡') || text.includes('Tip')) {
+        status = 'info';
+        icon = FaLightbulb;
+      } else if (text.includes('⚠️') || text.includes('Importante') || text.includes('Advertencia')) {
+        status = 'warning';
+        icon = FaExclamationTriangle;
+        bg = warningBg;
+      } else if (text.includes('✅') || text.includes('Nota')) {
+        status = 'success';
+        icon = FaCheckCircle;
+        bg = successBg;
+      }
 
-  // Atajos de teclado
-  const keyboardShortcuts = [
-    { key: 'F1', action: 'Llamar siguiente paciente', icon: FaMicrophone },
-    { key: 'F2', action: 'Iniciar atención', icon: FaPlay },
-    { key: 'F3', action: 'Finalizar atención', icon: FaStop },
-    { key: 'F4', action: 'Marcar no presentado', icon: FaExclamationTriangle },
-    { key: 'F5', action: 'Ver cola de espera', icon: FaUsers },
-    { key: 'F6', action: 'Cambiar cubículo', icon: FaDoorOpen },
-    { key: 'ESC', action: 'Cancelar operación', icon: FaHandPaper }
-  ];
-
-  const handleStepClick = (step) => {
-    setSelectedStep(step);
-    toast({
-      title: `Paso: ${step.title}`,
-      description: step.description,
-      status: 'info',
-      duration: 3000,
-      isClosable: true,
-    });
+      return (
+        <Alert
+          status={status}
+          variant="left-accent"
+          borderRadius="md"
+          mb={6}
+          py={4}
+          px={5}
+          bg={bg}
+        >
+          <AlertIcon as={icon} />
+          <Box fontSize="md" lineHeight="1.7">
+            {props.children}
+          </Box>
+        </Alert>
+      );
+    },
+    strong: (props) => <Text as="strong" fontWeight="bold" color="#4F7DF3" {...props} />,
+    em: (props) => <Text as="em" fontStyle="italic" color="gray.700" {...props} />,
+    hr: (props) => <Divider my={8} borderColor={glassBorder} {...props} />,
+    table: (props) => (
+      <Box overflowX="auto" mb={6}>
+        <Table variant="simple" size="sm" {...props} />
+      </Box>
+    ),
+    thead: (props) => <Thead bg={codeBlockBg} {...props} />,
+    tbody: (props) => <Tbody {...props} />,
+    tr: (props) => <Tr {...props} />,
+    td: (props) => <Td py={3} px={4} fontSize="md" lineHeight="1.7" {...props} />,
+    th: (props) => <Th py={3} px={4} fontSize="sm" fontWeight="bold" textTransform="none" {...props} />,
+    img: (props) => (
+      <Box mb={6} borderRadius="xl" overflow="hidden" border="1px solid" borderColor={glassBorder} boxShadow="glass">
+        <Image {...props} w="100%" h="auto" />
+      </Box>
+    ),
   };
 
-  const handleScenarioChange = (index) => {
-    setActiveScenario(index);
+  const getDifficultyColor = (diff) => {
+    switch (diff) {
+      case 'basic': return 'green';
+      case 'intermediate': return 'orange';
+      case 'advanced': return 'red';
+      default: return 'gray';
+    }
+  };
+
+  const getDifficultyLabel = (diff) => {
+    switch (diff) {
+      case 'basic': return 'Básico';
+      case 'intermediate': return 'Intermedio';
+      case 'advanced': return 'Avanzado';
+      default: return diff;
+    }
   };
 
   return (
-    <ChakraProvider theme={modernTheme}>
-      <ProtectedRoute>
-        <ModernContainer>
-          <VStack spacing={8} align="stretch">
-            {/* Header */}
-            <GlassCard
-              p={8}
-              textAlign="center"
-              animation={`${fadeInUp} 0.6s ease-out`}
-            >
-              <VStack spacing={4}>
-                <Circle size="80px" bg="purple.500" color="white">
-                  <Icon as={FaUserMd} boxSize="40px" />
-                </Circle>
-                <Heading
-                  size="2xl"
-                  bgGradient="linear(to-r, purple.400, blue.600)"
-                  bgClip="text"
-                >
-                  Módulo de Atención
-                </Heading>
-                <Text fontSize="lg" color="gray.600" maxW="600px">
-                  Guía completa para el proceso de atención de pacientes, desde el llamado
-                  hasta el registro final, con mejores prácticas y protocolos.
-                </Text>
+    <Box
+      minH="100vh"
+      p={{ base: 4, md: 8 }}
+      background="linear-gradient(135deg, #E0F2FE 0%, #F0F9FF 50%, #EDE9FE 100%)"
+    >
+      <Container maxW="container.xl">
+        {/* Breadcrumb con glassmorphism */}
+        <GlassCard p={4} mb={6} animation={`${fadeInUp} 0.6s ease-out`}>
+          <Breadcrumb spacing="8px" separator={<FaChevronRight color="#4F7DF3" />}>
+            <BreadcrumbItem>
+              <BreadcrumbLink onClick={() => router.push('/')} color="gray.700" fontWeight="medium">
+                <HStack spacing={1}><FaHome /><Text>Inicio</Text></HStack>
+              </BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbItem>
+              <BreadcrumbLink onClick={() => router.push('/docs')} color="gray.700" fontWeight="medium">Documentación</BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbItem isCurrentPage>
+              <Text color="#4F7DF3" fontWeight="bold">{title}</Text>
+            </BreadcrumbItem>
+          </Breadcrumb>
+        </GlassCard>
 
-                {/* Quick Stats */}
-                <SimpleGrid columns={{ base: 2, md: 4 }} gap={4} w="full" mt={4}>
-                  {keyMetrics.map((metric, index) => (
-                    <Box
-                      key={metric.label}
-                      p={4}
-                      bg="rgba(255, 255, 255, 0.1)"
-                      borderRadius="xl"
-                      backdropFilter="blur(10px)"
-                      border="1px solid rgba(255, 255, 255, 0.2)"
-                      animation={`${slideIn} ${0.4 + index * 0.1}s ease-out`}
+        {/* Header Card - Estilo docs index */}
+        <GlassCard
+          p={8}
+          mb={8}
+          animation={`${fadeInUp} 0.7s ease-out`}
+          border="2px solid"
+          borderColor="orange.300"
+          position="relative"
+          overflow="hidden"
+        >
+          {/* Progress Bar visual */}
+          <Box
+            position="absolute"
+            top={0}
+            left={0}
+            right={0}
+            height="4px"
+            bg="orange.200"
+          >
+            <Box height="100%" width="0%" bg="orange.500" />
+          </Box>
+
+          <HStack spacing={6} align="start" mb={6}>
+            {/* Icon Circle */}
+            <Circle
+              size="80px"
+              bg="orange.100"
+              color="orange.600"
+              flexShrink={0}
+            >
+              <Icon as={FaStethoscope} fontSize="36px" />
+            </Circle>
+
+            {/* Content */}
+            <VStack align="start" spacing={3} flex={1}>
+              <Heading
+                size="2xl"
+                fontWeight="extrabold"
+                color="gray.800"
+              >
+                {title}
+              </Heading>
+
+              <HStack spacing={2} wrap="wrap">
+                <Badge
+                  colorScheme={getDifficultyColor(difficulty)}
+                  fontSize="sm"
+                  px={3}
+                  py={1}
+                  borderRadius="full"
+                  fontWeight="bold"
+                  textTransform="uppercase"
+                >
+                  {getDifficultyLabel(difficulty)}
+                </Badge>
+                <Badge
+                  colorScheme="purple"
+                  fontSize="sm"
+                  px={3}
+                  py={1}
+                  borderRadius="full"
+                  fontWeight="bold"
+                >
+                  <HStack spacing={1}>
+                    <FaClock />
+                    <Text>{estimatedTime}</Text>
+                  </HStack>
+                </Badge>
+              </HStack>
+
+              <Text fontSize="lg" color="gray.700" fontWeight="medium" lineHeight="1.6">
+                {description}
+              </Text>
+
+              {tags && (
+                <HStack spacing={2} flexWrap="wrap">
+                  {tags.map((tag, idx) => (
+                    <Badge
+                      key={idx}
+                      size="sm"
+                      variant="subtle"
+                      colorScheme="blue"
+                      fontSize="xs"
+                      px={2}
+                      py={1}
                     >
-                      <VStack spacing={1}>
-                        <Icon as={metric.icon} color={`${metric.color}.500`} boxSize="24px" />
-                        <Text fontSize="2xl" fontWeight="bold">
-                          {metric.value}{metric.unit}
+                      {tag}
+                    </Badge>
+                  ))}
+                </HStack>
+              )}
+            </VStack>
+          </HStack>
+
+          {/* Action Buttons */}
+          <HStack spacing={3} justify="flex-end">
+            <Button
+              size="sm"
+              variant="ghost"
+              leftIcon={<FaArrowLeft />}
+              onClick={() => router.push('/docs')}
+              _hover={{
+                bg: 'rgba(79, 125, 243, 0.1)',
+                transform: 'translateX(-2px)'
+              }}
+            >
+              Volver
+            </Button>
+            <Button
+              size="sm"
+              background="linear-gradient(135deg, #4F7DF3 0%, #6B73FF 100%)"
+              color="white"
+              rightIcon={<FaBook />}
+              _hover={{
+                transform: 'translateY(-2px)',
+                boxShadow: 'lg'
+              }}
+              onClick={() => {
+                const firstSection = document.getElementById('content-detallado');
+                if (firstSection) firstSection.scrollIntoView({ behavior: 'smooth' });
+              }}
+            >
+              Comenzar Tutorial
+            </Button>
+          </HStack>
+        </GlassCard>
+
+        <Grid templateColumns={{ base: '1fr', lg: '3fr 1fr' }} gap={8}>
+          <VStack align="stretch" spacing={8}>
+            {content.overview && (
+              <GlassCard p={8} animation={`${fadeInUp} 0.8s ease-out`}>
+                <ReactMarkdown components={markdownTheme}>{content.overview}</ReactMarkdown>
+              </GlassCard>
+            )}
+
+            {content.screenshots && content.screenshots.length > 0 && (
+              <GlassCard p={6} animation={`${fadeInUp} 0.9s ease-out`}>
+                <Heading size="lg" mb={6} fontWeight="bold" color="gray.800">
+                  <HStack><FaImage color="#4F7DF3" /><Text>Capturas de Pantalla</Text></HStack>
+                </Heading>
+                <SimpleGrid columns={{ base: 1, md: 2 }} spacing={6}>
+                  {content.screenshots.map((screenshot, idx) => (
+                    <GlassCard key={idx} overflow="hidden" p={0}>
+                      <Image src={screenshot.path} alt={screenshot.description} w="100%" h="auto" />
+                      <Box p={4}>
+                        <Text fontSize="sm" fontWeight="bold" mb={2} color="gray.800">
+                          {screenshot.title || screenshot.filename || 'Sin título'}
                         </Text>
-                        <Text fontSize="xs" color="gray.500">
-                          {metric.label}
-                        </Text>
-                      </VStack>
-                    </Box>
+                        <Text fontSize="sm" color="gray.600">{screenshot.description}</Text>
+                      </Box>
+                    </GlassCard>
                   ))}
                 </SimpleGrid>
-              </VStack>
-            </GlassCard>
+              </GlassCard>
+            )}
 
-            {/* Navigation Tabs */}
-            <Tabs variant="enclosed">
-              <TabList>
-                <Tab>
-                  <HStack>
-                    <FaClipboardCheck />
-                    <Text>Flujo de Trabajo</Text>
-                  </HStack>
-                </Tab>
-                <Tab>
-                  <HStack>
-                    <FaLightbulb />
-                    <Text>Escenarios Comunes</Text>
-                  </HStack>
-                </Tab>
-                <Tab>
-                  <HStack>
-                    <FaKey />
-                    <Text>Atajos y Comandos</Text>
-                  </HStack>
-                </Tab>
-                <Tab>
-                  <HStack>
-                    <FaShieldAlt />
-                    <Text>Mejores Prácticas</Text>
-                  </HStack>
-                </Tab>
-              </TabList>
-
-              <TabPanels>
-                {/* Flujo de Trabajo Tab */}
-                <TabPanel px={0}>
-                  <VStack spacing={6} align="stretch">
-                    {/* Visual Flow */}
-                    <GlassCard p={6} animation={`${fadeInUp} 0.7s ease-out`}>
-                      <Heading size="md" mb={4}>
-                        Flujo de Atención Paso a Paso
-                      </Heading>
-
-                      <Flex
-                        direction={{ base: 'column', lg: 'row' }}
-                        justify="space-between"
-                        align="center"
-                        mb={6}
-                        gap={4}
+            {content.sections && content.sections.length > 0 && (
+              <GlassCard p={8} animation={`${fadeInUp} 1s ease-out`} id="content-detallado">
+                <Heading size="lg" mb={8} fontWeight="bold" color="gray.800">
+                  <HStack><FaBook color="#4F7DF3" /><Text>Contenido Detallado</Text></HStack>
+                </Heading>
+                <Accordion allowMultiple defaultIndex={[0]}>
+                  {content.sections.map((section, idx) => (
+                    <AccordionItem key={idx} border="none" mb={6}>
+                      <AccordionButton
+                        bg={infoBg}
+                        backdropFilter="blur(10px)"
+                        _hover={{ bg: 'rgba(191, 219, 254, 0.5)', transform: 'scale(1.01)' }}
+                        borderRadius="xl"
+                        py={5}
+                        px={6}
+                        transition="all 0.3s ease"
                       >
-                        {attentionFlow.map((step, index) => (
-                          <VStack
-                            key={step.id}
-                            spacing={2}
-                            cursor="pointer"
-                            onClick={() => handleStepClick(step)}
-                            opacity={selectedStep?.id === step.id ? 1 : 0.7}
-                            transform={selectedStep?.id === step.id ? 'scale(1.05)' : 'scale(1)'}
-                            transition="all 0.3s"
-                            animation={`${slideIn} ${0.5 + index * 0.1}s ease-out`}
-                          >
-                            <Circle
-                              size="60px"
-                              bg={`${step.color}.500`}
-                              color="white"
-                              _hover={{ transform: 'scale(1.1)' }}
-                              transition="transform 0.2s"
-                            >
-                              <Icon as={step.icon} boxSize="30px" />
-                            </Circle>
-                            <Text fontSize="sm" fontWeight="bold" textAlign="center">
-                              {step.title}
-                            </Text>
-                            {index < attentionFlow.length - 1 && (
-                              <Icon
-                                as={FaArrowRight}
-                                color="gray.400"
-                                display={{ base: 'none', lg: 'block' }}
-                                position="absolute"
-                                right="-20px"
-                                top="30px"
-                              />
-                            )}
-                          </VStack>
-                        ))}
-                      </Flex>
-
-                      {selectedStep && (
-                        <MotionBox
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ duration: 0.3 }}
-                        >
-                          <Divider my={4} />
-
-                          <VStack align="stretch" spacing={4}>
-                            <Box>
-                              <Heading size="sm" mb={2}>
-                                {selectedStep.title}
-                              </Heading>
-                              <Text color="gray.600">
-                                {selectedStep.description}
-                              </Text>
-                            </Box>
-
-                            <Box>
-                              <Text fontWeight="bold" mb={2}>Pasos a seguir:</Text>
-                              <List spacing={2}>
-                                {selectedStep.details.map((detail, i) => (
-                                  <ListItem key={i}>
-                                    <ListIcon as={FaCheckCircle} color="green.500" />
-                                    {detail}
-                                  </ListItem>
-                                ))}
-                              </List>
-                            </Box>
-
-                            {selectedStep.code && (
-                              <Box>
-                                <Text fontWeight="bold" mb={2}>Código de ejemplo:</Text>
-                                <Box
-                                  as="pre"
-                                  p={4}
-                                  bg="gray.900"
-                                  color="white"
-                                  borderRadius="md"
-                                  overflowX="auto"
-                                  fontSize="sm"
-                                >
-                                  <Code colorScheme="purple" bg="transparent" color="inherit">
-                                    {selectedStep.code}
-                                  </Code>
-                                </Box>
-                              </Box>
-                            )}
-
-                            {selectedStep.warnings && (
-                              <Alert status="warning" borderRadius="md">
-                                <AlertIcon />
-                                <Box>
-                                  <AlertTitle>Precauciones:</AlertTitle>
-                                  <List spacing={1} mt={2}>
-                                    {selectedStep.warnings.map((warning, i) => (
-                                      <ListItem key={i} fontSize="sm">
-                                        • {warning}
-                                      </ListItem>
-                                    ))}
-                                  </List>
-                                </Box>
-                              </Alert>
-                            )}
-
-                            {selectedStep.tips && (
-                              <Alert status="info" borderRadius="md">
-                                <AlertIcon as={FaLightbulb} />
-                                <Box>
-                                  <AlertTitle>Consejos:</AlertTitle>
-                                  <List spacing={1} mt={2}>
-                                    {selectedStep.tips.map((tip, i) => (
-                                      <ListItem key={i} fontSize="sm">
-                                        • {tip}
-                                      </ListItem>
-                                    ))}
-                                  </List>
-                                </Box>
-                              </Alert>
-                            )}
-                          </VStack>
-                        </MotionBox>
-                      )}
-                    </GlassCard>
-
-                    {/* Detailed Steps */}
-                    <GlassCard p={6} animation={`${fadeInUp} 0.8s ease-out`}>
-                      <Heading size="md" mb={4}>
-                        Descripción Detallada del Proceso
-                      </Heading>
-
-                      <Accordion allowMultiple>
-                        {attentionFlow.map((step) => (
-                          <AccordionItem key={step.id}>
-                            <h2>
-                              <AccordionButton>
-                                <Box flex="1" textAlign="left">
-                                  <HStack>
-                                    <Icon as={step.icon} color={`${step.color}.500`} />
-                                    <Text fontWeight="bold">{step.title}</Text>
-                                  </HStack>
-                                </Box>
-                                <AccordionIcon />
-                              </AccordionButton>
-                            </h2>
-                            <AccordionPanel pb={4}>
-                              <VStack align="stretch" spacing={3}>
-                                <Text>{step.description}</Text>
-
-                                <Box>
-                                  <Text fontWeight="semibold" mb={1}>Detalles:</Text>
-                                  <List spacing={1}>
-                                    {step.details.map((detail, i) => (
-                                      <ListItem key={i} fontSize="sm">
-                                        <ListIcon as={FaCheckCircle} color="green.500" />
-                                        {detail}
-                                      </ListItem>
-                                    ))}
-                                  </List>
-                                </Box>
-
-                                {step.bestPractices && (
-                                  <Box>
-                                    <Text fontWeight="semibold" mb={1}>Mejores Prácticas:</Text>
-                                    <List spacing={1}>
-                                      {step.bestPractices.map((practice, i) => (
-                                        <ListItem key={i} fontSize="sm">
-                                          <ListIcon as={FaLightbulb} color="yellow.500" />
-                                          {practice}
-                                        </ListItem>
-                                      ))}
-                                    </List>
-                                  </Box>
-                                )}
-
-                                {step.metrics && (
-                                  <Box>
-                                    <Text fontWeight="semibold" mb={1}>Métricas Objetivo:</Text>
-                                    <List spacing={1}>
-                                      {step.metrics.map((metric, i) => (
-                                        <ListItem key={i} fontSize="sm">
-                                          <ListIcon as={FaChartLine} color="blue.500" />
-                                          {metric}
-                                        </ListItem>
-                                      ))}
-                                    </List>
-                                  </Box>
-                                )}
-
-                                {step.protocol && (
-                                  <Box>
-                                    <Text fontWeight="semibold" mb={1}>Protocolo:</Text>
-                                    <List spacing={1}>
-                                      {step.protocol.map((item, i) => (
-                                        <ListItem key={i} fontSize="sm">
-                                          <ListIcon as={FaClipboardCheck} color="purple.500" />
-                                          {item}
-                                        </ListItem>
-                                      ))}
-                                    </List>
-                                  </Box>
-                                )}
-                              </VStack>
-                            </AccordionPanel>
-                          </AccordionItem>
-                        ))}
-                      </Accordion>
-                    </GlassCard>
-                  </VStack>
-                </TabPanel>
-
-                {/* Escenarios Comunes Tab */}
-                <TabPanel px={0}>
-                  <VStack spacing={6} align="stretch">
-                    <GlassCard p={6} animation={`${fadeInUp} 0.7s ease-out`}>
-                      <Heading size="md" mb={4}>
-                        Manejo de Situaciones Especiales
-                      </Heading>
-
-                      <SimpleGrid columns={{ base: 1, md: 3 }} gap={4} mb={6}>
-                        {commonScenarios.map((scenario, index) => (
-                          <Box
-                            key={index}
-                            p={4}
-                            bg={activeScenario === index ? 'purple.50' : 'transparent'}
-                            borderRadius="lg"
-                            border="2px solid"
-                            borderColor={activeScenario === index ? 'purple.500' : 'gray.200'}
-                            cursor="pointer"
-                            onClick={() => handleScenarioChange(index)}
-                            transition="all 0.3s"
-                            _hover={{
-                              borderColor: 'purple.400',
-                              transform: 'translateY(-2px)'
-                            }}
-                          >
-                            <VStack spacing={2}>
-                              <Icon as={scenario.icon} boxSize="30px" color="purple.500" />
-                              <Text fontWeight="bold" textAlign="center">
-                                {scenario.title}
-                              </Text>
-                            </VStack>
-                          </Box>
-                        ))}
-                      </SimpleGrid>
-
-                      {commonScenarios[activeScenario] && (
-                        <MotionBox
-                          key={activeScenario}
-                          initial={{ opacity: 0, x: -20 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ duration: 0.3 }}
-                        >
-                          <VStack align="stretch" spacing={4}>
-                            <Alert status="info" borderRadius="md">
-                              <AlertIcon />
-                              <Box>
-                                <AlertTitle>Situación:</AlertTitle>
-                                <AlertDescription>
-                                  {commonScenarios[activeScenario].situation}
-                                </AlertDescription>
-                              </Box>
-                            </Alert>
-
-                            <Box>
-                              <Text fontWeight="bold" mb={2}>Acciones a Tomar:</Text>
-                              <List spacing={2}>
-                                {commonScenarios[activeScenario].actions.map((action, i) => (
-                                  <ListItem key={i}>
-                                    <ListIcon as={FaCheckCircle} color="green.500" />
-                                    {action}
-                                  </ListItem>
-                                ))}
-                              </List>
-                            </Box>
-
-                            <Box>
-                              <Text fontWeight="bold" mb={2}>Implementación:</Text>
-                              <Box
-                                as="pre"
-                                p={4}
-                                bg="gray.900"
-                                color="white"
-                                borderRadius="md"
-                                overflowX="auto"
-                                fontSize="sm"
-                              >
-                                <Code colorScheme="purple" bg="transparent" color="inherit">
-                                  {commonScenarios[activeScenario].code}
-                                </Code>
-                              </Box>
-                            </Box>
-                          </VStack>
-                        </MotionBox>
-                      )}
-                    </GlassCard>
-
-                    {/* Casos de Uso Específicos */}
-                    <GlassCard p={6} animation={`${fadeInUp} 0.8s ease-out`}>
-                      <Heading size="md" mb={4}>
-                        Casos de Uso Específicos
-                      </Heading>
-
-                      <Accordion allowToggle>
-                        <AccordionItem>
-                          <h2>
-                            <AccordionButton>
-                              <Box flex="1" textAlign="left">
-                                <HStack>
-                                  <Icon as={FaSyringe} color="red.500" />
-                                  <Text fontWeight="bold">Paciente Nervioso o con Fobia</Text>
-                                </HStack>
-                              </Box>
-                              <AccordionIcon />
-                            </AccordionButton>
-                          </h2>
-                          <AccordionPanel pb={4}>
-                            <VStack align="stretch" spacing={3}>
-                              <Text>
-                                Manejo especializado para pacientes con ansiedad o fobia a las agujas.
-                              </Text>
-                              <List spacing={2}>
-                                <ListItem>
-                                  <ListIcon as={FaCheckCircle} color="green.500" />
-                                  Hablar con voz calmada y tranquilizadora
-                                </ListItem>
-                                <ListItem>
-                                  <ListIcon as={FaCheckCircle} color="green.500" />
-                                  Explicar el procedimiento paso a paso
-                                </ListItem>
-                                <ListItem>
-                                  <ListIcon as={FaCheckCircle} color="green.500" />
-                                  Permitir que el paciente tome su tiempo
-                                </ListItem>
-                                <ListItem>
-                                  <ListIcon as={FaCheckCircle} color="green.500" />
-                                  Ofrecer técnicas de respiración
-                                </ListItem>
-                                <ListItem>
-                                  <ListIcon as={FaCheckCircle} color="green.500" />
-                                  Si es necesario, permitir acompañante
-                                </ListItem>
-                              </List>
-                            </VStack>
-                          </AccordionPanel>
-                        </AccordionItem>
-
-                        <AccordionItem>
-                          <h2>
-                            <AccordionButton>
-                              <Box flex="1" textAlign="left">
-                                <HStack>
-                                  <Icon as={FaHospitalUser} color="blue.500" />
-                                  <Text fontWeight="bold">Paciente Pediátrico</Text>
-                                </HStack>
-                              </Box>
-                              <AccordionIcon />
-                            </AccordionButton>
-                          </h2>
-                          <AccordionPanel pb={4}>
-                            <VStack align="stretch" spacing={3}>
-                              <Text>
-                                Protocolo especial para la atención de niños y bebés.
-                              </Text>
-                              <List spacing={2}>
-                                <ListItem>
-                                  <ListIcon as={FaCheckCircle} color="green.500" />
-                                  Ambiente amigable y menos clínico
-                                </ListItem>
-                                <ListItem>
-                                  <ListIcon as={FaCheckCircle} color="green.500" />
-                                  Uso de distracciones (juguetes, stickers)
-                                </ListItem>
-                                <ListItem>
-                                  <ListIcon as={FaCheckCircle} color="green.500" />
-                                  Comunicación apropiada para la edad
-                                </ListItem>
-                                <ListItem>
-                                  <ListIcon as={FaCheckCircle} color="green.500" />
-                                  Trabajo rápido pero cuidadoso
-                                </ListItem>
-                                <ListItem>
-                                  <ListIcon as={FaCheckCircle} color="green.500" />
-                                  Involucrar a los padres en el proceso
-                                </ListItem>
-                              </List>
-                            </VStack>
-                          </AccordionPanel>
-                        </AccordionItem>
-
-                        <AccordionItem>
-                          <h2>
-                            <AccordionButton>
-                              <Box flex="1" textAlign="left">
-                                <HStack>
-                                  <Icon as={FaExclamationTriangle} color="yellow.500" />
-                                  <Text fontWeight="bold">Emergencia Médica</Text>
-                                </HStack>
-                              </Box>
-                              <AccordionIcon />
-                            </AccordionButton>
-                          </h2>
-                          <AccordionPanel pb={4}>
-                            <VStack align="stretch" spacing={3}>
-                              <Alert status="error" mb={3}>
-                                <AlertIcon />
-                                En caso de emergencia, la seguridad del paciente es prioritaria
-                              </Alert>
-                              <List spacing={2}>
-                                <ListItem>
-                                  <ListIcon as={FaExclamationTriangle} color="red.500" />
-                                  Detener inmediatamente el procedimiento
-                                </ListItem>
-                                <ListItem>
-                                  <ListIcon as={FaExclamationTriangle} color="red.500" />
-                                  Llamar al médico de turno o emergencias
-                                </ListItem>
-                                <ListItem>
-                                  <ListIcon as={FaExclamationTriangle} color="red.500" />
-                                  Mantener al paciente cómodo y monitorizado
-                                </ListItem>
-                                <ListItem>
-                                  <ListIcon as={FaExclamationTriangle} color="red.500" />
-                                  Documentar el incidente detalladamente
-                                </ListItem>
-                                <ListItem>
-                                  <ListIcon as={FaExclamationTriangle} color="red.500" />
-                                  Seguir protocolo de emergencia del hospital
-                                </ListItem>
-                              </List>
-                            </VStack>
-                          </AccordionPanel>
-                        </AccordionItem>
-                      </Accordion>
-                    </GlassCard>
-                  </VStack>
-                </TabPanel>
-
-                {/* Atajos y Comandos Tab */}
-                <TabPanel px={0}>
-                  <VStack spacing={6} align="stretch">
-                    <GlassCard p={6} animation={`${fadeInUp} 0.7s ease-out`}>
-                      <Heading size="md" mb={4}>
-                        Atajos de Teclado
-                      </Heading>
-
-                      <Alert status="info" mb={4}>
-                        <AlertIcon />
-                        <Text fontSize="sm">
-                          Los atajos de teclado te permiten trabajar más eficientemente.
-                          Memoriza los más importantes para agilizar tu flujo de trabajo.
-                        </Text>
-                      </Alert>
-
-                      <TableContainer>
-                        <Table variant="simple">
-                          <Thead>
-                            <Tr>
-                              <Th>Tecla</Th>
-                              <Th>Acción</Th>
-                              <Th>Icono</Th>
-                            </Tr>
-                          </Thead>
-                          <Tbody>
-                            {keyboardShortcuts.map((shortcut) => (
-                              <Tr key={shortcut.key}>
-                                <Td>
-                                  <Badge colorScheme="purple" fontSize="md" p={2}>
-                                    {shortcut.key}
-                                  </Badge>
-                                </Td>
-                                <Td>{shortcut.action}</Td>
-                                <Td>
-                                  <Icon as={shortcut.icon} color="purple.500" boxSize="20px" />
-                                </Td>
-                              </Tr>
-                            ))}
-                          </Tbody>
-                        </Table>
-                      </TableContainer>
-                    </GlassCard>
-
-                    <GlassCard p={6} animation={`${fadeInUp} 0.8s ease-out`}>
-                      <Heading size="md" mb={4}>
-                        Comandos del Sistema
-                      </Heading>
-
-                      <SimpleGrid columns={{ base: 1, md: 2 }} gap={6}>
-                        <Box>
-                          <Text fontWeight="bold" mb={3}>Comandos de Atención</Text>
-                          <List spacing={2}>
-                            <ListItem>
-                              <Code colorScheme="blue">/llamar</Code> - Llama al siguiente paciente
-                            </ListItem>
-                            <ListItem>
-                              <Code colorScheme="blue">/atender ID</Code> - Inicia atención de paciente específico
-                            </ListItem>
-                            <ListItem>
-                              <Code colorScheme="blue">/finalizar</Code> - Termina la atención actual
-                            </ListItem>
-                            <ListItem>
-                              <Code colorScheme="blue">/ausente</Code> - Marca paciente como no presentado
-                            </ListItem>
-                          </List>
+                        <Box flex="1" textAlign="left">
+                          <Heading size="md" fontWeight="bold" color="gray.800">{section.title}</Heading>
+                          {section.description && (
+                            <Text fontSize="sm" color="gray.600" mt={2}>{section.description}</Text>
+                          )}
                         </Box>
-
-                        <Box>
-                          <Text fontWeight="bold" mb={3}>Comandos de Consulta</Text>
-                          <List spacing={2}>
-                            <ListItem>
-                              <Code colorScheme="green">/cola</Code> - Ver cola de espera
-                            </ListItem>
-                            <ListItem>
-                              <Code colorScheme="green">/stats</Code> - Ver estadísticas del día
-                            </ListItem>
-                            <ListItem>
-                              <Code colorScheme="green">/historial</Code> - Ver últimos pacientes
-                            </ListItem>
-                            <ListItem>
-                              <Code colorScheme="green">/buscar NOMBRE</Code> - Buscar paciente
-                            </ListItem>
-                          </List>
-                        </Box>
-
-                        <Box>
-                          <Text fontWeight="bold" mb={3}>Comandos de Configuración</Text>
-                          <List spacing={2}>
-                            <ListItem>
-                              <Code colorScheme="purple">/cubiculo ID</Code> - Cambiar de cubículo
-                            </ListItem>
-                            <ListItem>
-                              <Code colorScheme="purple">/pausa</Code> - Activar pausa temporal
-                            </ListItem>
-                            <ListItem>
-                              <Code colorScheme="purple">/sonido on/off</Code> - Activar/desactivar sonidos
-                            </ListItem>
-                            <ListItem>
-                              <Code colorScheme="purple">/modo noche</Code> - Cambiar tema visual
-                            </ListItem>
-                          </List>
-                        </Box>
-
-                        <Box>
-                          <Text fontWeight="bold" mb={3}>Comandos de Ayuda</Text>
-                          <List spacing={2}>
-                            <ListItem>
-                              <Code colorScheme="orange">/ayuda</Code> - Mostrar ayuda general
-                            </ListItem>
-                            <ListItem>
-                              <Code colorScheme="orange">/protocolo</Code> - Ver protocolos
-                            </ListItem>
-                            <ListItem>
-                              <Code colorScheme="orange">/soporte</Code> - Contactar soporte técnico
-                            </ListItem>
-                            <ListItem>
-                              <Code colorScheme="orange">/version</Code> - Ver versión del sistema
-                            </ListItem>
-                          </List>
-                        </Box>
-                      </SimpleGrid>
-                    </GlassCard>
-                  </VStack>
-                </TabPanel>
-
-                {/* Mejores Prácticas Tab */}
-                <TabPanel px={0}>
-                  <VStack spacing={6} align="stretch">
-                    <GlassCard p={6} animation={`${fadeInUp} 0.7s ease-out`}>
-                      <Heading size="md" mb={4}>
-                        Guías de Excelencia en Atención
-                      </Heading>
-
-                      <SimpleGrid columns={{ base: 1, md: 2 }} gap={6}>
-                        <Box>
-                          <VStack align="stretch" spacing={4}>
-                            <Box>
-                              <HStack mb={3}>
-                                <Icon as={FaUserMd} color="blue.500" boxSize="24px" />
-                                <Text fontWeight="bold" fontSize="lg">Profesionalismo</Text>
-                              </HStack>
-                              <List spacing={2}>
-                                <ListItem fontSize="sm">
-                                  <ListIcon as={FaCheckCircle} color="green.500" />
-                                  Mantener siempre una actitud profesional y empática
-                                </ListItem>
-                                <ListItem fontSize="sm">
-                                  <ListIcon as={FaCheckCircle} color="green.500" />
-                                  Vestimenta adecuada y presentación impecable
-                                </ListItem>
-                                <ListItem fontSize="sm">
-                                  <ListIcon as={FaCheckCircle} color="green.500" />
-                                  Comunicación clara y respetuosa
-                                </ListItem>
-                                <ListItem fontSize="sm">
-                                  <ListIcon as={FaCheckCircle} color="green.500" />
-                                  Confidencialidad absoluta de información
-                                </ListItem>
-                              </List>
-                            </Box>
-
-                            <Box>
-                              <HStack mb={3}>
-                                <Icon as={FaClock} color="purple.500" boxSize="24px" />
-                                <Text fontWeight="bold" fontSize="lg">Gestión del Tiempo</Text>
-                              </HStack>
-                              <List spacing={2}>
-                                <ListItem fontSize="sm">
-                                  <ListIcon as={FaCheckCircle} color="green.500" />
-                                  Preparar materiales antes de llamar al paciente
-                                </ListItem>
-                                <ListItem fontSize="sm">
-                                  <ListIcon as={FaCheckCircle} color="green.500" />
-                                  Mantener un ritmo constante sin apresurarse
-                                </ListItem>
-                                <ListItem fontSize="sm">
-                                  <ListIcon as={FaCheckCircle} color="green.500" />
-                                  Documentar mientras se atiende
-                                </ListItem>
-                                <ListItem fontSize="sm">
-                                  <ListIcon as={FaCheckCircle} color="green.500" />
-                                  Optimizar tiempos muertos entre pacientes
-                                </ListItem>
-                              </List>
-                            </Box>
-                          </VStack>
-                        </Box>
-
-                        <Box>
-                          <VStack align="stretch" spacing={4}>
-                            <Box>
-                              <HStack mb={3}>
-                                <Icon as={FaHospitalUser} color="green.500" boxSize="24px" />
-                                <Text fontWeight="bold" fontSize="lg">Atención al Paciente</Text>
-                              </HStack>
-                              <List spacing={2}>
-                                <ListItem fontSize="sm">
-                                  <ListIcon as={FaCheckCircle} color="green.500" />
-                                  Saludar cordialmente y presentarse
-                                </ListItem>
-                                <ListItem fontSize="sm">
-                                  <ListIcon as={FaCheckCircle} color="green.500" />
-                                  Verificar identidad del paciente siempre
-                                </ListItem>
-                                <ListItem fontSize="sm">
-                                  <ListIcon as={FaCheckCircle} color="green.500" />
-                                  Explicar el procedimiento claramente
-                                </ListItem>
-                                <ListItem fontSize="sm">
-                                  <ListIcon as={FaCheckCircle} color="green.500" />
-                                  Despedirse amablemente y orientar siguiente paso
-                                </ListItem>
-                              </List>
-                            </Box>
-
-                            <Box>
-                              <HStack mb={3}>
-                                <Icon as={FaShieldAlt} color="orange.500" boxSize="24px" />
-                                <Text fontWeight="bold" fontSize="lg">Seguridad y Calidad</Text>
-                              </HStack>
-                              <List spacing={2}>
-                                <ListItem fontSize="sm">
-                                  <ListIcon as={FaCheckCircle} color="green.500" />
-                                  Seguir protocolos de bioseguridad siempre
-                                </ListItem>
-                                <ListItem fontSize="sm">
-                                  <ListIcon as={FaCheckCircle} color="green.500" />
-                                  Verificar órdenes médicas correctamente
-                                </ListItem>
-                                <ListItem fontSize="sm">
-                                  <ListIcon as={FaCheckCircle} color="green.500" />
-                                  Etiquetar muestras inmediatamente
-                                </ListItem>
-                                <ListItem fontSize="sm">
-                                  <ListIcon as={FaCheckCircle} color="green.500" />
-                                  Reportar incidentes sin demora
-                                </ListItem>
-                              </List>
-                            </Box>
-                          </VStack>
-                        </Box>
-                      </SimpleGrid>
-                    </GlassCard>
-
-                    <GlassCard p={6} animation={`${fadeInUp} 0.8s ease-out`}>
-                      <Heading size="md" mb={4}>
-                        Indicadores de Rendimiento
-                      </Heading>
-
-                      <SimpleGrid columns={{ base: 1, md: 2, lg: 4 }} gap={4}>
-                        <Stat>
-                          <StatLabel>Tiempo Promedio</StatLabel>
-                          <StatNumber>5-7 min</StatNumber>
-                          <StatHelpText>
-                            <Progress value={75} colorScheme="green" size="xs" />
-                            Óptimo
-                          </StatHelpText>
-                        </Stat>
-
-                        <Stat>
-                          <StatLabel>Pacientes/Hora</StatLabel>
-                          <StatNumber>8-10</StatNumber>
-                          <StatHelpText>
-                            <Progress value={85} colorScheme="blue" size="xs" />
-                            Excelente
-                          </StatHelpText>
-                        </Stat>
-
-                        <Stat>
-                          <StatLabel>Satisfacción</StatLabel>
-                          <StatNumber>&gt;95%</StatNumber>
-                          <StatHelpText>
-                            <Progress value={95} colorScheme="purple" size="xs" />
-                            Meta
-                          </StatHelpText>
-                        </Stat>
-
-                        <Stat>
-                          <StatLabel>Incidencias</StatLabel>
-                          <StatNumber>&lt;2%</StatNumber>
-                          <StatHelpText>
-                            <Progress value={10} colorScheme="orange" size="xs" />
-                            Aceptable
-                          </StatHelpText>
-                        </Stat>
-                      </SimpleGrid>
-
-                      <Divider my={6} />
-
-                      <Alert status="success">
-                        <AlertIcon />
-                        <Box>
-                          <AlertTitle>Recuerda:</AlertTitle>
-                          <AlertDescription>
-                            La excelencia en la atención no solo se mide en números, sino en la
-                            satisfacción y confianza que generamos en cada paciente. Cada interacción
-                            es una oportunidad para marcar la diferencia.
-                          </AlertDescription>
-                        </Box>
-                      </Alert>
-                    </GlassCard>
-
-                    <GlassCard p={6} animation={`${fadeInUp} 0.9s ease-out`}>
-                      <Heading size="md" mb={4}>
-                        Recursos de Apoyo
-                      </Heading>
-
-                      <SimpleGrid columns={{ base: 1, md: 3 }} gap={4}>
-                        <Button
-                          leftIcon={<FaFileAlt />}
-                          colorScheme="blue"
-                          variant="outline"
-                          size="lg"
-                          onClick={() => router.push('/docs/protocolos')}
-                        >
-                          Protocolos Completos
-                        </Button>
-
-                        <Button
-                          leftIcon={<FaVideo />}
-                          colorScheme="purple"
-                          variant="outline"
-                          size="lg"
-                          onClick={() => router.push('/docs/videos')}
-                        >
-                          Videos Tutoriales
-                        </Button>
-
-                        <Button
-                          leftIcon={<FaQuestionCircle />}
-                          colorScheme="green"
-                          variant="outline"
-                          size="lg"
-                          onClick={() => router.push('/docs/faq')}
-                        >
-                          Preguntas Frecuentes
-                        </Button>
-                      </SimpleGrid>
-                    </GlassCard>
-                  </VStack>
-                </TabPanel>
-              </TabPanels>
-            </Tabs>
+                        <AccordionIcon />
+                      </AccordionButton>
+                      <AccordionPanel py={8} px={6}>
+                        <ReactMarkdown components={markdownTheme}>{section.content}</ReactMarkdown>
+                      </AccordionPanel>
+                    </AccordionItem>
+                  ))}
+                </Accordion>
+              </GlassCard>
+            )}
           </VStack>
-        </ModernContainer>
-      </ProtectedRoute>
-    </ChakraProvider>
+
+          <VStack align="stretch" spacing={6}>
+            {content.features && content.features.length > 0 && (
+              <GlassCard p={6} animation={`${slideInFromLeft} 0.8s ease-out`}>
+                <Heading size="md" mb={6} fontWeight="bold" color="gray.800">✨ Características</Heading>
+                <VStack align="stretch" spacing={4}>
+                  {content.features.map((feature, idx) => (
+                    <Box
+                      key={idx}
+                      p={4}
+                      bg={successBg}
+                      backdropFilter="blur(10px)"
+                      borderRadius="xl"
+                      borderLeft="4px solid"
+                      borderLeftColor="green.400"
+                      transition="all 0.3s ease"
+                      _hover={{ transform: 'translateX(5px)', boxShadow: 'md' }}
+                    >
+                      <HStack align="start" spacing={3}>
+                        <Text fontSize="xl" mt={1}>{feature.icon || '✓'}</Text>
+                        <Box>
+                          <Text fontWeight="bold" fontSize="sm" mb={1} color="gray.800">{feature.title}</Text>
+                          <Text color="gray.700" fontSize="xs" lineHeight="1.6">{feature.description}</Text>
+                        </Box>
+                      </HStack>
+                    </Box>
+                  ))}
+                </VStack>
+              </GlassCard>
+            )}
+
+            {content.tips && content.tips.length > 0 && (
+              <GlassCard p={6} animation={`${slideInFromLeft} 0.9s ease-out`}>
+                <Heading size="md" mb={6} fontWeight="bold" color="gray.800">
+                  <HStack><FaLightbulb color="#3182CE" /><Text>💡 Consejos</Text></HStack>
+                </Heading>
+                <VStack align="stretch" spacing={4}>
+                  {content.tips.map((tip, idx) => (
+                    <Box
+                      key={idx}
+                      p={4}
+                      bg={infoBg}
+                      backdropFilter="blur(10px)"
+                      borderRadius="xl"
+                      borderLeft="4px solid"
+                      borderLeftColor="blue.400"
+                      transition="all 0.3s ease"
+                      _hover={{ transform: 'translateX(5px)', boxShadow: 'md' }}
+                    >
+                      <HStack align="start" spacing={3}>
+                        <Text fontSize="xl" mt={1}>{tip.icon || '💡'}</Text>
+                        <Box>
+                          <Text fontWeight="bold" fontSize="sm" mb={1} color="gray.800">{tip.title}</Text>
+                          <Text color="gray.700" fontSize="xs" lineHeight="1.6">{tip.description}</Text>
+                        </Box>
+                      </HStack>
+                    </Box>
+                  ))}
+                </VStack>
+              </GlassCard>
+            )}
+
+            {content.warnings && content.warnings.length > 0 && (
+              <GlassCard p={6} animation={`${slideInFromLeft} 1s ease-out`}>
+                <Heading size="md" mb={6} fontWeight="bold" color="gray.800">
+                  <HStack><FaExclamationTriangle color="#D69E2E" /><Text>⚠️ Advertencias</Text></HStack>
+                </Heading>
+                <VStack align="stretch" spacing={4}>
+                  {content.warnings.map((warning, idx) => (
+                    <Box
+                      key={idx}
+                      p={4}
+                      bg={warningBg}
+                      backdropFilter="blur(10px)"
+                      borderRadius="xl"
+                      borderLeft="4px solid"
+                      borderLeftColor="yellow.500"
+                      transition="all 0.3s ease"
+                      _hover={{ transform: 'translateX(5px)', boxShadow: 'md' }}
+                    >
+                      <HStack align="start" spacing={3}>
+                        <Text fontSize="xl" mt={1}>{warning.icon || '⚠️'}</Text>
+                        <Box>
+                          <Text fontWeight="bold" fontSize="sm" mb={1} color="gray.800">{warning.title}</Text>
+                          <Text color="gray.700" fontSize="xs" lineHeight="1.6">{warning.description}</Text>
+                        </Box>
+                      </HStack>
+                    </Box>
+                  ))}
+                </VStack>
+              </GlassCard>
+            )}
+
+            <Button
+              leftIcon={<FaArrowLeft />}
+              onClick={() => router.push('/docs')}
+              background="linear-gradient(135deg, #4F7DF3 0%, #6B73FF 100%)"
+              color="white"
+              size="lg"
+              _hover={{
+                transform: 'translateY(-2px)',
+                boxShadow: 'xl'
+              }}
+              transition="all 0.3s ease"
+            >
+              Volver a Documentación
+            </Button>
+          </VStack>
+        </Grid>
+      </Container>
+    </Box>
   );
 };
 
-export default AttentionDocumentation;
+export async function getStaticProps() {
+  const fs = require('fs');
+  const path = require('path');
+
+  const filePath = path.join(process.cwd(), 'lib', 'docs', 'fullDocumentation.json');
+  const fileContents = fs.readFileSync(filePath, 'utf8');
+  const fullDocumentation = JSON.parse(fileContents);
+
+  const moduleData = fullDocumentation.find(m => m.moduleId === 'atencion');
+
+  return {
+    props: {
+      moduleData: moduleData || null
+    }
+  };
+}
+
+export default function ProtectedAtencionDocumentation({ moduleData }) {
+  return (
+    <ProtectedRoute>
+      <AtencionDocumentation moduleData={moduleData} />
+    </ProtectedRoute>
+  );
+}

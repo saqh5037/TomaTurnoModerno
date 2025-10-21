@@ -8,7 +8,6 @@ import {
   VStack, 
   HStack,
   Icon,
-  ChakraProvider,
   extendTheme,
   Badge,
   Circle
@@ -242,8 +241,7 @@ const QueueVideoScreen = memo(function QueueVideoScreen() {
   };
 
   return (
-    <ChakraProvider theme={modernTheme}>
-      <Box 
+    <Box 
         minH="100vh" 
         background="linear-gradient(135deg, #E0F2FE 0%, #F0E6FF 50%, #FFE4E6 100%)"
         p={4}
@@ -642,7 +640,6 @@ const QueueVideoScreen = memo(function QueueVideoScreen() {
           </Box>
         )}
       </Box>
-    </ChakraProvider>
   );
 });
 

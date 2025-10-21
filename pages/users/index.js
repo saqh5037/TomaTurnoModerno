@@ -43,7 +43,6 @@ import {
   Checkbox,
   Switch,
   Tooltip,
-  ChakraProvider,
   Progress,
   SimpleGrid,
   Stat,
@@ -108,7 +107,7 @@ import { MdMoreVert, MdRefresh, MdSecurity, MdVerifiedUser } from 'react-icons/m
 import { BsThreeDotsVertical } from 'react-icons/bs';
 import ProtectedRoute from '../../components/ProtectedRoute';
 // import Navbar from '../../components/Navbar'; // Comentado temporalmente
-import { modernTheme, fadeInUp, slideInFromLeft, slideInFromRight, GlassCard, ModernContainer, ModernHeader } from '../../components/theme/ModernTheme';
+import { fadeInUp, slideInFromLeft, slideInFromRight, GlassCard, ModernContainer, ModernHeader } from '../../components/theme/ModernTheme';
 import { useAuth } from '../../contexts/AuthContext';
 import { useRouter } from 'next/router';
 
@@ -220,6 +219,7 @@ const LastActivityIndicator = ({ lastLogin, color }) => {
 
 // Componente principal de gestión de usuarios
 function UsersManagement() {
+  console.log('[Users] ========== COMPONENT RENDER ==========');
   const router = useRouter();
 
   // Estados principales
@@ -235,6 +235,8 @@ function UsersManagement() {
   const [sortConfig, setSortConfig] = useState({ key: 'name', direction: 'asc' });
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [refreshInterval, setRefreshInterval] = useState(30000); // 30 segundos
+
+  console.log('[Users] State - loading:', loading, 'users count:', users.length);
 
   // Estados para formularios
   const [formData, setFormData] = useState({
@@ -779,8 +781,7 @@ function UsersManagement() {
 
   if (loading) {
     return (
-      <ChakraProvider theme={modernTheme}>
-        <ProtectedRoute requiredRole="admin">
+      <ProtectedRoute requiredRole="admin">
           {/* <Navbar /> */}
           <ModernContainer>
             <Center h="50vh">
@@ -791,13 +792,11 @@ function UsersManagement() {
             </Center>
           </ModernContainer>
         </ProtectedRoute>
-      </ChakraProvider>
     );
   }
 
   return (
-    <ChakraProvider theme={modernTheme}>
-      <ProtectedRoute requiredRole="admin">
+    <ProtectedRoute requiredRole="admin">
         {/* <Navbar /> */}
         <ModernContainer>
           <VStack spacing={8} align="stretch">
@@ -1323,7 +1322,7 @@ function UsersManagement() {
                   ¿Estás seguro de que deseas eliminar al usuario <strong>{deletingUser?.name}</strong>?
                   <br /><br />
                   <Text color="red.600" fontWeight="medium">
-                    Esta acción marcará al usuario como "Eliminado" (estado BLOCKED) y:
+                    Esta acción marcará al usuario como &quot;Eliminado&quot; (estado BLOCKED) y:
                   </Text>
                   <Box as="ul" pl={5} mt={2}>
                     <li>No se mostrará en el listado por defecto</li>
@@ -1333,7 +1332,7 @@ function UsersManagement() {
                   </Box>
                   <br />
                   <Text fontSize="sm" color="orange.500" fontWeight="medium">
-                    💡 Tip: Si solo necesitas desactivar temporalmente al usuario, usa el switch de "Activo/Inactivo" en su lugar.
+                    💡 Tip: Si solo necesitas desactivar temporalmente al usuario, usa el switch de &quot;Activo/Inactivo&quot; en su lugar.
                   </Text>
                 </AlertDialogBody>
 
@@ -1380,7 +1379,6 @@ function UsersManagement() {
           </AlertDialog>
         </ModernContainer>
       </ProtectedRoute>
-    </ChakraProvider>
   );
 }
 

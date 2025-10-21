@@ -1,0 +1,71 @@
+{
+  "module": "Gestión de Usuarios",
+  "total_steps": 8,
+  "description": "Documentación completa del módulo de Gestión de Usuarios incluyendo todas las operaciones CRUD y cambios de estado",
+  "steps": [
+    {
+      "step": 1,
+      "filename": "step01-login-page.png",
+      "title": "Página de inicio de sesión",
+      "description": "La página de login es el punto de entrada al sistema. Aquí los usuarios ingresan sus credenciales.",
+      "path": "/docs/screenshots/users/step01-login-page.png",
+      "size": "237.0 KB"
+    },
+    {
+      "step": 2,
+      "filename": "step02-username-entered.png",
+      "title": "Usuario ingresado",
+      "description": "Se ingresa el nombre de usuario 'admin' en el campo de usuario.",
+      "path": "/docs/screenshots/users/step02-username-entered.png",
+      "size": "235.4 KB"
+    },
+    {
+      "step": 3,
+      "filename": "step03-password-entered.png",
+      "title": "Contraseña ingresada",
+      "description": "Se ingresa la contraseña en el campo correspondiente (se muestra oculta por seguridad).",
+      "path": "/docs/screenshots/users/step03-password-entered.png",
+      "size": "235.1 KB"
+    },
+    {
+      "step": 4,
+      "filename": "step04-dashboard-after-login.png",
+      "title": "Dashboard después del login",
+      "description": "Después de autenticarse exitosamente, el usuario es redirigido al dashboard principal del sistema.",
+      "path": "/docs/screenshots/users/step04-dashboard-after-login.png",
+      "size": "209.2 KB"
+    },
+    {
+      "step": 5,
+      "filename": "step05-users-list-initial.png",
+      "title": "Vista inicial del módulo de usuarios",
+      "description": "El módulo de Gestión de Usuarios muestra una tabla con todos los usuarios del sistema, incluyendo su nombre, usuario, rol y estado.",
+      "path": "/docs/screenshots/users/step05-users-list-initial.png",
+      "size": "200.2 KB"
+    },
+    {
+      "step": 6,
+      "filename": "step06-users-list-scrolled.png",
+      "title": "Lista completa de usuarios",
+      "description": "Vista completa de la tabla de usuarios mostrando todos los campos: nombre completo, nombre de usuario, rol (Admin/Flebotomista) y estado (ACTIVE/INACTIVE/BLOCKED).",
+      "path": "/docs/screenshots/users/step06-users-list-scrolled.png",
+      "size": "162.4 KB"
+    },
+    {
+      "step": 7,
+      "filename": "error-create-user.png",
+      "title": "Error en creación",
+      "description": "Se encontró un error: Message: \nStacktrace:\n0   chromedriver                        0x0000000104e2c2c0 cxxbridge1$str$ptr + 2897404\n1   chromedriver                        0x0000000104e241fc cxxbridge1$str$ptr + 2864440\n2   chromedriver                        0x0000000104949540 _RNvCs47EqcsrPRmA_7___rustc35___rust_no_alloc_shim_is_unstable_v2 + 74324\n3   chromedriver                        0x0000000104990efc _RNvCs47EqcsrPRmA_7___rustc35___rust_no_alloc_shim_is_unstable_v2 + 367632\n4   chromedriver                        0x00000001049d239c _RNvCs47EqcsrPRmA_7___rustc35___rust_no_alloc_shim_is_unstable_v2 + 635056\n5   chromedriver                        0x00000001049850c0 _RNvCs47EqcsrPRmA_7___rustc35___rust_no_alloc_shim_is_unstable_v2 + 318932\n6   chromedriver                        0x0000000104defbb8 cxxbridge1$str$ptr + 2649844\n7   chromedriver                        0x0000000104df3194 cxxbridge1$str$ptr + 2663632\n8   chromedriver                        0x0000000104dd0614 cxxbridge1$str$ptr + 2521424\n9   chromedriver                        0x0000000104df3a7c cxxbridge1$str$ptr + 2665912\n10  chromedriver                        0x0000000104dc1d4c cxxbridge1$str$ptr + 2461832\n11  chromedriver                        0x0000000104e13508 cxxbridge1$str$ptr + 2795588\n12  chromedriver                        0x0000000104e1368c cxxbridge1$str$ptr + 2795976\n13  chromedriver                        0x0000000104e23e48 cxxbridge1$str$ptr + 2863492\n14  libsystem_pthread.dylib             0x0000000188634c08 _pthread_start + 136\n15  libsystem_pthread.dylib             0x000000018862fba8 thread_start + 8\n",
+      "path": "/docs/screenshots/users/error-create-user.png",
+      "size": "200.2 KB"
+    },
+    {
+      "step": 8,
+      "filename": "step35-final-users-overview.png",
+      "title": "Vista final del módulo de usuarios",
+      "description": "Vista completa del módulo de Gestión de Usuarios después de realizar todas las operaciones: crear, editar, cambiar estado, bloquear y filtrar usuarios.",
+      "path": "/docs/screenshots/users/step35-final-users-overview.png",
+      "size": "200.2 KB"
+    }
+  ]
+}

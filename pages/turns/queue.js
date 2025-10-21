@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, memo } from "react";
-import { Box, Heading, Text, Flex, ChakraProvider, extendTheme, VStack, HStack, Grid } from "@chakra-ui/react";
-import { FaHeartbeat, FaClock, FaMicrophone } from 'react-icons/fa';
+import { Box, Heading, Text, Flex, extendTheme, VStack, HStack, Grid } from "@chakra-ui/react";
+import { FaHeartbeat, FaClock, FaMicrophone, FaWheelchair, FaHourglass } from 'react-icons/fa';
 import QRCode from 'react-qr-code';
 
 // Tema ultra-minimalista optimizado para máxima densidad de información
@@ -75,11 +75,10 @@ const Queue = memo(function Queue() {
             if (!response.ok) throw new Error("Error al obtener los turnos");
             const data = await response.json();
 
-            const sortedPendingTurns = (data.pendingTurns || []).sort((a, b) => a.assignedTurn - b.assignedTurn);
-            const sortedInProgressTurns = (data.inProgressTurns || []).sort((a, b) => a.assignedTurn - b.assignedTurn);
-
-            setPendingTurns(sortedPendingTurns);
-            setInProgressTurns(sortedInProgressTurns);
+            // El API ya devuelve los datos ordenados correctamente (FIFO estricto por updatedAt)
+            // No necesitamos re-ordenar en el cliente
+            setPendingTurns(data.pendingTurns || []);
+            setInProgressTurns(data.inProgressTurns || []);
 
             // Detectar pacientes siendo llamados
             if (data.inCallingTurns && data.inCallingTurns.length > 0) {
@@ -153,7 +152,7 @@ const Queue = memo(function Queue() {
             return Promise.resolve();
         }
 
-        const cubiculoName = patient.cubicle?.name || 'uno';
+        const cubiculoName = patient.cubicleName || 'uno';
         // Agregar pausa natural con puntos para que la voz haga pausas
         const messageText = `Atención, paciente ${patient.patientName}, favor de dirigirse al cubículo número ${cubiculoName}... Repito... paciente ${patient.patientName}, cubículo número ${cubiculoName}.`;
 
@@ -370,27 +369,22 @@ const Queue = memo(function Queue() {
 
     if (!mounted) {
         return (
-            <ChakraProvider theme={theme}>
-                <Box h="100vh" display="flex" alignItems="center" justifyContent="center">
+            <Box h="100vh" display="flex" alignItems="center" justifyContent="center">
                     <Text fontSize="lg" color="gray.600">Cargando sistema...</Text>
                 </Box>
-            </ChakraProvider>
         );
     }
 
     if (error) {
         return (
-            <ChakraProvider theme={theme}>
-                <Box h="100vh" display="flex" alignItems="center" justifyContent="center">
+            <Box h="100vh" display="flex" alignItems="center" justifyContent="center">
                     <Text fontSize="lg" fontWeight="bold" color="red.600">{error}</Text>
                 </Box>
-            </ChakraProvider>
         );
     }
 
     return (
-        <ChakraProvider theme={theme}>
-            <Box h="100vh" display="flex" flexDirection="column" bg="white" position="relative">
+        <Box h="100vh" display="flex" flexDirection="column" bg="white" position="relative">
 
                 {/* Header Superior - Ultra compacto */}
                 <Box
@@ -503,7 +497,7 @@ const Queue = memo(function Queue() {
                                                 fontWeight="bold"
                                                 mr={2}
                                             >
-                                                Cubículo {turn.cubicle?.name || '-'}
+                                                Cubículo {turn.cubicleName || '-'}
                                             </Box>
                                             <Text color="#1E293B" flex="1" fontWeight="bold" fontSize="md" isTruncated>
                                                 {turn.patientName}
@@ -581,23 +575,29 @@ const Queue = memo(function Queue() {
                                                 align="center"
                                                 px={2}
                                                 py={1}
-                                                bg="white"
+                                                bg={turn.isDeferred ? "#FEF3C7" : "white"}
                                                 borderRadius="sm"
                                                 borderLeft="2px solid"
-                                                borderLeftColor={turn.tipoAtencion === "Special" ? "#EF4444" : "#F59E0B"}
+                                                borderLeftColor={
+                                                    turn.isDeferred ? "#F59E0B" :
+                                                    turn.tipoAtencion === "Special" ? "#EF4444" : "#F59E0B"
+                                                }
                                                 fontSize="xs"
                                             >
+                                                {/* Ícono de reloj de arena para pacientes diferidos */}
+                                                {turn.isDeferred && (
+                                                    <Box as={FaHourglass} color="#f59e0b" fontSize="md" mr={1} />
+                                                )}
+                                                {/* Ícono de silla de ruedas para pacientes especiales */}
+                                                {turn.tipoAtencion === "Special" && (
+                                                    <Box as={FaWheelchair} color="#EF4444" fontSize="md" mr={1} />
+                                                )}
                                                 <Text fontWeight="bold" color="#F59E0B" fontSize="xs" mr={1}>
                                                     #{turn.assignedTurn}
                                                 </Text>
                                                 <Text color="#1E293B" flex="1" fontWeight="medium" fontSize="sm" isTruncated>
                                                     {turn.patientName}
                                                 </Text>
-                                                {turn.tipoAtencion === "Special" && (
-                                                    <Text color="#EF4444" fontWeight="bold" fontSize="sm" ml={1}>
-                                                        ♿
-                                                    </Text>
-                                                )}
                                             </Flex>
                                         ))}
                                     </VStack>
@@ -610,23 +610,29 @@ const Queue = memo(function Queue() {
                                                 align="center"
                                                 px={2}
                                                 py={1}
-                                                bg="white"
+                                                bg={turn.isDeferred ? "#FEF3C7" : "white"}
                                                 borderRadius="sm"
                                                 borderLeft="2px solid"
-                                                borderLeftColor={turn.tipoAtencion === "Special" ? "#EF4444" : "#F59E0B"}
+                                                borderLeftColor={
+                                                    turn.isDeferred ? "#F59E0B" :
+                                                    turn.tipoAtencion === "Special" ? "#EF4444" : "#F59E0B"
+                                                }
                                                 fontSize="xs"
                                             >
+                                                {/* Ícono de reloj de arena para pacientes diferidos */}
+                                                {turn.isDeferred && (
+                                                    <Box as={FaHourglass} color="#f59e0b" fontSize="md" mr={1} />
+                                                )}
+                                                {/* Ícono de silla de ruedas para pacientes especiales */}
+                                                {turn.tipoAtencion === "Special" && (
+                                                    <Box as={FaWheelchair} color="#EF4444" fontSize="md" mr={1} />
+                                                )}
                                                 <Text fontWeight="bold" color="#F59E0B" fontSize="xs" mr={1}>
                                                     #{turn.assignedTurn}
                                                 </Text>
                                                 <Text color="#1E293B" flex="1" fontWeight="medium" fontSize="sm" isTruncated>
                                                     {turn.patientName}
                                                 </Text>
-                                                {turn.tipoAtencion === "Special" && (
-                                                    <Text color="#EF4444" fontWeight="bold" fontSize="sm" ml={1}>
-                                                        ♿
-                                                    </Text>
-                                                )}
                                             </Flex>
                                         ))}
                                     </VStack>
@@ -779,14 +785,13 @@ const Queue = memo(function Queue() {
                                 border="2px solid"
                                 borderColor="#0EA5E9"
                             >
-                                CUBÍCULO {callingPatient.cubicle?.name || '-'}
+                                CUBÍCULO {callingPatient.cubicleName || '-'}
                             </Box>
                         </Box>
                     </Box>
                 )}
 
             </Box>
-        </ChakraProvider>
     );
 });
 

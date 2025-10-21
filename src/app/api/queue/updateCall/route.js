@@ -12,10 +12,24 @@ export async function PUT(req) {
       );
     }
 
+    // Si se está llamando al paciente (isCalled = true), incrementar contador
+    const updateData = { isCalled };
+
+    if (isCalled) {
+      // Obtener el turno actual para incrementar el contador
+      const currentTurn = await prisma.turnRequest.findUnique({
+        where: { id: parseInt(id) },
+        select: { callCount: true }
+      });
+
+      updateData.callCount = (currentTurn?.callCount || 0) + 1;
+      updateData.calledAt = new Date();
+    }
+
     // Actualiza el turno en la base de datos
     const updatedTurn = await prisma.turnRequest.update({
       where: { id: parseInt(id) },
-      data: { isCalled },
+      data: updateData,
     });
 
     return new Response(JSON.stringify(updatedTurn), { status: 200 });

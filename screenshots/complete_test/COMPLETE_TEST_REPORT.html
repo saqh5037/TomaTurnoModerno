@@ -1,0 +1,326 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Reporte Completo de Pruebas - Sistema de Turnos INER</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            padding: 40px;
+            background: #f8f9fa;
+        }
+        .stat-card {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            text-align: center;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        .stat-card h3 {
+            font-size: 3em;
+            margin-bottom: 10px;
+        }
+        .stat-card p {
+            color: #666;
+            font-size: 1.1em;
+        }
+        .stat-card.success h3 { color: #10b981; }
+        .stat-card.fail h3 { color: #ef4444; }
+        .stat-card.error h3 { color: #f59e0b; }
+        .stat-card.skip h3 { color: #6b7280; }
+        .stat-card.total h3 { color: #3b82f6; }
+
+        .content {
+            padding: 40px;
+        }
+
+        .test-results {
+            margin-bottom: 40px;
+        }
+        .test-results h2 {
+            color: #1f2937;
+            margin-bottom: 20px;
+            font-size: 2em;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 30px;
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        th {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+        }
+        td {
+            padding: 15px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        tr:last-child td {
+            border-bottom: none;
+        }
+        tr:hover {
+            background: #f9fafb;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 0.9em;
+        }
+        .status-PASS { background: #d1fae5; color: #065f46; }
+        .status-FAIL { background: #fee2e2; color: #991b1b; }
+        .status-ERROR { background: #fef3c7; color: #92400e; }
+        .status-SKIP { background: #e5e7eb; color: #374151; }
+
+        .screenshots {
+            margin-top: 40px;
+        }
+        .screenshots h2 {
+            color: #1f2937;
+            margin-bottom: 20px;
+            font-size: 2em;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 10px;
+        }
+        .screenshot-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+            gap: 30px;
+            margin-top: 20px;
+        }
+        .screenshot-card {
+            background: white;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease;
+        }
+        .screenshot-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.2);
+        }
+        .screenshot-card img {
+            width: 100%;
+            height: 250px;
+            object-fit: cover;
+            border-bottom: 3px solid #667eea;
+        }
+        .screenshot-info {
+            padding: 20px;
+        }
+        .screenshot-title {
+            font-weight: bold;
+            color: #1f2937;
+            margin-bottom: 5px;
+            font-size: 1.1em;
+        }
+        .screenshot-meta {
+            color: #6b7280;
+            font-size: 0.9em;
+        }
+
+        .footer {
+            background: #f8f9fa;
+            padding: 30px;
+            text-align: center;
+            color: #6b7280;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🧪 Reporte Completo de Pruebas</h1>
+            <p>Sistema de Gestión de Turnos - INER</p>
+            <p style="font-size: 0.9em; margin-top: 10px;">
+                Generado: 06/10/2025 21:44:49
+            </p>
+        </div>
+
+        <div class="stats">
+            <div class="stat-card total">
+                <h3>3</h3>
+                <p>Total Pruebas</p>
+            </div>
+            <div class="stat-card success">
+                <h3>1</h3>
+                <p>Exitosas</p>
+            </div>
+            <div class="stat-card fail">
+                <h3>0</h3>
+                <p>Fallidas</p>
+            </div>
+            <div class="stat-card error">
+                <h3>2</h3>
+                <p>Errores</p>
+            </div>
+            <div class="stat-card skip">
+                <h3>0</h3>
+                <p>Omitidas</p>
+            </div>
+            <div class="stat-card total">
+                <h3>33.3%</h3>
+                <p>Tasa de Éxito</p>
+            </div>
+        </div>
+
+        <div class="content">
+            <div class="test-results">
+                <h2>📊 Resultados Detallados</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Prueba</th>
+                            <th>Estado</th>
+                            <th>Detalles</th>
+                            <th>Hora</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+
+                        <tr>
+                            <td>1</td>
+                            <td><strong>Cola Pública</strong></td>
+                            <td><span class="status-badge status-PASS">PASS</span></td>
+                            <td>Página cargada correctamente</td>
+                            <td>21:44:12</td>
+                        </tr>
+
+                        <tr>
+                            <td>2</td>
+                            <td><strong>Login como admin</strong></td>
+                            <td><span class="status-badge status-ERROR">ERROR</span></td>
+                            <td>Message: 
+Stacktrace:
+0   chromedriver                        0x0000000102d402c0 cxxbridge1$str$ptr + 2897404
+1   chromedriver                        0x0000000102d381fc cxxbridge1$str$ptr + 2864440
+2   chromedriver                        0x000000010285d540 _RNvCs47EqcsrPRmA_7___rustc35___rust_no_alloc_shim_is_unstable_v2 + 74324
+3   chromedriver                        0x00000001028a4efc _RNvCs47EqcsrPRmA_7___rustc35___rust_no_alloc_shim_is_unstable_v2 + 367632
+4   chromedriver                        0x00000001028e639c _RNvCs47EqcsrPRmA_7___rustc35___rust_no_alloc_shim_is_unstable_v2 + 635056
+5   chromedriver                        0x00000001028990c0 _RNvCs47EqcsrPRmA_7___rustc35___rust_no_alloc_shim_is_unstable_v2 + 318932
+6   chromedriver                        0x0000000102d03bb8 cxxbridge1$str$ptr + 2649844
+7   chromedriver                        0x0000000102d07194 cxxbridge1$str$ptr + 2663632
+8   chromedriver                        0x0000000102ce4614 cxxbridge1$str$ptr + 2521424
+9   chromedriver                        0x0000000102d07a7c cxxbridge1$str$ptr + 2665912
+10  chromedriver                        0x0000000102cd5d4c cxxbridge1$str$ptr + 2461832
+11  chromedriver                        0x0000000102d27508 cxxbridge1$str$ptr + 2795588
+12  chromedriver                        0x0000000102d2768c cxxbridge1$str$ptr + 2795976
+13  chromedriver                        0x0000000102d37e48 cxxbridge1$str$ptr + 2863492
+14  libsystem_pthread.dylib             0x0000000188634c08 _pthread_start + 136
+15  libsystem_pthread.dylib             0x000000018862fba8 thread_start + 8
+</td>
+                            <td>21:44:30</td>
+                        </tr>
+
+                        <tr>
+                            <td>3</td>
+                            <td><strong>Login como flebo1</strong></td>
+                            <td><span class="status-badge status-ERROR">ERROR</span></td>
+                            <td>Message: 
+Stacktrace:
+0   chromedriver                        0x0000000102d402c0 cxxbridge1$str$ptr + 2897404
+1   chromedriver                        0x0000000102d381fc cxxbridge1$str$ptr + 2864440
+2   chromedriver                        0x000000010285d540 _RNvCs47EqcsrPRmA_7___rustc35___rust_no_alloc_shim_is_unstable_v2 + 74324
+3   chromedriver                        0x00000001028a4efc _RNvCs47EqcsrPRmA_7___rustc35___rust_no_alloc_shim_is_unstable_v2 + 367632
+4   chromedriver                        0x00000001028e639c _RNvCs47EqcsrPRmA_7___rustc35___rust_no_alloc_shim_is_unstable_v2 + 635056
+5   chromedriver                        0x00000001028990c0 _RNvCs47EqcsrPRmA_7___rustc35___rust_no_alloc_shim_is_unstable_v2 + 318932
+6   chromedriver                        0x0000000102d03bb8 cxxbridge1$str$ptr + 2649844
+7   chromedriver                        0x0000000102d07194 cxxbridge1$str$ptr + 2663632
+8   chromedriver                        0x0000000102ce4614 cxxbridge1$str$ptr + 2521424
+9   chromedriver                        0x0000000102d07a7c cxxbridge1$str$ptr + 2665912
+10  chromedriver                        0x0000000102cd5d4c cxxbridge1$str$ptr + 2461832
+11  chromedriver                        0x0000000102d27508 cxxbridge1$str$ptr + 2795588
+12  chromedriver                        0x0000000102d2768c cxxbridge1$str$ptr + 2795976
+13  chromedriver                        0x0000000102d37e48 cxxbridge1$str$ptr + 2863492
+14  libsystem_pthread.dylib             0x0000000188634c08 _pthread_start + 136
+15  libsystem_pthread.dylib             0x000000018862fba8 thread_start + 8
+</td>
+                            <td>21:44:49</td>
+                        </tr>
+
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="screenshots">
+                <h2>📸 Capturas de Pantalla (3 screenshots)</h2>
+                <div class="screenshot-grid">
+
+                    <div class="screenshot-card">
+                        <img src="001_queue_page.png" alt="001 Queue Page">
+                        <div class="screenshot-info">
+                            <div class="screenshot-title">1. 001 Queue Page</div>
+                            <div class="screenshot-meta">001_queue_page.png</div>
+                        </div>
+                    </div>
+
+                    <div class="screenshot-card">
+                        <img src="002_login_page_admin.png" alt="002 Login Page Admin">
+                        <div class="screenshot-info">
+                            <div class="screenshot-title">2. 002 Login Page Admin</div>
+                            <div class="screenshot-meta">002_login_page_admin.png</div>
+                        </div>
+                    </div>
+
+                    <div class="screenshot-card">
+                        <img src="003_login_page_flebo1.png" alt="003 Login Page Flebo1">
+                        <div class="screenshot-info">
+                            <div class="screenshot-title">3. 003 Login Page Flebo1</div>
+                            <div class="screenshot-meta">003_login_page_flebo1.png</div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p><strong>Sistema de Gestión de Turnos - INER</strong></p>
+            <p>Versión 2.6.1 | Pruebas Automatizadas con Selenium</p>
+        </div>
+    </div>
+</body>
+</html>

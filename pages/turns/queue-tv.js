@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useMemo, memo } from "react";
-import { Box, Heading, Text, Grid, Flex, ChakraProvider, extendTheme, VStack, HStack, Icon, Circle } from "@chakra-ui/react";
+import { Box, Heading, Text, Grid, Flex, extendTheme, VStack, HStack, Icon, Circle } from "@chakra-ui/react";
 import { keyframes } from "@emotion/react";
 import { FaHeartbeat, FaClock, FaUserMd, FaUser, FaWheelchair, FaMicrophone, FaStar, FaQrcode } from 'react-icons/fa';
 import QRCode from 'react-qr-code';
@@ -331,8 +331,7 @@ const QueueTV = memo(function QueueTV() {
 
     if (!mounted) {
         return (
-            <ChakraProvider theme={theme}>
-                <Box
+            <Box
                     minHeight="100vh"
                     display="flex"
                     alignItems="center"
@@ -343,14 +342,12 @@ const QueueTV = memo(function QueueTV() {
                         Cargando sistema...
                     </Text>
                 </Box>
-            </ChakraProvider>
         );
     }
 
     if (error) {
         return (
-            <ChakraProvider theme={theme}>
-                <Box
+            <Box
                     height="100vh"
                     display="flex"
                     alignItems="center"
@@ -358,13 +355,11 @@ const QueueTV = memo(function QueueTV() {
                 >
                     <Text fontSize="3xl" fontWeight="bold" color="red.700">{error}</Text>
                 </Box>
-            </ChakraProvider>
         );
     }
 
     return (
-        <ChakraProvider theme={theme}>
-            <Box
+        <Box
                 minHeight="100vh"
                 p={4}
                 display="flex"
@@ -878,7 +873,6 @@ const QueueTV = memo(function QueueTV() {
                     </HStack>
                 </Flex>
             </Box>
-        </ChakraProvider>
     );
 });
 

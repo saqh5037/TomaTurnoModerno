@@ -1,65 +1,65 @@
-import { useState, useEffect, memo } from 'react';
-import { 
-  Box, 
-  Heading, 
-  Text, 
-  VStack, 
-  HStack,
+import { useState, useEffect, useCallback, memo } from 'react';
+import {
+  Box,
+  Heading,
+  Text,
+  VStack,
   Button,
-  ChakraProvider,
-  Spinner,
-  Flex
+  Flex,
+  useToast,
+  Spinner
 } from '@chakra-ui/react';
 import {
-  FaHeart,
-  FaHome,
-  FaStethoscope,
-  FaMedal,
-  FaHandsHelping,
   FaClock,
   FaUsers,
   FaSignOutAlt,
   FaUserMd,
   FaChartBar,
   FaUserCircle,
-  FaBook
+  FaBook,
+  FaHome,
+  FaStethoscope
 } from 'react-icons/fa';
-import { modernTheme, fadeInUp, slideInFromLeft, slideInFromRight, GlassCard, ModernContainer } from '../components/theme/ModernTheme';
+import { fadeInUp, slideInFromLeft, GlassCard, ModernContainer } from '../components/theme/ModernTheme';
 import { useRouter } from 'next/router';
 import { useAuth } from '../contexts/AuthContext';
 
 const HomePage = memo(function HomePage() {
-  const [mounted, setMounted] = useState(false);
-  const [currentTime, setCurrentTime] = useState(null);
+  console.log('[HomePage] ========== COMPONENT RENDER ==========');
+  const [currentTime, setCurrentTime] = useState(new Date());
+  const [isNavigating, setIsNavigating] = useState(false);
   const router = useRouter();
   const { user, logout } = useAuth();
+  const toast = useToast();
   const userRole = user?.role;
 
-  // Effect para marcar el componente como montado
-  useEffect(() => {
-    setMounted(true);
-    setCurrentTime(new Date());
-  }, []);
+  console.log('[HomePage] User:', user?.name, 'Role:', userRole, 'isNavigating:', isNavigating);
 
   // Actualizar hora cada segundo
   useEffect(() => {
-    if (mounted) {
-      const timeInterval = setInterval(() => {
-        setCurrentTime(new Date());
-      }, 1000);
-      return () => clearInterval(timeInterval);
-    }
-  }, [mounted]);
+    console.log('[HomePage] useEffect - Setting up time interval');
+    const timeInterval = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+    return () => {
+      console.log('[HomePage] useEffect - Cleaning up time interval');
+      clearInterval(timeInterval);
+    };
+  }, []);
 
-  // Redirigir al login si no está autenticado
+  // Reset isNavigating when route changes (Next.js 15 navigation detection)
   useEffect(() => {
-    if (mounted && !userRole) {
-      router.push('/login');
+    console.log(`[HomePage] useEffect - Route changed to: ${router.pathname}`);
+
+    // If we navigated away from home page, reset loading state
+    if (router.pathname !== '/' && isNavigating) {
+      console.log(`[HomePage] Detected route change away from /, resetting isNavigating`);
+      setIsNavigating(false);
     }
-  }, [mounted, userRole, router]);
+  }, [router.pathname, isNavigating]);
 
   const formatTime = (date) => {
-    if (!date || !mounted) return "Cargando...";
+    if (!date) return "Cargando...";
     return date.toLocaleString('es-ES', {
       weekday: 'long',
       year: 'numeric',
@@ -71,45 +71,85 @@ const HomePage = memo(function HomePage() {
     });
   };
 
-  const handleNavigation = (path) => {
-    router.push(path);
-  };
+  const handleNavigation = useCallback((path) => {
+    console.log(`[HomePage] ========== NAVIGATION START ==========`);
+    console.log(`[HomePage] handleNavigation called with path: "${path}"`);
+    console.log(`[HomePage] Current isNavigating state: ${isNavigating}`);
+
+    // Validate path
+    if (!path || typeof path !== 'string') {
+      console.error('[HomePage] ❌ Invalid path:', path);
+      toast({
+        title: 'Error de navegación',
+        description: 'Ruta inválida',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+        position: 'top'
+      });
+      return;
+    }
+
+    // Prevent duplicate navigation
+    if (isNavigating) {
+      console.log('[HomePage] ⚠️ Navigation already in progress, aborting');
+      return;
+    }
+
+    console.log(`[HomePage] Setting isNavigating = true`);
+    setIsNavigating(true);
+    console.log(`[HomePage] 🚀 Iniciando navegación a: ${path}`);
+    console.log(`[HomePage] Using window.location.href for reliable navigation`);
+
+    // Use window.location.href for full page navigation
+    // This avoids issues with Fast Refresh and runtime errors
+    window.location.href = path;
+    console.log(`[HomePage] ========== NAVIGATION END ==========`);
+  }, [toast, isNavigating]);
 
   const handleLogout = () => {
+    console.log('[HomePage] handleLogout called');
     logout();
     router.push('/login');
   };
 
-  // No renderizar hasta que esté montado para evitar errores de hidratación
-  if (!mounted || !userRole) {
-    return (
-      <ChakraProvider theme={modernTheme}>
-        <ModernContainer>
-          <Box
-            display="flex"
-            alignItems="center"
-            justifyContent="center"
-            minHeight="100vh"
-          >
-            <GlassCard p={8} textAlign="center">
-              <Spinner size="xl" color="primary.500" thickness="4px" mb={4} />
-              <Text fontSize="xl" color="secondary.600">
-                Verificando autenticación...
-              </Text>
-            </GlassCard>
-          </Box>
-        </ModernContainer>
-      </ChakraProvider>
-    );
-  }
-
   // Configurar módulos según el rol
   const isAdmin = userRole === 'admin' || userRole === 'Admin' || userRole === 'Administrador';
   const isFlebotomista = userRole === 'Flebotomista' || userRole === 'flebotomista';
+  const isSupervisor = userRole === 'supervisor';
 
   return (
-    <ChakraProvider theme={modernTheme}>
-      <ModernContainer>
+    <ModernContainer>
+        {/* Loading Overlay cuando está navegando */}
+        {isNavigating && (
+          <Box
+            position="fixed"
+            top={0}
+            left={0}
+            right={0}
+            bottom={0}
+            bg="rgba(0, 0, 0, 0.5)"
+            backdropFilter="blur(5px)"
+            display="flex"
+            alignItems="center"
+            justifyContent="center"
+            zIndex={9999}
+          >
+            <VStack spacing={4}>
+              <Spinner
+                thickness="4px"
+                speed="0.65s"
+                emptyColor="gray.200"
+                color="blue.500"
+                size="xl"
+              />
+              <Text color="white" fontSize="lg" fontWeight="bold">
+                Cargando...
+              </Text>
+            </VStack>
+          </Box>
+        )}
+
         {/* Header Principal con Glassmorphism */}
         <Box
           p={6}
@@ -141,7 +181,7 @@ const HomePage = memo(function HomePage() {
                 color="secondary.600"
                 fontWeight="medium"
               >
-                TomaTurno - INER | {isAdmin ? '👨‍💼 Administrador' : '👩‍⚕️ Flebotomista'}
+                TomaTurno - INER | {isAdmin ? '👨‍💼 Administrador' : isSupervisor ? '👨‍💼 Supervisor' : '👩‍⚕️ Flebotomista'}
               </Text>
             </Box>
             <VStack spacing={2} align="stretch">
@@ -291,8 +331,8 @@ const HomePage = memo(function HomePage() {
               </GlassCard>
             )}
 
-            {/* Panel de Atención - Solo para Flebotomistas y Admins */}
-            {(isFlebotomista || isAdmin) && (
+            {/* Panel de Atención - Solo para Flebotomistas, Supervisores y Admins */}
+            {(isFlebotomista || isSupervisor || isAdmin) && (
               <GlassCard 
                 p={8}
                 minW="280px"
@@ -477,7 +517,6 @@ const HomePage = memo(function HomePage() {
           </Text>
         </Box>
       </ModernContainer>
-    </ChakraProvider>
   );
 });
 

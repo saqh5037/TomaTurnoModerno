@@ -10,7 +10,6 @@ import {
   Input,
   Checkbox,
   useToast,
-  ChakraProvider,
   extendTheme,
   Flex,
   Grid,
@@ -179,6 +178,7 @@ const slideInLeft = keyframes`
 `;
 
 export default function CubicleManagement() {
+  console.log('[Cubicles] ========== COMPONENT RENDER ==========');
   const [cubicles, setCubicles] = useState([]);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [name, setName] = useState('');
@@ -193,10 +193,14 @@ export default function CubicleManagement() {
   const { isOpen, onOpen, onClose } = useDisclosure();
   const { isOpen: isDeleteOpen, onOpen: onDeleteOpen, onClose: onDeleteClose } = useDisclosure();
 
+  console.log('[Cubicles] State - mounted:', mounted, 'cubicles count:', cubicles.length);
+
   // Efecto para manejar la hidratación
   useEffect(() => {
+    console.log('[Cubicles] useEffect - Component mounting...');
     setMounted(true);
     setCurrentTime(new Date());
+    console.log('[Cubicles] useEffect - Mounted state set');
   }, []);
 
   // Actualizar hora cada segundo
@@ -534,8 +538,7 @@ export default function CubicleManagement() {
 
   if (!mounted) {
     return (
-      <ChakraProvider theme={theme}>
-        <Box
+      <Box
           minHeight="100vh"
           display="flex"
           alignItems="center"
@@ -554,13 +557,11 @@ export default function CubicleManagement() {
             </Text>
           </Box>
         </Box>
-      </ChakraProvider>
     );
   }
 
   return (
-    <ChakraProvider theme={theme}>
-      <Box
+    <Box
         minHeight="100vh"
         p={3}
         display="flex"
@@ -1103,6 +1104,5 @@ export default function CubicleManagement() {
           </Text>
         </Box>
       </Box>
-    </ChakraProvider>
   );
 }

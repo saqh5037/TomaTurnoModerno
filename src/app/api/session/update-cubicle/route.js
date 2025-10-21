@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
 import jwt from "jsonwebtoken";
-
-const prisma = new PrismaClient();
+import prisma from "../../../../../lib/prisma.js";
 
 // POST - Actualizar cubículo seleccionado en la sesión activa
 export async function POST(request) {
@@ -92,7 +90,5 @@ export async function POST(request) {
       { success: false, error: "Error al actualizar cubículo" },
       { status: 500 }
     );
-  } finally {
-    await prisma.$disconnect();
   }
 }

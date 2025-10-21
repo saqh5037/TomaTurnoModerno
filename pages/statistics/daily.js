@@ -9,7 +9,6 @@ import {
   FormLabel,
   Text,
   IconButton,
-  ChakraProvider,
   Spinner,
   VStack,
   Badge,
@@ -18,16 +17,14 @@ import {
   SimpleGrid
 } from "@chakra-ui/react";
 import { Bar } from "react-chartjs-2";
-import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip as ChartTooltip, Legend } from "chart.js";
+// ChartJS is now registered globally in _app.js via lib/chartConfig.js
 import { FaFileExcel, FaFilePdf, FaArrowLeft, FaCalendarAlt, FaChartBar, FaDownload, FaCalendarDay } from "react-icons/fa";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
 import { useRouter } from "next/router";
 import { useAuth } from "../../contexts/AuthContext";
-import { modernTheme, fadeInUp, slideInFromLeft, slideInFromRight, GlassCard, ModernContainer, ModernHeader } from '../../components/theme/ModernTheme';
-
-ChartJS.register(CategoryScale, LinearScale, BarElement, Title, ChartTooltip, Legend);
+import { fadeInUp, slideInFromLeft, slideInFromRight, GlassCard, ModernContainer, ModernHeader } from '../../components/theme/ModernTheme';
 
 const DailyStatistics = memo(function DailyStatistics() {
   const [filteredStats, setFilteredStats] = useState({ dailyData: [], total: 0 });
@@ -434,8 +431,7 @@ const DailyStatistics = memo(function DailyStatistics() {
   // No renderizar hasta que esté montado para evitar errores de hidratación
   if (!mounted) {
     return (
-      <ChakraProvider theme={modernTheme}>
-        <ModernContainer>
+      <ModernContainer>
           <Box
             display="flex"
             alignItems="center"
@@ -450,14 +446,12 @@ const DailyStatistics = memo(function DailyStatistics() {
             </GlassCard>
           </Box>
         </ModernContainer>
-      </ChakraProvider>
     );
   }
 
   if (loading) {
     return (
-      <ChakraProvider theme={modernTheme}>
-        <ModernContainer>
+      <ModernContainer>
           <Box
             display="flex"
             alignItems="center"
@@ -477,14 +471,12 @@ const DailyStatistics = memo(function DailyStatistics() {
             </GlassCard>
           </Box>
         </ModernContainer>
-      </ChakraProvider>
     );
   }
 
   if (error) {
     return (
-      <ChakraProvider theme={modernTheme}>
-        <ModernContainer>
+      <ModernContainer>
           <Box
             display="flex"
             alignItems="center"
@@ -509,7 +501,6 @@ const DailyStatistics = memo(function DailyStatistics() {
             </GlassCard>
           </Box>
         </ModernContainer>
-      </ChakraProvider>
     );
   }
 
@@ -520,8 +511,7 @@ const DailyStatistics = memo(function DailyStatistics() {
   const averagePerDay = hasData ? (totalPatients / filteredStats.dailyData.length).toFixed(1) : 0;
 
   return (
-    <ChakraProvider theme={modernTheme}>
-      <ModernContainer>
+    <ModernContainer>
         {/* Header Principal con Glassmorphism */}
         <ModernHeader
           title="Estadísticas Diarias"
@@ -986,7 +976,6 @@ const DailyStatistics = memo(function DailyStatistics() {
           </Text>
         </Box>
       </ModernContainer>
-    </ChakraProvider>
   );
 });
 

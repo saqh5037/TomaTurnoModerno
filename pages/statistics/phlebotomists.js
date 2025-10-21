@@ -8,7 +8,6 @@ import {
   FormControl,
   FormLabel,
   IconButton,
-  ChakraProvider,
   Spinner,
   Text,
   VStack,
@@ -24,20 +23,9 @@ import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
 import { useRouter } from "next/router";
 import { useAuth } from "../../contexts/AuthContext";
-import { modernTheme, fadeInUp, slideInFromLeft, slideInFromRight, GlassCard, ModernContainer, ModernHeader } from '../../components/theme/ModernTheme';
+import { fadeInUp, slideInFromLeft, slideInFromRight, GlassCard, ModernContainer, ModernHeader } from '../../components/theme/ModernTheme';
 
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  Title,
-  Tooltip as ChartTooltip,
-  Legend,
-} from "chart.js";
-
-// Registrar módulos requeridos
-ChartJS.register(CategoryScale, LinearScale, BarElement, Title, ChartTooltip, Legend);
+// ChartJS is now registered globally in _app.js via lib/chartConfig.js
 
 const PhlebotomistsStatistics = memo(function PhlebotomistsStatistics() {
   const [filteredStats, setFilteredStats] = useState(null);
@@ -487,8 +475,7 @@ const PhlebotomistsStatistics = memo(function PhlebotomistsStatistics() {
   // No renderizar hasta que esté montado para evitar errores de hidratación
   if (!mounted) {
     return (
-      <ChakraProvider theme={modernTheme}>
-        <ModernContainer>
+      <ModernContainer>
           <Box
             display="flex"
             alignItems="center"
@@ -503,14 +490,12 @@ const PhlebotomistsStatistics = memo(function PhlebotomistsStatistics() {
             </GlassCard>
           </Box>
         </ModernContainer>
-      </ChakraProvider>
     );
   }
 
   if (loading) {
     return (
-      <ChakraProvider theme={modernTheme}>
-        <ModernContainer>
+      <ModernContainer>
           <Box
             display="flex"
             alignItems="center"
@@ -530,14 +515,12 @@ const PhlebotomistsStatistics = memo(function PhlebotomistsStatistics() {
             </GlassCard>
           </Box>
         </ModernContainer>
-      </ChakraProvider>
     );
   }
 
   if (error) {
     return (
-      <ChakraProvider theme={modernTheme}>
-        <ModernContainer>
+      <ModernContainer>
           <Box
             display="flex"
             alignItems="center"
@@ -562,7 +545,6 @@ const PhlebotomistsStatistics = memo(function PhlebotomistsStatistics() {
             </GlassCard>
           </Box>
         </ModernContainer>
-      </ChakraProvider>
     );
   }
 
@@ -572,8 +554,7 @@ const PhlebotomistsStatistics = memo(function PhlebotomistsStatistics() {
   const selectedPhlebotomistName = phlebotomists.find(p => p.id == selectedPhlebotomist)?.name || '';
 
   return (
-    <ChakraProvider theme={modernTheme}>
-      <ModernContainer>
+    <ModernContainer>
         {/* Header Principal con Glassmorphism */}
         <ModernHeader
           title="Estadísticas por Flebotomista"
@@ -1075,7 +1056,6 @@ const PhlebotomistsStatistics = memo(function PhlebotomistsStatistics() {
           </Text>
         </Box>
       </ModernContainer>
-    </ChakraProvider>
   );
 });
 

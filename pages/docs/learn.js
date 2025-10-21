@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { ChakraProvider } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../../contexts/AuthContext';
-import { modernTheme } from '../../components/theme/ModernTheme';
+import {} from '../../components/theme/ModernTheme';
 import LearningPath from '../../components/docs/LearningPath';
 import ProtectedRoute from '../../components/ProtectedRoute';
 
@@ -21,14 +21,12 @@ const LearnPage = () => {
   }
 
   return (
-    <ChakraProvider theme={modernTheme}>
-      <ProtectedRoute>
+    <ProtectedRoute>
         <LearningPath
           userRole={user.role || 'flebotomista'}
           userId={user.id}
         />
       </ProtectedRoute>
-    </ChakraProvider>
   );
 };
 

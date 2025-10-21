@@ -48,8 +48,7 @@ import {
   Tooltip,
   Flex,
   Image,
-  AspectRatio,
-  ChakraProvider
+  AspectRatio
 } from '@chakra-ui/react';
 import { keyframes } from '@emotion/react';
 import {
@@ -82,7 +81,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { getModule, getContentByRole } from '../../lib/docs/content';
 import VideoPlayer from '../../components/docs/VideoPlayer';
 import { useInView } from 'react-intersection-observer';
-import { GlassCard, ModernContainer, modernTheme } from '../../components/theme/ModernTheme';
+import { GlassCard, ModernContainer } from '../../components/theme/ModernTheme';
 import ProtectedRoute from '../../components/ProtectedRoute';
 
 // Animations
@@ -353,17 +352,14 @@ const ModuleDetailPage = () => {
 
   if (!module) {
     return (
-      <ChakraProvider theme={modernTheme}>
-        <Box minH="100vh" display="flex" alignItems="center" justifyContent="center">
+      <Box minH="100vh" display="flex" alignItems="center" justifyContent="center">
           <Text>Cargando módulo...</Text>
         </Box>
-      </ChakraProvider>
     );
   }
 
   return (
-    <ChakraProvider theme={modernTheme}>
-      <ProtectedRoute>
+    <ProtectedRoute>
         <ModernContainer>
           {/* Header */}
           <VStack spacing={6} align="stretch">
@@ -793,7 +789,6 @@ const ModuleDetailPage = () => {
         </VStack>
         </ModernContainer>
       </ProtectedRoute>
-    </ChakraProvider>
   );
 };
 

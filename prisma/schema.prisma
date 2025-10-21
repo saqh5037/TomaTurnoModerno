@@ -26,6 +26,7 @@ model User {
   auditLogs         AuditLog[]
   sessions          Session[]
   turnRequests      TurnRequest[] @relation("UserTurnRequests")
+  suggestedTurns    TurnRequest[] @relation("SuggestedTurnRequests")
 
   @@index([isActive])
   @@index([status])
@@ -46,7 +47,8 @@ model TurnRequest {
   gender        String
   contactInfo   String?
   studies       String
-  tubesRequired Int
+  tubesRequired Int                        // Mantener para compatibilidad (se calcula automáticamente desde tubesDetails)
+  tubesDetails  Json?                      // NUEVO: Array detallado de tubos [{ type: "sst", quantity: 2 }]
   observations  String?
   clinicalInfo  String?
   status        String    @default("Pending")
@@ -60,7 +62,13 @@ model TurnRequest {
   cubicleId     Int?
   isCalled      Boolean   @default(false)
   finishedAt    DateTime?
+  callCount     Int       @default(0)      // Contador de veces que se ha llamado al paciente
+  isDeferred    Boolean   @default(false)  // Indica si es una toma diferida (regresado a cola)
+  deferredAt    DateTime?                  // Timestamp de cuando se difirió (para ordenamiento correcto)
+  suggestedFor  Int?                       // ID del flebotomista al que se sugiere este paciente
+  suggestedAt   DateTime?                  // Timestamp de cuando se hizo la sugerencia (para timeout)
   user          User?     @relation("UserTurnRequests", fields: [attendedBy], references: [id])
+  suggestedUser User?     @relation("SuggestedTurnRequests", fields: [suggestedFor], references: [id])
   cubicle       Cubicle?  @relation("TurnRequestToCubicle", fields: [cubicleId], references: [id])
 
   @@index([status])
@@ -71,6 +79,11 @@ model TurnRequest {
   @@index([finishedAt])
   @@index([assignedTurn])
   @@index([status, assignedTurn])
+  @@index([isDeferred])
+  @@index([status, isDeferred])
+  @@index([deferredAt])
+  @@index([suggestedFor])
+  @@index([status, suggestedFor])
 }
 
 model Cubicle {
@@ -87,20 +100,22 @@ model Cubicle {
 }
 
 model Session {
-  id           Int      @id @default(autoincrement())
-  userId       Int
-  token        String
-  ipAddress    String?
-  userAgent    String?
-  createdAt    DateTime @default(now())
-  expiresAt    DateTime
-  lastActivity DateTime @default(now())
-  refreshToken String?
-  user         User     @relation(fields: [userId], references: [id])
+  id                 Int      @id @default(autoincrement())
+  userId             Int
+  token              String
+  ipAddress          String?
+  userAgent          String?
+  createdAt          DateTime @default(now())
+  expiresAt          DateTime
+  lastActivity       DateTime @default(now())
+  refreshToken       String?
+  selectedCubicleId  Int?     // Cubículo seleccionado por el usuario en esta sesión
+  user               User     @relation(fields: [userId], references: [id])
 
   @@index([userId])
   @@index([token])
   @@index([expiresAt])
+  @@index([selectedCubicleId])
 }
 
 model AuditLog {

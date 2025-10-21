@@ -1,0 +1,236 @@
+[
+  {
+    "moduleId": "dashboard",
+    "filename": "dashboard-main.png",
+    "name": "dashboard-main",
+    "description": "Vista principal del dashboard administrativo con métricas en tiempo real",
+    "tags": [
+      "admin",
+      "dashboard",
+      "estadísticas"
+    ],
+    "path": "/docs/screenshots/dashboard-main.png",
+    "size": "209.3 KB"
+  },
+  {
+    "moduleId": "dashboard",
+    "filename": "dashboard-metrics.png",
+    "name": "dashboard-metrics",
+    "description": "Métricas detalladas del dashboard incluyendo cola, tiempos y flebotomistas",
+    "tags": [
+      "admin",
+      "dashboard",
+      "métricas"
+    ],
+    "path": "/docs/screenshots/dashboard-metrics.png",
+    "size": "209.3 KB"
+  },
+  {
+    "moduleId": "users",
+    "filename": "users-list.png",
+    "name": "users-list",
+    "description": "Lista completa de usuarios del sistema con roles y estados",
+    "tags": [
+      "admin",
+      "usuarios",
+      "gestión"
+    ],
+    "path": "/docs/screenshots/users-list.png",
+    "size": "200.2 KB"
+  },
+  {
+    "moduleId": "users",
+    "filename": "users-details.png",
+    "name": "users-details",
+    "description": "Vista detallada de usuarios mostrando información de roles y permisos",
+    "tags": [
+      "admin",
+      "usuarios",
+      "detalles"
+    ],
+    "path": "/docs/screenshots/users-details.png",
+    "size": "146.3 KB"
+  },
+  {
+    "moduleId": "atencion",
+    "filename": "atencion-main.png",
+    "name": "atencion-main",
+    "description": "Interfaz principal de atención de pacientes para flebotomistas",
+    "tags": [
+      "atención",
+      "pacientes",
+      "flebotomista"
+    ],
+    "path": "/docs/screenshots/atencion-main.png",
+    "size": "176.5 KB"
+  },
+  {
+    "moduleId": "atencion",
+    "filename": "atencion-sidebar.png",
+    "name": "atencion-sidebar",
+    "description": "Sidebar de atención mostrando pacientes sugeridos y cola",
+    "tags": [
+      "atención",
+      "sidebar",
+      "pacientes"
+    ],
+    "path": "/docs/screenshots/atencion-sidebar.png",
+    "size": "189.7 KB"
+  },
+  {
+    "moduleId": "atencion",
+    "filename": "atencion-actions.png",
+    "name": "atencion-actions",
+    "description": "Botones de acción para llamar, atender y gestionar pacientes",
+    "tags": [
+      "atención",
+      "acciones",
+      "botones"
+    ],
+    "path": "/docs/screenshots/atencion-actions.png",
+    "size": "172.6 KB"
+  },
+  {
+    "moduleId": "cola",
+    "filename": "cola-main.png",
+    "name": "cola-main",
+    "description": "Cola pública mostrando pacientes en espera ordenados por prioridad",
+    "tags": [
+      "turnos",
+      "cola",
+      "pacientes"
+    ],
+    "path": "/docs/screenshots/cola-main.png",
+    "size": "118.1 KB"
+  },
+  {
+    "moduleId": "cola",
+    "filename": "cola-priority.png",
+    "name": "cola-priority",
+    "description": "Vista de cola mostrando iconos de prioridad y estados de pacientes",
+    "tags": [
+      "cola",
+      "prioridad",
+      "iconos"
+    ],
+    "path": "/docs/screenshots/cola-priority.png",
+    "size": "118.2 KB"
+  },
+  {
+    "moduleId": "estadisticas",
+    "filename": "estadisticas-dashboard.png",
+    "name": "estadisticas-dashboard",
+    "description": "Dashboard principal de estadísticas con métricas generales",
+    "tags": [
+      "estadísticas",
+      "dashboard",
+      "métricas"
+    ],
+    "path": "/docs/screenshots/estadisticas-dashboard.png",
+    "size": "179.3 KB"
+  },
+  {
+    "moduleId": "estadisticas",
+    "filename": "estadisticas-daily.png",
+    "name": "estadisticas-daily",
+    "description": "Estadísticas diarias con gráficas de pacientes atendidos por día",
+    "tags": [
+      "estadísticas",
+      "diarias",
+      "gráficas"
+    ],
+    "path": "/docs/screenshots/estadisticas-daily.png",
+    "size": "139.6 KB"
+  },
+  {
+    "moduleId": "estadisticas",
+    "filename": "estadisticas-monthly.png",
+    "name": "estadisticas-monthly",
+    "description": "Estadísticas mensuales mostrando tendencias y comparativas",
+    "tags": [
+      "estadísticas",
+      "mensuales",
+      "tendencias"
+    ],
+    "path": "/docs/screenshots/estadisticas-monthly.png",
+    "size": "158.4 KB"
+  },
+  {
+    "moduleId": "estadisticas",
+    "filename": "estadisticas-phlebotomists.png",
+    "name": "estadisticas-phlebotomists",
+    "description": "Rendimiento individual de flebotomistas con métricas de productividad",
+    "tags": [
+      "estadísticas",
+      "flebotomistas",
+      "rendimiento"
+    ],
+    "path": "/docs/screenshots/estadisticas-phlebotomists.png",
+    "size": "149.8 KB"
+  },
+  {
+    "moduleId": "estadisticas",
+    "filename": "estadisticas-time.png",
+    "name": "estadisticas-time",
+    "description": "Análisis de tiempo promedio de atención por paciente",
+    "tags": [
+      "estadísticas",
+      "tiempo",
+      "promedio"
+    ],
+    "path": "/docs/screenshots/estadisticas-time.png",
+    "size": "166.1 KB"
+  },
+  {
+    "moduleId": "cubiculos",
+    "filename": "cubiculos-list.png",
+    "name": "cubiculos-list",
+    "description": "Gestión de cubículos mostrando cubículos generales y especiales",
+    "tags": [
+      "admin",
+      "cubículos",
+      "gestión"
+    ],
+    "path": "/docs/screenshots/cubiculos-list.png",
+    "size": "149.2 KB"
+  },
+  {
+    "moduleId": "cubiculos",
+    "filename": "cubiculos-types.png",
+    "name": "cubiculos-types",
+    "description": "Vista de tipos de cubículos con indicadores visuales",
+    "tags": [
+      "cubículos",
+      "tipos",
+      "visual"
+    ],
+    "path": "/docs/screenshots/cubiculos-types.png",
+    "size": "131.0 KB"
+  },
+  {
+    "moduleId": "turnos",
+    "filename": "turnos-form.png",
+    "name": "turnos-form",
+    "description": "Formulario para crear nuevos turnos de pacientes",
+    "tags": [
+      "turnos",
+      "crear",
+      "formulario"
+    ],
+    "path": "/docs/screenshots/turnos-form.png",
+    "size": "10.9 KB"
+  },
+  {
+    "moduleId": "turnos",
+    "filename": "turnos-details.png",
+    "name": "turnos-details",
+    "description": "Vista detallada del formulario mostrando todos los campos requeridos",
+    "tags": [
+      "turnos",
+      "formulario",
+      "detalles"
+    ],
+    "path": "/docs/screenshots/turnos-details.png",
+    "size": "10.9 KB"
+  }
+]

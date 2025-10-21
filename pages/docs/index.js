@@ -34,7 +34,6 @@ import {
   ModalBody,
   ModalCloseButton,
   useDisclosure,
-  ChakraProvider,
   Container,
   Circle,
   Icon,
@@ -74,7 +73,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { getContentByRole } from '../../lib/docs/content';
 import SearchBar from '../../components/docs/SearchBar';
 import OnboardingTour from '../../components/docs/OnboardingTour';
-import { modernTheme, fadeInUp, slideInFromLeft, slideInFromRight, GlassCard, ModernContainer } from '../../components/theme/ModernTheme';
+import { fadeInUp, slideInFromLeft, slideInFromRight, GlassCard, ModernContainer } from '../../components/theme/ModernTheme';
 import ProtectedRoute from '../../components/ProtectedRoute';
 
 const MotionBox = motion(Box);
@@ -217,8 +216,7 @@ const DocumentationHub = () => {
 
   if (!user || !roleContent) {
     return (
-      <ChakraProvider theme={modernTheme}>
-        <ModernContainer>
+      <ModernContainer>
           <Center h="100vh">
             <VStack spacing={4}>
               <Spinner size="xl" color="blue.500" thickness="4px" />
@@ -226,13 +224,11 @@ const DocumentationHub = () => {
             </VStack>
           </Center>
         </ModernContainer>
-      </ChakraProvider>
     );
   }
 
   return (
-    <ChakraProvider theme={modernTheme}>
-      <ProtectedRoute>
+    <ProtectedRoute>
         <ModernContainer>
           <VStack spacing={8} align="stretch" py={8}>
             {/* Header con Glassmorphism */}
@@ -526,34 +522,56 @@ const DocumentationHub = () => {
                                   )}
 
                                   {/* Actions */}
-                                  <HStack justify="space-between" pt={2}>
+                                  <VStack spacing={2} pt={2} align="stretch">
+                                    <HStack justify="space-between">
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        leftIcon={<FaEye />}
+                                        onClick={(e) => handlePreview(module, e)}
+                                        _hover={{
+                                          bg: 'rgba(79, 125, 243, 0.1)'
+                                        }}
+                                      >
+                                        Vista previa
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        colorScheme="blue"
+                                        variant="solid"
+                                        rightIcon={<FaPlay />}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleModuleClick(module.id);
+                                        }}
+                                        _hover={{
+                                          transform: 'translateX(2px)'
+                                        }}
+                                      >
+                                        {progress > 0 ? 'Continuar' : 'Comenzar'}
+                                      </Button>
+                                    </HStack>
+
+                                    {/* Botón de Documentación */}
                                     <Button
                                       size="sm"
-                                      variant="ghost"
-                                      leftIcon={<FaEye />}
-                                      onClick={(e) => handlePreview(module, e)}
-                                      _hover={{
-                                        bg: 'rgba(79, 125, 243, 0.1)'
-                                      }}
-                                    >
-                                      Vista previa
-                                    </Button>
-                                    <Button
-                                      size="sm"
-                                      colorScheme="blue"
-                                      variant="solid"
-                                      rightIcon={<FaPlay />}
+                                      variant="outline"
+                                      leftIcon={<FaBook />}
+                                      colorScheme="red"
+                                      borderWidth="2px"
                                       onClick={(e) => {
                                         e.stopPropagation();
-                                        handleModuleClick(module.id);
+                                        router.push(`/docs/${module.id}`);
                                       }}
                                       _hover={{
-                                        transform: 'translateX(2px)'
+                                        bg: 'rgba(229, 62, 62, 0.1)',
+                                        transform: 'translateY(-1px)',
+                                        boxShadow: 'sm'
                                       }}
                                     >
-                                      {progress > 0 ? 'Continuar' : 'Comenzar'}
+                                      Documentación
                                     </Button>
-                                  </HStack>
+                                  </VStack>
 
                                   {/* Progress Indicator */}
                                   {progress > 0 && (
@@ -720,7 +738,6 @@ const DocumentationHub = () => {
           )}
         </ModernContainer>
       </ProtectedRoute>
-    </ChakraProvider>
   );
 };
 

@@ -2,16 +2,16 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-**Last Updated**: September 29, 2025
-**Latest Release**: v2.6.0
+**Last Updated**: October 16, 2025
+**Latest Release**: v2.6.1
 **Status**: Production Ready - Active deployment at INER Medical Institute
 
 ## 🚀 Essential Commands
 
 ```bash
 # Development
-npm run dev                    # Start dev server on port 3000
-PORT=3005 npm run dev         # Custom port (production uses 3005)
+PORT=3005 npm run dev         # Start dev server on port 3005 (REQUIRED - mapped port for external access)
+npm run dev                   # Start dev server on port 3000 (default, but use 3005 for this project)
 
 # Database
 npx prisma generate           # Regenerate Prisma client after schema changes
@@ -95,8 +95,9 @@ const turn = await prisma.turnRequest.findUnique({
 });
 
 // Key database models and enums
-// User: Staff with roles (Admin, Flebotomista), UserStatus enum (ACTIVE, INACTIVE, BLOCKED)
-// TurnRequest: Patient appointments with status tracking and timestamps (createdAt, attendedAt, calledAt, finishedAt)
+// User: Staff with roles (Admin, Flebotomista, Supervisor), UserStatus enum (ACTIVE, INACTIVE, BLOCKED)
+// TurnRequest: Patient appointments with status tracking, timestamps (createdAt, attendedAt, calledAt, finishedAt),
+//              tipoAtencion (General/Special), isDeferred flag for queue management
 // Cubicle: Physical locations with CubicleType enum (GENERAL, SPECIAL) and ACTIVE/INACTIVE status
 // Session: JWT session management with expiry tracking and refresh tokens
 // AuditLog: Complete action tracking for compliance with oldValue/newValue JSON fields
@@ -144,6 +145,25 @@ Client → POST /api/turns → Validate → Create TurnRequest → Generate Turn
 Cubicle User → Call Patient → Update Status → Broadcast via SSE → TV Display Updates
 ```
 
+### 2.1. Patient Queue Sorting Algorithm (v2.6.1)
+Critical sorting hierarchy for displaying patients in the correct order:
+```javascript
+// Priority Order (highest to lowest):
+1. tipoAtencion === 'Special' AND isDeferred === false  // Special patients, not deferred
+2. tipoAtencion === 'Special' AND isDeferred === true   // Special patients who were deferred
+3. tipoAtencion === 'General' AND isDeferred === false  // General patients, not deferred
+4. tipoAtencion === 'General' AND isDeferred === true   // General patients who were deferred
+// Within each group, sort by assignedTurn ascending
+
+// Prisma query pattern:
+orderBy: [
+  { tipoAtencion: 'desc' },    // Special (desc) comes before General
+  { isDeferred: 'asc' },        // false (asc) comes before true
+  { assignedTurn: 'asc' }       // Lower turn numbers first
+]
+```
+This ensures special patients always have priority, but deferred patients go to the end of their respective groups.
+
 ### 3. Statistics Generation
 Real-time statistics calculated from TurnRequest table with status filtering and date ranges. Key APIs:
 - `/api/statistics/daily` - Daily patient counts with date range filtering
@@ -156,11 +176,13 @@ Real-time statistics calculated from TurnRequest table with status filtering and
 Complete CMS in `/api/docs` with modules, events, bookmarks, and feedback tracking.
 
 ### 5. Key Business Features
-- **Real-time Queue Management**: Patient turn assignment and tracking
-- **Cubicle Management**: Support for GENERAL and SPECIAL cubicle types
+- **Real-time Queue Management**: Patient turn assignment and tracking with deferred patient support
+- **Cubicle Management**: Support for GENERAL and SPECIAL cubicle types with occupancy tracking (v2.6.1)
 - **Performance Analytics**: Daily, monthly, and per-phlebotomist statistics
 - **PDF Reports**: Professional reports with INER branding and recommendations
 - **Role-Based Access**: Admin and Flebotomista specific workflows
+- **Priority Management**: Supervisors can change patient priority between General/Special (v2.6.1)
+- **Deferred Patients**: Smart sorting algorithm that maintains priority hierarchy (v2.6.1)
 
 ## ⚠️ Production Considerations
 
@@ -181,9 +203,16 @@ Complete CMS in `/api/docs` with modules, events, bookmarks, and feedback tracki
 DATABASE_URL              # PostgreSQL connection string
 NEXTAUTH_SECRET          # JWT signing secret (critical)
 NODE_ENV                 # production/development
-PORT                     # Server port (3005 in production)
+PORT                     # Server port (ALWAYS use 3005 for development and production)
 NEXTAUTH_URL             # Base URL for authentication
 ```
+
+### Port Configuration
+**IMPORTANT**: This project MUST run on port 3005 for both development and production:
+- Port 3005 is mapped for external access in the deployment configuration
+- Always use `PORT=3005 npm run dev` when starting the development server
+- Production PM2 configuration already uses port 3005 (see ecosystem.config.js)
+- All URLs and documentation reference port 3005
 
 ### PM2 Configuration
 The system uses PM2 with automatic restarts and memory limits:
@@ -201,9 +230,9 @@ src/app/api/            # API routes (App Router) - all backend logic
   ├── cubicles/        # Cubicle management
   ├── docs/            # Documentation system
   ├── profile/         # User profile management
-  ├── queue/           # Queue management (call, list, update)
+  ├── queue/           # Queue management (call, list, update, defer, assignSuggestions, phlebotomists-order)
   ├── statistics/      # Statistics and analytics
-  ├── turns/           # Turn creation and management
+  ├── turns/           # Turn creation, management, and priority changes
   └── users/           # User CRUD and status management
 pages/                  # Frontend pages (Pages Router)
   ├── api/            # Legacy API routes (being migrated)

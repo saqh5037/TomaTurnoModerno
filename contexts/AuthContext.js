@@ -5,13 +5,17 @@ import { useToast } from '@chakra-ui/react';
 const AuthContext = createContext({});
 
 export const AuthProvider = ({ children }) => {
+  console.log('[AuthContext] ========== PROVIDER RENDER ==========');
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
   const toast = useToast();
 
+  console.log('[AuthContext] State - user:', user?.name, 'loading:', loading);
+
   // Función de login
   const login = async (username, password) => {
+    console.log('[AuthContext] login() called for username:', username);
     try {
       const response = await fetch('/api/auth/login', {
         method: 'POST',
@@ -45,7 +49,26 @@ export const AuthProvider = ({ children }) => {
   };
 
   // Función de logout
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
+    const token = localStorage.getItem('token');
+
+    // Llamar al endpoint de logout para limpiar sesión en BD
+    if (token) {
+      try {
+        await fetch('/api/auth/logout', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        });
+        console.log('[AuthContext] Sesión cerrada en el servidor');
+      } catch (error) {
+        console.error('[AuthContext] Error al cerrar sesión en servidor:', error);
+        // Continuar con logout local aunque falle el servidor
+      }
+    }
+
     // Limpiar localStorage
     localStorage.removeItem('token');
     localStorage.removeItem('userData');
@@ -82,10 +105,14 @@ export const AuthProvider = ({ children }) => {
 
   // Función para verificar token almacenado
   const verifyStoredToken = useCallback(async () => {
+    console.log('[AuthContext] verifyStoredToken() called');
     const token = localStorage.getItem('token');
     const storedUserData = localStorage.getItem('userData');
 
+    console.log('[AuthContext] Token exists:', !!token, 'UserData exists:', !!storedUserData);
+
     if (!token) {
+      console.log('[AuthContext] No token found, setting loading = false');
       setLoading(false);
       return false;
     }
@@ -94,10 +121,13 @@ export const AuthProvider = ({ children }) => {
     if (storedUserData) {
       try {
         const userData = JSON.parse(storedUserData);
+        console.log('[AuthContext] Setting user from localStorage:', userData.name);
         setUser(userData);
         setLoading(false);
+        console.log('[AuthContext] User set, loading = false');
 
         // Verificar token en background sin bloquear
+        console.log('[AuthContext] Verifying token in background...');
         fetch('/api/auth/verify', {
           method: 'POST',
           headers: {
@@ -207,6 +237,7 @@ export const AuthProvider = ({ children }) => {
 
   // Effect para inicialización
   useEffect(() => {
+    console.log('[AuthContext] useEffect - Initial verification starting');
     verifyStoredToken();
   }, [verifyStoredToken]);
 

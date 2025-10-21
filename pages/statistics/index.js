@@ -5,7 +5,6 @@ import {
   Text, 
   Grid, 
   Flex, 
-  ChakraProvider, 
   SimpleGrid,
   Button,
   IconButton,
@@ -26,25 +25,15 @@ import {
   Td
 } from "@chakra-ui/react";
 import { Bar } from 'react-chartjs-2';
+// ChartJS is now registered globally in _app.js via lib/chartConfig.js
 import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  Title,
-  Tooltip as ChartTooltip,
-  Legend,
-} from 'chart.js';
-
-ChartJS.register(CategoryScale, LinearScale, BarElement, Title, ChartTooltip, Legend);
-import { 
-  FaCalendarAlt, 
-  FaChartBar, 
-  FaUsers, 
-  FaClock, 
-  FaArrowUp, 
-  FaDownload, 
-  FaEye, 
+  FaCalendarAlt,
+  FaChartBar,
+  FaUsers,
+  FaClock,
+  FaArrowUp,
+  FaDownload,
+  FaEye,
   FaStar,
   FaCheckCircle,
   FaExclamationTriangle,
@@ -54,9 +43,86 @@ import {
 } from 'react-icons/fa';
 import { useRouter } from 'next/router';
 import { useAuth } from '../../contexts/AuthContext';
-import { modernTheme, fadeInUp, slideInFromRight, slideInFromLeft, GlassCard, ModernContainer, ModernHeader } from '../../components/theme/ModernTheme';
+import { fadeInUp, slideInFromRight, slideInFromLeft, GlassCard, ModernContainer, ModernHeader } from '../../components/theme/ModernTheme';
+
+// Componente de gráfica de barras simple - Extraído para evitar errores de Fast Refresh
+const SimpleBarChart = memo(({ data, dataKey, height = "200px", color = "#4F7DF3" }) => {
+  const maxValue = Math.max(...data.map(item => item[dataKey]));
+
+  return (
+    <HStack spacing={2} align="end" justify="center" h={height} px={4}>
+      {data.map((item, index) => (
+        <VStack key={index} spacing={2} flex={1}>
+          <Tooltip label={`${item[dataKey]} ${dataKey}`} hasArrow>
+            <Box
+              background={`linear-gradient(135deg, ${color} 0%, #6B73FF 100%)`}
+              borderRadius="lg"
+              w="full"
+              h={`${(item[dataKey] / maxValue) * 80}%`}
+              minH="20px"
+              cursor="pointer"
+              _hover={{ opacity: 0.8, transform: 'translateY(-2px)' }}
+              transition="all 0.3s ease"
+              boxShadow="sm"
+            />
+          </Tooltip>
+          <Text fontSize="xs" color="secondary.600" textAlign="center" fontWeight="medium">
+            {item.month || item.day}
+          </Text>
+        </VStack>
+      ))}
+    </HStack>
+  );
+});
+SimpleBarChart.displayName = 'SimpleBarChart';
+
+// Componente de progreso circular - Extraído para evitar errores de Fast Refresh
+const SimpleProgressRing = memo(({ value, size = 80, strokeWidth = 8, color = "#4F7DF3" }) => {
+  const radius = (size - strokeWidth) / 2;
+  const circumference = radius * 2 * Math.PI;
+  const offset = circumference - (value / 100) * circumference;
+
+  return (
+    <Box position="relative" w={`${size}px`} h={`${size}px`}>
+      <svg width={size} height={size} style={{ transform: 'rotate(-90deg)' }}>
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          stroke="rgba(255, 255, 255, 0.3)"
+          strokeWidth={strokeWidth}
+          fill="transparent"
+        />
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          stroke={color}
+          strokeWidth={strokeWidth}
+          fill="transparent"
+          strokeDasharray={circumference}
+          strokeDashoffset={offset}
+          style={{ transition: 'stroke-dashoffset 0.8s ease-in-out' }}
+        />
+      </svg>
+      <Box
+        position="absolute"
+        top="50%"
+        left="50%"
+        transform="translate(-50%, -50%)"
+        textAlign="center"
+      >
+        <Text fontSize="lg" fontWeight="bold" color="secondary.800">
+          {value}%
+        </Text>
+      </Box>
+    </Box>
+  );
+});
+SimpleProgressRing.displayName = 'SimpleProgressRing';
 
 const StatisticsDashboard = memo(function StatisticsDashboard() {
+  console.log('[Statistics] ========== COMPONENT RENDER ==========');
   const router = useRouter();
   const { user } = useAuth();
   const userRole = user?.role;
@@ -64,7 +130,7 @@ const StatisticsDashboard = memo(function StatisticsDashboard() {
   const [loading, setLoading] = useState(true);
   const [exportLoading, setExportLoading] = useState(false);
   const [mounted, setMounted] = useState(false);
-  
+
   const [dashboardData, setDashboardData] = useState({
     overview: {},
     monthlyData: [],
@@ -75,9 +141,13 @@ const StatisticsDashboard = memo(function StatisticsDashboard() {
 
   const toast = useToast();
 
+  console.log('[Statistics] State - mounted:', mounted, 'loading:', loading, 'user:', user?.name);
+
   // Effect para marcar el componente como montado
   useEffect(() => {
+    console.log('[Statistics] useEffect - Component mounting...');
     setMounted(true);
+    console.log('[Statistics] useEffect - Mounted state set to true');
   }, []);
 
   // Cargar datos reales desde la API - Optimizado con useCallback
@@ -175,93 +245,10 @@ const StatisticsDashboard = memo(function StatisticsDashboard() {
     return name.split(' ').map(word => word[0]).join('').substring(0, 2).toUpperCase();
   }, []);
 
-  // Componente de gráfica de barras simple - Optimizado
-  const SimpleBarChart = useMemo(() => {
-    const BarChart = ({ data, dataKey, height = "200px", color = "#4F7DF3" }) => {
-    const maxValue = Math.max(...data.map(item => item[dataKey]));
-    
-    return (
-      <HStack spacing={2} align="end" justify="center" h={height} px={4}>
-        {data.map((item, index) => (
-          <VStack key={index} spacing={2} flex={1}>
-            <Tooltip label={`${item[dataKey]} ${dataKey}`} hasArrow>
-              <Box
-                background={`linear-gradient(135deg, ${color} 0%, #6B73FF 100%)`}
-                borderRadius="lg"
-                w="full"
-                h={`${(item[dataKey] / maxValue) * 80}%`}
-                minH="20px"
-                cursor="pointer"
-                _hover={{ opacity: 0.8, transform: 'translateY(-2px)' }}
-                transition="all 0.3s ease"
-                boxShadow="sm"
-              />
-            </Tooltip>
-            <Text fontSize="xs" color="secondary.600" textAlign="center" fontWeight="medium">
-              {item.month || item.day}
-            </Text>
-          </VStack>
-        ))}
-      </HStack>
-    );
-    };
-    BarChart.displayName = 'SimpleBarChart';
-    return BarChart;
-  }, []);
-
-  // Componente de progreso circular - Optimizado
-  const SimpleProgressRing = useMemo(() => {
-    const ProgressRing = ({ value, size = 80, strokeWidth = 8, color = "#4F7DF3" }) => {
-    const radius = (size - strokeWidth) / 2;
-    const circumference = radius * 2 * Math.PI;
-    const offset = circumference - (value / 100) * circumference;
-
-    return (
-      <Box position="relative" w={`${size}px`} h={`${size}px`}>
-        <svg width={size} height={size} style={{ transform: 'rotate(-90deg)' }}>
-          <circle
-            cx={size / 2}
-            cy={size / 2}
-            r={radius}
-            stroke="rgba(255, 255, 255, 0.3)"
-            strokeWidth={strokeWidth}
-            fill="transparent"
-          />
-          <circle
-            cx={size / 2}
-            cy={size / 2}
-            r={radius}
-            stroke={color}
-            strokeWidth={strokeWidth}
-            fill="transparent"
-            strokeDasharray={circumference}
-            strokeDashoffset={offset}
-            style={{ transition: 'stroke-dashoffset 0.8s ease-in-out' }}
-          />
-        </svg>
-        <Box
-          position="absolute"
-          top="50%"
-          left="50%"
-          transform="translate(-50%, -50%)"
-          textAlign="center"
-        >
-          <Text fontSize="lg" fontWeight="bold" color="secondary.800">
-            {value}%
-          </Text>
-        </Box>
-      </Box>
-    );
-    };
-    ProgressRing.displayName = 'SimpleProgressRing';
-    return ProgressRing;
-  }, []);
-
   // No renderizar hasta que esté montado para evitar errores de hidratación
   if (!mounted) {
     return (
-      <ChakraProvider theme={modernTheme}>
-        <ModernContainer>
+      <ModernContainer>
           <Box
             display="flex"
             alignItems="center"
@@ -276,14 +263,12 @@ const StatisticsDashboard = memo(function StatisticsDashboard() {
             </GlassCard>
           </Box>
         </ModernContainer>
-      </ChakraProvider>
     );
   }
 
   if (loading) {
     return (
-      <ChakraProvider theme={modernTheme}>
-        <ModernContainer>
+      <ModernContainer>
           <Box
             display="flex"
             alignItems="center"
@@ -303,7 +288,6 @@ const StatisticsDashboard = memo(function StatisticsDashboard() {
             </GlassCard>
           </Box>
         </ModernContainer>
-      </ChakraProvider>
     );
   }
 
@@ -312,8 +296,7 @@ const StatisticsDashboard = memo(function StatisticsDashboard() {
   const isFlebotomista = userRole === 'Flebotomista';
 
   return (
-    <ChakraProvider theme={modernTheme}>
-      <ModernContainer>
+    <ModernContainer>
         {/* Header Principal con Glassmorphism */}
         <ModernHeader
           title="Dashboard de Estadísticas"
@@ -833,7 +816,7 @@ const StatisticsDashboard = memo(function StatisticsDashboard() {
           </GlassCard>
 
           {/* Top Flebotomistas - Solo para Administradores */}
-          {isAdmin && (
+          {isAdmin && dashboardData?.phlebotomistData?.length > 0 && (
           <GlassCard p={{ base: 4, md: 6 }} animation={`${slideInFromRight} 0.8s ease-out`}>
             <Flex justify="space-between" align="center" mb={6}>
               <VStack align="start" spacing={1}>
@@ -854,7 +837,7 @@ const StatisticsDashboard = memo(function StatisticsDashboard() {
                 Ver todos
               </Button>
             </Flex>
-            
+
             <VStack spacing={4} align="stretch">
               {dashboardData.phlebotomistData.slice(0, 4).map((phlebotomist, index) => (
                 <Box
@@ -895,30 +878,30 @@ const StatisticsDashboard = memo(function StatisticsDashboard() {
                     <VStack align="start" spacing={0} flex={1}>
                       <HStack justify="space-between" w="full">
                         <Text fontWeight="bold" fontSize="sm" color="secondary.800" noOfLines={1}>
-                          {phlebotomist.name}
+                          {phlebotomist?.name || 'Sin nombre'}
                         </Text>
                         <HStack spacing={1}>
                           <Box as={FaStar} w={3} h={3} color="warning" />
                           <Text fontSize="xs" color="secondary.600">
-                            {phlebotomist.rating}
+                            {phlebotomist?.rating ?? 5.0}
                           </Text>
                         </HStack>
                       </HStack>
                       <Text fontSize="xs" color="secondary.500">
-                        {phlebotomist.especialidad}
+                        {phlebotomist?.especialidad || 'Flebotomía General'}
                       </Text>
                       <HStack spacing={3} fontSize="xs" color="secondary.600" mt={1}>
-                        <Text>{phlebotomist.pacientes} pacientes</Text>
-                        <Text>{phlebotomist.tiempo} min</Text>
+                        <Text>{phlebotomist?.pacientes ?? 0} pacientes</Text>
+                        <Text>{phlebotomist?.tiempo ?? phlebotomist?.promedio ?? 0} min</Text>
                       </HStack>
                       <HStack justify="space-between" w="full" mt={2}>
                         <Progress
-                          value={phlebotomist.eficiencia}
+                          value={phlebotomist?.eficiencia ?? 0}
                           background="rgba(255, 255, 255, 0.3)"
                           sx={{
                             '& > div': {
-                              background: phlebotomist.eficiencia >= 95 ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)' : 
-                                         phlebotomist.eficiencia >= 90 ? 'linear-gradient(135deg, #4F7DF3 0%, #6B73FF 100%)' : 
+                              background: (phlebotomist?.eficiencia ?? 0) >= 95 ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)' :
+                                         (phlebotomist?.eficiencia ?? 0) >= 90 ? 'linear-gradient(135deg, #4F7DF3 0%, #6B73FF 100%)' :
                                          'linear-gradient(135deg, #f59e0b 0%, #f97316 100%)'
                             }
                           }}
@@ -928,11 +911,11 @@ const StatisticsDashboard = memo(function StatisticsDashboard() {
                           mr={2}
                         />
                         <Badge
-                          bg={phlebotomist.status === 'active' ? 'rgba(16, 185, 129, 0.1)' : 
-                             phlebotomist.status === 'break' ? 'rgba(245, 158, 11, 0.1)' : 
+                          bg={(phlebotomist?.status || 'active') === 'active' ? 'rgba(16, 185, 129, 0.1)' :
+                             (phlebotomist?.status || 'active') === 'break' ? 'rgba(245, 158, 11, 0.1)' :
                              'rgba(239, 68, 68, 0.1)'}
-                          color={phlebotomist.status === 'active' ? 'success' : 
-                                phlebotomist.status === 'break' ? 'warning' : 'error'}
+                          color={(phlebotomist?.status || 'active') === 'active' ? 'success' :
+                                (phlebotomist?.status || 'active') === 'break' ? 'warning' : 'error'}
                           size="sm"
                           px={2}
                           py={1}
@@ -940,8 +923,8 @@ const StatisticsDashboard = memo(function StatisticsDashboard() {
                           fontSize="xs"
                           fontWeight="semibold"
                         >
-                          {phlebotomist.status === 'active' ? 'Activo' :
-                           phlebotomist.status === 'break' ? 'Pausa' : 'Inactivo'}
+                          {(phlebotomist?.status || 'active') === 'active' ? 'Activo' :
+                           (phlebotomist?.status || 'active') === 'break' ? 'Pausa' : 'Inactivo'}
                         </Badge>
                       </HStack>
                     </VStack>
@@ -971,7 +954,6 @@ const StatisticsDashboard = memo(function StatisticsDashboard() {
           </Text>
         </Box>
       </ModernContainer>
-    </ChakraProvider>
   );
 });
 

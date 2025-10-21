@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import {
-  ChakraProvider,
   Container,
   Heading,
   Text,
@@ -13,7 +12,7 @@ import {
 import { keyframes } from '@emotion/react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../../contexts/AuthContext';
-import { modernTheme, GlassCard, ModernContainer } from '../../components/theme/ModernTheme';
+import { GlassCard, ModernContainer } from '../../components/theme/ModernTheme';
 import InteractiveTutorial from '../../components/docs/InteractiveTutorial';
 import ProtectedRoute from '../../components/ProtectedRoute';
 import { FaPlay, FaClock, FaStar } from 'react-icons/fa';
@@ -125,8 +124,7 @@ const TutorialsPage = () => {
 
   if (selectedTutorial) {
     return (
-      <ChakraProvider theme={modernTheme}>
-        <ProtectedRoute>
+      <ProtectedRoute>
           <ModernContainer>
             <Button
               onClick={() => setSelectedTutorial(null)}
@@ -143,13 +141,11 @@ const TutorialsPage = () => {
             <InteractiveTutorial tutorial={selectedTutorial} />
           </ModernContainer>
         </ProtectedRoute>
-      </ChakraProvider>
     );
   }
 
   return (
-    <ChakraProvider theme={modernTheme}>
-      <ProtectedRoute>
+    <ProtectedRoute>
         <ModernContainer>
           <VStack spacing={8} align="stretch">
             <GlassCard
@@ -235,7 +231,6 @@ const TutorialsPage = () => {
           </VStack>
         </ModernContainer>
       </ProtectedRoute>
-    </ChakraProvider>
   );
 };
 

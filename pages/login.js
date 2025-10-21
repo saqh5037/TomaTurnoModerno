@@ -1,17 +1,14 @@
-import { useState, useEffect, useCallback, memo } from 'react';
-import { 
-  Box, 
-  Input, 
-  Button, 
-  FormControl, 
-  FormLabel, 
+import { useState, useCallback, memo } from 'react';
+import {
+  Box,
+  Input,
+  Button,
+  FormControl,
+  FormLabel,
   useToast,
-  ChakraProvider,
   Heading,
   Text,
   VStack,
-  HStack,
-  Spinner,
   InputGroup,
   InputLeftElement,
   InputRightElement,
@@ -20,22 +17,16 @@ import {
 import { useRouter } from 'next/router';
 import { useAuth } from '../contexts/AuthContext';
 import { FaUser, FaLock, FaEye, FaEyeSlash, FaSignInAlt, FaHospital } from 'react-icons/fa';
-import { modernTheme, fadeInUp, slideInFromLeft, GlassCard, ModernContainer } from '../components/theme/ModernTheme';
+import { fadeInUp, slideInFromLeft, GlassCard, ModernContainer } from '../components/theme/ModernTheme';
 
 const LoginPage = memo(function LoginPage() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [mounted, setMounted] = useState(false);
   const toast = useToast();
   const router = useRouter();
   const { login } = useAuth();
-
-  // Effect para marcar el componente como montado
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   // Función optimizada para el login
   const handleLogin = useCallback(async (e) => {
@@ -105,32 +96,8 @@ const LoginPage = memo(function LoginPage() {
     setShowPassword(prev => !prev);
   }, []);
 
-  // No renderizar hasta que esté montado para evitar errores de hidratación
-  if (!mounted) {
-    return (
-      <ChakraProvider theme={modernTheme}>
-        <ModernContainer>
-          <Box
-            display="flex"
-            alignItems="center"
-            justifyContent="center"
-            minHeight="100vh"
-          >
-            <GlassCard p={8} textAlign="center">
-              <Spinner size="xl" color="primary.500" thickness="4px" mb={4} />
-              <Text fontSize="xl" color="secondary.600">
-                Iniciando sesión...
-              </Text>
-            </GlassCard>
-          </Box>
-        </ModernContainer>
-      </ChakraProvider>
-    );
-  }
-
   return (
-    <ChakraProvider theme={modernTheme}>
-      <ModernContainer>
+    <ModernContainer>
         <Box
           display="flex"
           alignItems="center"
@@ -331,7 +298,6 @@ const LoginPage = memo(function LoginPage() {
           </Text>
         </Box>
       </ModernContainer>
-    </ChakraProvider>
   );
 });
 

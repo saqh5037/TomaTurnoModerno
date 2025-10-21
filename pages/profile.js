@@ -28,7 +28,6 @@ import {
   Badge,
   Flex,
   Heading,
-  ChakraProvider,
   Spinner,
   Center
 } from '@chakra-ui/react';
@@ -48,7 +47,7 @@ import {
   FaArrowLeft
 } from 'react-icons/fa';
 import { useAuth } from '../contexts/AuthContext';
-import { modernTheme, fadeInUp, slideInFromLeft, GlassCard, ModernContainer } from '../components/theme/ModernTheme';
+import { fadeInUp, slideInFromLeft, GlassCard, ModernContainer } from '../components/theme/ModernTheme';
 import { useRouter } from 'next/router';
 
 const ProfilePage = () => {
@@ -127,17 +126,6 @@ const ProfilePage = () => {
       return false;
     }
 
-    if (!profileData.username.trim()) {
-      toast({
-        title: 'Error de validación',
-        description: 'El nombre de usuario es obligatorio',
-        status: 'error',
-        duration: 3000,
-        isClosable: true,
-      });
-      return false;
-    }
-
     if (profileData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(profileData.email)) {
       toast({
         title: 'Error de validación',
@@ -204,9 +192,9 @@ const ProfilePage = () => {
         },
         body: JSON.stringify({
           name: profileData.name,
-          username: profileData.username,
           email: profileData.email,
           phone: profileData.phone
+          // username NO se incluye porque no se puede editar
         })
       });
 
@@ -310,8 +298,7 @@ const ProfilePage = () => {
 
   if (isLoading) {
     return (
-      <ChakraProvider theme={modernTheme}>
-        <ModernContainer>
+      <ModernContainer>
           <Center minH="100vh">
             <GlassCard p={8}>
               <VStack spacing={4}>
@@ -329,14 +316,12 @@ const ProfilePage = () => {
             </GlassCard>
           </Center>
         </ModernContainer>
-      </ChakraProvider>
     );
   }
 
   if (!user) {
     return (
-      <ChakraProvider theme={modernTheme}>
-        <ModernContainer>
+      <ModernContainer>
           <Center minH="100vh">
             <GlassCard p={8}>
               <VStack spacing={4}>
@@ -350,13 +335,11 @@ const ProfilePage = () => {
             </GlassCard>
           </Center>
         </ModernContainer>
-      </ChakraProvider>
     );
   }
 
   return (
-    <ChakraProvider theme={modernTheme}>
-      <ModernContainer>
+    <ModernContainer>
         <VStack spacing={8} align="stretch">
           {/* Header Principal */}
           <Box
@@ -504,21 +487,22 @@ const ProfilePage = () => {
                     <HStack spacing={2}>
                       <FaUserCircle />
                       <Text>Nombre de Usuario</Text>
+                      <Badge colorScheme="gray" fontSize="xs">Solo lectura</Badge>
                     </HStack>
                   </FormLabel>
                   <Input
                     name="username"
                     value={profileData.username}
-                    onChange={handleProfileChange}
-                    isReadOnly={!isEditingProfile}
-                    bg={isEditingProfile ? "white" : "gray.50"}
+                    isReadOnly={true}
+                    bg="gray.50"
                     border="1px solid"
-                    borderColor={isEditingProfile ? "blue.300" : "gray.300"}
-                    _focus={{
-                      borderColor: "blue.500",
-                      boxShadow: "0 0 0 1px rgba(79, 125, 243, 0.3)"
-                    }}
+                    borderColor="gray.300"
+                    cursor="not-allowed"
+                    opacity={0.7}
                   />
+                  <Text fontSize="xs" color="gray.500" mt={1}>
+                    El nombre de usuario no puede ser modificado por razones de seguridad
+                  </Text>
                 </FormControl>
 
                 {/* Email */}
@@ -713,7 +697,6 @@ const ProfilePage = () => {
           </Modal>
         </VStack>
       </ModernContainer>
-    </ChakraProvider>
   );
 };
 

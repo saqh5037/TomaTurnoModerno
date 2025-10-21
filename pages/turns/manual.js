@@ -1,13 +1,12 @@
 import { useState, useEffect } from 'react';
-import { 
-  Box, 
-  Button, 
-  FormControl, 
-  FormLabel, 
-  Input, 
-  Textarea, 
-  useToast, 
-  ChakraProvider, 
+import {
+  Box,
+  Button,
+  FormControl,
+  FormLabel,
+  Input,
+  Textarea,
+  useToast,
   extendTheme,
   Heading,
   Text,
@@ -17,20 +16,31 @@ import {
   Switch,
   VStack,
   HStack,
-  IconButton
+  IconButton,
+  NumberInput,
+  NumberInputField,
+  NumberInputStepper,
+  NumberIncrementStepper,
+  NumberDecrementStepper,
+  Badge,
+  Divider
 } from '@chakra-ui/react';
 import { keyframes } from "@emotion/react";
-import { 
-  FaUser, 
-  FaIdCard, 
-  FaPhone, 
-  FaFlask, 
+import {
+  FaUser,
+  FaIdCard,
+  FaPhone,
+  FaFlask,
   FaClipboardList,
   FaSave,
   FaArrowLeft,
   FaUserPlus,
-  FaClock
+  FaClock,
+  FaPlus,
+  FaTrash,
+  FaVial
 } from 'react-icons/fa';
+import { TUBE_TYPES } from '../../lib/tubesCatalog';
 
 // Tema personalizado (mismo que la cola)
 const theme = extendTheme({
@@ -186,26 +196,35 @@ const slideInLeft = keyframes`
 `;
 
 export default function ManualTurnAssignment() {
+  console.log('[ManualTurn] ========== COMPONENT RENDER ==========');
   const [formData, setFormData] = useState({
     patientName: '',
     age: '',
     gender: '',
     contactInfo: '',
     studies: '',
-    tubesRequired: '',
     observations: '',
     clinicalInfo: '',
     tipoAtencion: 'General'
   });
+
+  // Estado separado para tubos
+  const [tubesDetails, setTubesDetails] = useState([]);
+
   const [currentTime, setCurrentTime] = useState(null);
   const [mounted, setMounted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const toast = useToast();
 
-  // Efecto para manejar la hidratación
+  console.log('[ManualTurn] State - mounted:', mounted, 'isSubmitting:', isSubmitting);
+  console.log('[ManualTurn] TUBE_TYPES available:', typeof TUBE_TYPES, 'length:', TUBE_TYPES?.length);
+
+  // Efecto para marcar el componente como montado
   useEffect(() => {
+    console.log('[ManualTurn] Component mounting...');
     setMounted(true);
     setCurrentTime(new Date());
+    console.log('[ManualTurn] Component mounted successfully');
   }, []);
 
   // Actualizar hora cada segundo
@@ -237,17 +256,60 @@ export default function ManualTurnAssignment() {
   };
 
   const handleSpecialToggle = (isChecked) => {
-    setFormData({ 
-      ...formData, 
-      tipoAtencion: isChecked ? 'Special' : 'General' 
+    setFormData({
+      ...formData,
+      tipoAtencion: isChecked ? 'Special' : 'General'
     });
+  };
+
+  // Agregar un nuevo tubo
+  const addTube = () => {
+    setTubesDetails([...tubesDetails, { type: 'sst', quantity: 1 }]);
+  };
+
+  // Eliminar un tubo
+  const removeTube = (index) => {
+    setTubesDetails(tubesDetails.filter((_, i) => i !== index));
+  };
+
+  // Actualizar tipo de tubo
+  const updateTubeType = (index, type) => {
+    const newTubes = [...tubesDetails];
+    newTubes[index].type = type;
+    setTubesDetails(newTubes);
+  };
+
+  // Actualizar cantidad de tubo
+  const updateTubeQuantity = (index, quantity) => {
+    const newTubes = [...tubesDetails];
+    newTubes[index].quantity = parseInt(quantity) || 1;
+    setTubesDetails(newTubes);
+  };
+
+  // Calcular total de tubos
+  const getTotalTubes = () => {
+    return tubesDetails.reduce((sum, tube) => sum + tube.quantity, 0);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
-    
+
     try {
+      // Validar que haya al menos un tubo
+      if (tubesDetails.length === 0) {
+        toast({
+          title: 'Error de validación',
+          description: 'Debe agregar al menos un tipo de tubo',
+          status: 'warning',
+          duration: 5000,
+          isClosable: true,
+          position: 'top',
+        });
+        setIsSubmitting(false);
+        return;
+      }
+
       const response = await fetch('/api/turns/create', {
         method: 'POST',
         headers: {
@@ -255,9 +317,9 @@ export default function ManualTurnAssignment() {
         },
         body: JSON.stringify({
           ...formData,
-          studies: formData.studies.split(',').map(s => s.trim()).filter(s => s), // Limpiar estudios
-          tubesRequired: parseInt(formData.tubesRequired, 10),
+          studies: formData.studies.split(',').map(s => s.trim()).filter(s => s),
           age: parseInt(formData.age, 10),
+          tubesDetails: tubesDetails, // Enviar el array de tubos detallado
         }),
       });
 
@@ -271,7 +333,7 @@ export default function ManualTurnAssignment() {
           isClosable: true,
           position: 'top',
         });
-        
+
         // Resetear formulario
         setFormData({
           patientName: '',
@@ -279,11 +341,11 @@ export default function ManualTurnAssignment() {
           gender: '',
           contactInfo: '',
           studies: '',
-          tubesRequired: '',
           observations: '',
           clinicalInfo: '',
           tipoAtencion: 'General'
         });
+        setTubesDetails([]);
       } else {
         toast({
           title: 'Error al crear turno',
@@ -314,9 +376,9 @@ export default function ManualTurnAssignment() {
   };
 
   if (!mounted) {
+    console.log('[ManualTurn] Waiting for mount...');
     return (
-      <ChakraProvider theme={theme}>
-        <Box
+      <Box
           minHeight="100vh"
           display="flex"
           alignItems="center"
@@ -335,13 +397,13 @@ export default function ManualTurnAssignment() {
             </Text>
           </Box>
         </Box>
-      </ChakraProvider>
     );
   }
 
+  console.log('[ManualTurn] Rendering main form. TUBE_TYPES length:', TUBE_TYPES?.length);
+
   return (
-    <ChakraProvider theme={theme}>
-      <Box
+    <Box
         minHeight="100vh"
         p={3}
         display="flex"
@@ -363,7 +425,7 @@ export default function ManualTurnAssignment() {
         >
           <Flex justify="space-between" align="center">
             <Box flex="1" textAlign="center">
-              <Heading 
+              <Heading
                 fontSize="4xl"
                 fontWeight="extrabold"
                 background="linear-gradient(135deg, #4F7DF3 0%, #6B73FF 100%)"
@@ -435,7 +497,7 @@ export default function ManualTurnAssignment() {
                     <Box as={FaUser} color="primary.500" />
                     Información Personal
                   </Heading>
-                  
+
                   <VStack spacing={3}>
                     <FormControl isRequired>
                       <FormLabel fontSize="sm" fontWeight="semibold" color="secondary.700">
@@ -444,9 +506,9 @@ export default function ManualTurnAssignment() {
                           Nombre del Paciente
                         </Flex>
                       </FormLabel>
-                      <Input 
-                        name="patientName" 
-                        value={formData.patientName} 
+                      <Input
+                        name="patientName"
+                        value={formData.patientName}
                         onChange={handleChange}
                         placeholder="Ingrese el nombre completo"
                         size="sm"
@@ -458,10 +520,10 @@ export default function ManualTurnAssignment() {
                         <FormLabel fontSize="sm" fontWeight="semibold" color="secondary.700">
                           Edad
                         </FormLabel>
-                        <Input 
-                          type="number" 
-                          name="age" 
-                          value={formData.age} 
+                        <Input
+                          type="number"
+                          name="age"
+                          value={formData.age}
                           onChange={handleChange}
                           placeholder="Años"
                           size="sm"
@@ -472,16 +534,16 @@ export default function ManualTurnAssignment() {
                         <FormLabel fontSize="sm" fontWeight="semibold" color="secondary.700">
                           Género
                         </FormLabel>
-                        <Select 
-                          name="gender" 
-                          value={formData.gender} 
+                        <Select
+                          name="gender"
+                          value={formData.gender}
                           onChange={handleChange}
                           placeholder="Seleccionar"
                           size="sm"
                           variant="modern"
                         >
-                          <option value="Masculino">Masculino</option>
-                          <option value="Femenino">Femenino</option>
+                          <option value="M">Masculino</option>
+                          <option value="F">Femenino</option>
                           <option value="Otro">Otro</option>
                         </Select>
                       </FormControl>
@@ -494,9 +556,9 @@ export default function ManualTurnAssignment() {
                           Información de Contacto
                         </Flex>
                       </FormLabel>
-                      <Input 
-                        name="contactInfo" 
-                        value={formData.contactInfo} 
+                      <Input
+                        name="contactInfo"
+                        value={formData.contactInfo}
                         onChange={handleChange}
                         placeholder="Teléfono, email, etc."
                         size="sm"
@@ -511,7 +573,7 @@ export default function ManualTurnAssignment() {
                     <Box as={FaFlask} color="success" />
                     Información Médica
                   </Heading>
-                  
+
                   <VStack spacing={3}>
                     <FormControl>
                       <FormLabel fontSize="sm" fontWeight="semibold" color="secondary.700">
@@ -520,9 +582,9 @@ export default function ManualTurnAssignment() {
                           Estudios Solicitados
                         </Flex>
                       </FormLabel>
-                      <Textarea 
-                        name="studies" 
-                        value={formData.studies} 
+                      <Textarea
+                        name="studies"
+                        value={formData.studies}
                         onChange={handleChange}
                         placeholder="Separe los estudios con comas (ej: Hemoglobina, Glucosa, Colesterol)"
                         size="sm"
@@ -530,56 +592,112 @@ export default function ManualTurnAssignment() {
                       />
                     </FormControl>
 
-                    <FormControl isRequired>
-                      <FormLabel fontSize="sm" fontWeight="semibold" color="secondary.700">
-                        Tubos Requeridos
-                      </FormLabel>
-                      <Input 
-                        type="number" 
-                        name="tubesRequired" 
-                        value={formData.tubesRequired} 
-                        onChange={handleChange}
-                        placeholder="Número de tubos"
-                        min="1"
-                        size="sm"
-                      />
-                    </FormControl>
-
                     <FormControl>
                       <FormLabel fontSize="sm" fontWeight="semibold" color="secondary.700">
                         Información Clínica
                       </FormLabel>
-                      <Textarea 
-                        name="clinicalInfo" 
-                        value={formData.clinicalInfo} 
+                      <Textarea
+                        name="clinicalInfo"
+                        value={formData.clinicalInfo}
                         onChange={handleChange}
                         placeholder="Diagnóstico, medicamentos, condiciones especiales..."
                         size="sm"
                         rows={3}
                       />
                     </FormControl>
+
+                    <FormControl>
+                      <FormLabel fontSize="sm" fontWeight="semibold" color="secondary.700">
+                        Observaciones Adicionales
+                      </FormLabel>
+                      <Textarea
+                        name="observations"
+                        value={formData.observations}
+                        onChange={handleChange}
+                        placeholder="Paciente en ayunas, alergias, etc..."
+                        size="sm"
+                        rows={2}
+                      />
+                    </FormControl>
                   </VStack>
                 </Box>
               </Grid>
 
-              {/* Observaciones - Ancho completo */}
+              {/* Sección de Tubos - Ancho completo */}
               <Box mt={4}>
-                <FormControl>
-                  <FormLabel fontSize="sm" fontWeight="semibold" color="secondary.700">
-                    <Flex align="center" gap={2}>
-                      <Box as={FaClipboardList} />
-                      Observaciones Adicionales
-                    </Flex>
-                  </FormLabel>
-                  <Textarea 
-                    name="observations" 
-                    value={formData.observations} 
-                    onChange={handleChange}
-                    placeholder="Cualquier observación adicional relevante..."
+                <Divider my={4} />
+                <Heading size="md" color="secondary.800" mb={4} display="flex" alignItems="center" gap={2}>
+                  <Box as={FaVial} color="purple.500" />
+                  Tubos Requeridos
+                  <Badge colorScheme="purple" fontSize="md" ml={2}>
+                    Total: {getTotalTubes()} tubos
+                  </Badge>
+                </Heading>
+
+                <VStack spacing={3} align="stretch">
+                  {tubesDetails.map((tube, index) => {
+                    const tubeInfo = TUBE_TYPES.find(t => t.id === tube.type);
+                    return (
+                      <Flex key={index} gap={3} align="center" p={3} background="rgba(255, 255, 255, 0.4)" borderRadius="lg">
+                        <Box
+                          w="20px"
+                          h="20px"
+                          borderRadius="full"
+                          bg={tubeInfo?.colorHex}
+                          border="2px solid white"
+                          boxShadow="md"
+                        />
+                        <FormControl flex="2">
+                          <Select
+                            value={tube.type}
+                            onChange={(e) => updateTubeType(index, e.target.value)}
+                            size="sm"
+                            variant="modern"
+                          >
+                            {TUBE_TYPES.map(t => (
+                              <option key={t.id} value={t.id}>
+                                {t.color} - {t.name}
+                              </option>
+                            ))}
+                          </Select>
+                        </FormControl>
+                        <FormControl flex="1">
+                          <NumberInput
+                            value={tube.quantity}
+                            onChange={(value) => updateTubeQuantity(index, value)}
+                            min={1}
+                            max={10}
+                            size="sm"
+                          >
+                            <NumberInputField placeholder="Cantidad" />
+                            <NumberInputStepper>
+                              <NumberIncrementStepper />
+                              <NumberDecrementStepper />
+                            </NumberInputStepper>
+                          </NumberInput>
+                        </FormControl>
+                        <IconButton
+                          icon={<FaTrash />}
+                          onClick={() => removeTube(index)}
+                          colorScheme="red"
+                          variant="ghost"
+                          size="sm"
+                          aria-label="Eliminar tubo"
+                        />
+                      </Flex>
+                    );
+                  })}
+
+                  <Button
+                    leftIcon={<FaPlus />}
+                    onClick={addTube}
+                    variant="outline"
+                    colorScheme="purple"
                     size="sm"
-                    rows={2}
-                  />
-                </FormControl>
+                  >
+                    Agregar Tubo
+                  </Button>
+                </VStack>
               </Box>
 
               {/* Tipo de Atención */}
@@ -628,58 +746,6 @@ export default function ManualTurnAssignment() {
               </HStack>
             </form>
           </Box>
-
-          {/* Panel de Información */}
-          <Box
-            flex="1"
-            borderRadius="2xl"
-            p={4}
-            background="rgba(255, 255, 255, 0.25)"
-            backdropFilter="blur(20px)"
-            boxShadow="glass"
-            border="1px solid rgba(255, 255, 255, 0.18)"
-            animation={`${fadeInUp} 1.2s ease-out`}
-            position="relative"
-          >
-            {/* Gradient line */}
-            <Box
-              position="absolute"
-              top={0}
-              left={0}
-              right={0}
-              height="3px"
-              background="linear-gradient(135deg, #10b981 0%, #059669 100%)"
-              borderTopRadius="2xl"
-            />
-
-            <Heading size="md" color="secondary.800" mb={4} display="flex" alignItems="center" gap={2}>
-              <Box as={FaUserPlus} color="success" />
-              Información del Sistema
-            </Heading>
-
-            <VStack spacing={3} align="stretch">
-              <Box p={3} background="rgba(255, 255, 255, 0.4)" borderRadius="lg">
-                <Text fontSize="sm" color="secondary.600" mb={1}>Próximo turno disponible</Text>
-                <Text fontSize="lg" fontWeight="bold" color="primary.600">#---</Text>
-              </Box>
-
-              <Box p={3} background="rgba(255, 255, 255, 0.4)" borderRadius="lg">
-                <Text fontSize="sm" color="secondary.600" mb={1}>Turnos creados hoy</Text>
-                <Text fontSize="lg" fontWeight="bold" color="success">--</Text>
-              </Box>
-
-              <Box p={3} background="rgba(255, 255, 255, 0.4)" borderRadius="lg">
-                <Text fontSize="sm" color="secondary.600" mb={1}>Tiempo estimado</Text>
-                <Text fontSize="lg" fontWeight="bold" color="warning">-- min</Text>
-              </Box>
-
-              <Box mt={4} p={3} background="rgba(79, 125, 243, 0.1)" borderRadius="lg" border="1px solid rgba(79, 125, 243, 0.2)">
-                <Text fontSize="xs" color="primary.700" textAlign="center">
-                  💡 <strong>Tip:</strong> Los pacientes prioritarios se atienden antes que los regulares
-                </Text>
-              </Box>
-            </VStack>
-          </Box>
         </Flex>
 
         {/* Footer */}
@@ -695,11 +761,10 @@ export default function ManualTurnAssignment() {
           mt={2}
         >
           <Text>
-            Instituto Nacional de Enfermedades Respiratorias Ismael Cosío Villegas (INER) | 
+            Instituto Nacional de Enfermedades Respiratorias Ismael Cosío Villegas (INER) |
             Desarrollado por DT Diagnósticos by Labsis © {new Date().getFullYear()}
           </Text>
         </Box>
       </Box>
-    </ChakraProvider>
   );
 }

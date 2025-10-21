@@ -8,7 +8,6 @@ import {
   useToast,
   Flex,
   Stack,
-  ChakraProvider,
   Grid,
   Badge,
   HStack,
@@ -75,10 +74,12 @@ import {
   FaExclamationTriangle,
   FaBars,
   FaChartLine,
-  FaExchangeAlt
+  FaExchangeAlt,
+  FaVial
 } from "react-icons/fa";
 import { useRouter } from 'next/router';
-import { modernTheme, fadeInUp, slideInFromLeft, slideInFromRight, GlassCard, ModernContainer, pulseGlow } from '../../components/theme/ModernTheme';
+import { fadeInUp, slideInFromLeft, slideInFromRight, GlassCard, ModernContainer, pulseGlow } from '../../components/theme/ModernTheme';
+import { TUBE_TYPES, getTubeById, enrichTubesDetails } from '../../lib/tubesCatalog';
 
 // Animaciones adicionales específicas de esta página - más suaves
 const pulse = keyframes`
@@ -104,6 +105,7 @@ const slideUp = keyframes`
 
 // Componente Principal - Panel de Atención con Quick Actions
 export default function Attention() {
+  console.log('[Attention] ========== COMPONENT RENDER ==========');
   const router = useRouter();
 
   // Estados existentes
@@ -117,6 +119,9 @@ export default function Attention() {
   const [processingTurns, setProcessingTurns] = useState(new Set());
   const [hidingTurns, setHidingTurns] = useState(new Set());
   const [skippedTurns, setSkippedTurns] = useState(new Set()); // Turnos saltados por este flebotomista
+
+  console.log('[Attention] State - mounted:', mounted, 'userId:', userId, 'selectedCubicle:', selectedCubicle);
+  console.log('[Attention] pendingTurns:', pendingTurns.length, 'inProgressTurns:', inProgressTurns.length);
 
   // Nuevos estados para Quick Actions
   const [dailyStats, setDailyStats] = useState({
@@ -139,6 +144,10 @@ export default function Attention() {
   // Estado para modal de cambio de prioridad
   const { isOpen: isChangePriorityOpen, onOpen: onChangePriorityOpen, onClose: onChangePriorityClose } = useDisclosure();
   const [patientToChangePriority, setPatientToChangePriority] = useState(null);
+
+  // Estado para modal de detalles del paciente
+  const { isOpen: isDetailsOpen, onOpen: onDetailsOpen, onClose: onDetailsClose } = useDisclosure();
+  const [selectedPatientDetails, setSelectedPatientDetails] = useState(null);
 
   const toast = useToast();
   const { isOpen, onOpen, onClose } = useDisclosure();
@@ -187,12 +196,16 @@ export default function Attention() {
 
   // Efecto para manejar la hidratación
   useEffect(() => {
+    console.log('[Attention] useEffect - Component mounting...');
     setMounted(true);
+    console.log('[Attention] useEffect - Mounted state set to true');
 
     // Obtener usuario del token
     const token = localStorage.getItem("token");
+    console.log('[Attention] useEffect - Token exists:', !!token);
     if (token) {
       try {
+        console.log('[Attention] useEffect - Decoding token...');
         const payload = JSON.parse(atob(token.split(".")[1]));
         setUserId(payload.userId);
         setUserRole(payload.role);
@@ -809,6 +822,49 @@ export default function Attention() {
     }
   };
 
+  // Función para seleccionar y cargar paciente en atención al panel principal
+  const handleSelectInProgressPatient = useCallback((turn) => {
+    // Validar que el usuario haya seleccionado un cubículo
+    const myCubicle = cubicles.find(c => c.id === parseInt(selectedCubicle));
+
+    if (!myCubicle) {
+      toast({
+        title: "Error",
+        description: "Debes seleccionar un cubículo primero",
+        status: "error",
+        duration: 3000,
+        isClosable: true,
+        position: "top"
+      });
+      return;
+    }
+
+    // Validar que el paciente esté en el cubículo del usuario
+    if (turn.cubicleName !== myCubicle.name) {
+      toast({
+        title: "Acceso denegado",
+        description: `Este paciente está en ${turn.cubicleName}, no en tu cubículo (${myCubicle.name})`,
+        status: "warning",
+        duration: 3000,
+        isClosable: true,
+        position: "top"
+      });
+      return;
+    }
+
+    // Si pasa todas las validaciones, cargar el paciente en el panel principal
+    setActivePatient(turn);
+
+    toast({
+      title: "Paciente cargado",
+      description: `${turn.patientName} ahora está en el panel principal`,
+      status: "success",
+      duration: 2000,
+      isClosable: true,
+      position: "top"
+    });
+  }, [selectedCubicle, cubicles, toast]);
+
   // Función para abrir modal de cambio de prioridad
   const handleChangePriority = (patient) => {
     if (!patient) {
@@ -831,7 +887,8 @@ export default function Attention() {
     if (!patient) return;
 
     // Determinar la nueva prioridad (toggle)
-    const newPriority = patient.tipoAtencion === "Special" ? "General" : "Special";
+    // patient.isSpecial es booleano: true = Special, false = General
+    const newPriority = patient.isSpecial ? "General" : "Special";
 
     onChangePriorityClose();
 
@@ -1023,6 +1080,66 @@ export default function Attention() {
             )}
           </Box>
 
+          {/* Vista Compacta de Tubos */}
+          {(patient.tubesDetails || patient.tubesRequired) && (
+            <Flex
+              align="center"
+              justify="center"
+              gap={2}
+              mt={3}
+              p={3}
+              borderRadius="lg"
+              bg="gray.50"
+              border="1px solid"
+              borderColor="gray.200"
+              flexWrap="wrap"
+            >
+              {/* Círculos de colores de tubos */}
+              {patient.tubesDetails && Array.isArray(patient.tubesDetails) && patient.tubesDetails.length > 0 ? (
+                enrichTubesDetails(patient.tubesDetails).map((tube, index) => (
+                  <Tooltip key={index} label={`${tube.color} - ${tube.name}`} placement="top">
+                    <Flex direction="column" align="center" gap={1}>
+                      <Box
+                        w="32px"
+                        h="32px"
+                        borderRadius="full"
+                        bg={tube.colorHex}
+                        border="3px solid white"
+                        boxShadow="md"
+                        position="relative"
+                      />
+                      <Text fontSize="xs" fontWeight="bold" color="gray.600">
+                        x{tube.quantity}
+                      </Text>
+                    </Flex>
+                  </Tooltip>
+                ))
+              ) : null}
+
+              {/* Separador */}
+              <Divider orientation="vertical" h="40px" mx={2} />
+
+              {/* Total y botón */}
+              <VStack spacing={0} align="center">
+                <Text fontSize="sm" fontWeight="bold" color="gray.700">
+                  Total: {patient.tubesRequired || 0} tubos
+                </Text>
+                <Button
+                  size="xs"
+                  variant="link"
+                  colorScheme="blue"
+                  onClick={() => {
+                    setSelectedPatientDetails(patient);
+                    onDetailsOpen();
+                  }}
+                  rightIcon={<FaArrowLeft style={{ transform: 'rotate(180deg)' }} />}
+                >
+                  Ver más detalles
+                </Button>
+              </VStack>
+            </Flex>
+          )}
+
           {/* Botones según el estado del paciente */}
           {isActive ? (
             // Paciente activo - mostrar botones de repetir y finalizar
@@ -1096,42 +1213,6 @@ export default function Attention() {
                 </Button>
               )}
 
-              {/* ✅ Botón Cambiar Prioridad - solo para supervisores */}
-              {isSupervisor && (
-                <Button
-                  size="lg"
-                  h={{ base: "60px", md: "70px" }}
-                  w={{ base: "280px", md: "320px" }}
-                  variant="solid"
-                  background={patient.tipoAtencion === "Special"
-                    ? "linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)"
-                    : "linear-gradient(135deg, #b45ad9 0%, #9333ea 100%)"
-                  }
-                  color="white"
-                  border="3px solid"
-                  borderColor={patient.tipoAtencion === "Special" ? "indigo.600" : "purple.600"}
-                  leftIcon={patient.tipoAtencion === "Special" ? <FaUser size="16" /> : <FaWheelchair size="16" />}
-                  rightIcon={<FaExchangeAlt size="14" />}
-                  onClick={() => handleChangePriority(patient)}
-                  fontSize={{ base: "lg", md: "xl" }}
-                  fontWeight="bold"
-                  borderRadius="xl"
-                  boxShadow={patient.tipoAtencion === "Special"
-                    ? "0 4px 14px 0 rgba(99, 102, 241, 0.5)"
-                    : "0 4px 14px 0 rgba(180, 90, 217, 0.5)"
-                  }
-                  _hover={{
-                    transform: 'translateY(-2px)',
-                    boxShadow: patient.tipoAtencion === "Special"
-                      ? '0 6px 20px 0 rgba(99, 102, 241, 0.6)'
-                      : '0 6px 20px 0 rgba(180, 90, 217, 0.6)',
-                  }}
-                  _active={{ transform: 'scale(0.98)' }}
-                >
-                  {patient.tipoAtencion === "Special" ? "Cambiar a General" : "Cambiar a Especial"}
-                </Button>
-              )}
-
               {/* ✅ Indicador de llamados realizados */}
               {patient.callCount > 0 && (
                 <Text fontSize="sm" color="gray.600">
@@ -1140,8 +1221,45 @@ export default function Attention() {
               )}
             </VStack>
           ) : (
-            // Paciente en espera - mostrar botón de llamar
-            <>
+            // Paciente en espera - mostrar botones antes de llamar
+            <VStack spacing={4} w="full" align="center">
+              {/* ✅ Botón Cambiar Prioridad - solo para Admin/Supervisor, ANTES de llamar */}
+              {isSupervisor && (
+                <Button
+                  size="lg"
+                  h={{ base: "60px", md: "70px" }}
+                  w={{ base: "280px", md: "320px" }}
+                  variant="solid"
+                  background={patient.isSpecial
+                    ? "linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)"
+                    : "linear-gradient(135deg, #b45ad9 0%, #9333ea 100%)"
+                  }
+                  color="white"
+                  border="3px solid"
+                  borderColor={patient.isSpecial ? "indigo.600" : "purple.600"}
+                  leftIcon={patient.isSpecial ? <FaUser size="16" /> : <FaWheelchair size="16" />}
+                  rightIcon={<FaExchangeAlt size="14" />}
+                  onClick={() => handleChangePriority(patient)}
+                  fontSize={{ base: "lg", md: "xl" }}
+                  fontWeight="bold"
+                  borderRadius="xl"
+                  boxShadow={patient.isSpecial
+                    ? "0 4px 14px 0 rgba(99, 102, 241, 0.5)"
+                    : "0 4px 14px 0 rgba(180, 90, 217, 0.5)"
+                  }
+                  _hover={{
+                    transform: 'translateY(-2px)',
+                    boxShadow: patient.isSpecial
+                      ? '0 6px 20px 0 rgba(99, 102, 241, 0.6)'
+                      : '0 6px 20px 0 rgba(180, 90, 217, 0.6)',
+                  }}
+                  _active={{ transform: 'scale(0.98)' }}
+                >
+                  {patient.isSpecial ? "Cambiar a General" : "Cambiar a Especial"}
+                </Button>
+              )}
+
+              {/* Botón Llamar Paciente */}
               <Button
                 size="lg"
                 h={{ base: "60px", md: "70px" }}
@@ -1165,10 +1283,11 @@ export default function Attention() {
               >
                 LLAMAR PACIENTE
               </Button>
+
               <Text fontSize={{ base: "xs", md: "sm" }} color="secondary.400" textAlign="center" display={{ base: "none", md: "block" }}>
                 Presione <kbd>Espacio</kbd> o <kbd>Enter</kbd> para llamar
               </Text>
-            </>
+            </VStack>
           )}
         </VStack>
       </GlassCard>
@@ -1410,56 +1529,106 @@ export default function Attention() {
             }}
           >
             <VStack spacing={2} align="stretch" pb={4}>
-              {inProgressTurns.map((turn) => (
-                <Box
-                  key={turn.id}
-                  p={4}
-                  bg="green.50"
-                  borderRadius="lg"
-                  borderLeft="4px solid"
-                  borderLeftColor="green.400"
-                  minH="80px"
-                >
-                  <HStack justify="space-between" mb={2}>
-                    <Badge colorScheme="green" fontSize="lg" px={2} py={1}>#{turn.assignedTurn}</Badge>
-                    <HStack spacing={2}>
-                      <IconButton
-                        size="md"
-                        icon={<FaVolumeUp />}
-                        colorScheme="orange"
-                        variant="solid"
-                        onClick={() => onRepeat(turn.id)}
-                        isDisabled={processingTurns.has(`repeat-${turn.id}`)}
-                        aria-label="Repetir llamado"
-                      />
-                      <IconButton
-                        size="md"
-                        icon={<FaHourglass />}
-                        colorScheme="red"
-                        variant="solid"
-                        onClick={() => onDefer(turn.id)}
-                        isDisabled={processingTurns.has(turn.id)}
-                        aria-label="Regresar a Cola"
-                      />
-                      {isSupervisor && (
+              {inProgressTurns.map((turn) => {
+                // Determinar si el paciente pertenece al cubículo actual del usuario
+                const myCubicle = cubicles.find(c => c.id === parseInt(selectedCubicle));
+                const isMyPatient = turn.cubicleName === myCubicle?.name;
+                const isActivePatient = activePatient?.id === turn.id;
+
+                return (
+                  <Box
+                    key={turn.id}
+                    p={4}
+                    bg={isActivePatient ? "green.200" : "green.50"}
+                    borderRadius="lg"
+                    borderLeft="4px solid"
+                    borderLeftColor={isActivePatient ? "green.600" : "green.400"}
+                    minH="80px"
+                    cursor={isMyPatient ? "pointer" : "not-allowed"}
+                    onClick={isMyPatient ? () => handleSelectInProgressPatient(turn) : undefined}
+                    opacity={isMyPatient ? 1 : 0.6}
+                    position="relative"
+                    transition="all 0.2s"
+                    _hover={isMyPatient ? {
+                      bg: isActivePatient ? "green.200" : "green.100",
+                      transform: "scale(1.02)",
+                      boxShadow: "md"
+                    } : undefined}
+                  >
+                    {/* Badge indicando estado */}
+                    {!isMyPatient && (
+                      <Badge
+                        position="absolute"
+                        top={2}
+                        right={2}
+                        colorScheme="gray"
+                        fontSize="xs"
+                      >
+                        Otro cubículo
+                      </Badge>
+                    )}
+                    {isActivePatient && (
+                      <Badge
+                        position="absolute"
+                        top={2}
+                        right={2}
+                        colorScheme="green"
+                        fontSize="xs"
+                      >
+                        ● Activo
+                      </Badge>
+                    )}
+
+                    <HStack justify="space-between" mb={2}>
+                      <Badge colorScheme="green" fontSize="lg" px={2} py={1}>#{turn.assignedTurn}</Badge>
+                      <HStack spacing={2}>
                         <IconButton
                           size="md"
-                          icon={<FaCheckCircle />}
-                          colorScheme="green"
+                          icon={<FaVolumeUp />}
+                          colorScheme="orange"
                           variant="solid"
-                          onClick={() => onComplete(turn.id)}
-                          isDisabled={processingTurns.has(turn.id)}
-                          aria-label="Toma Finalizada"
+                          onClick={(e) => {
+                            e.stopPropagation(); // Evitar que se dispare el onClick del Box
+                            onRepeat(turn.id);
+                          }}
+                          isDisabled={processingTurns.has(`repeat-${turn.id}`)}
+                          aria-label="Repetir llamado"
                         />
-                      )}
+                        <IconButton
+                          size="md"
+                          icon={<FaHourglass />}
+                          colorScheme="red"
+                          variant="solid"
+                          onClick={(e) => {
+                            e.stopPropagation(); // Evitar que se dispare el onClick del Box
+                            onDefer(turn.id);
+                          }}
+                          isDisabled={processingTurns.has(turn.id)}
+                          aria-label="Regresar a Cola"
+                        />
+                        {isSupervisor && (
+                          <IconButton
+                            size="md"
+                            icon={<FaCheckCircle />}
+                            colorScheme="green"
+                            variant="solid"
+                            onClick={(e) => {
+                              e.stopPropagation(); // Evitar que se dispare el onClick del Box
+                              onComplete(turn.id);
+                            }}
+                            isDisabled={processingTurns.has(turn.id)}
+                            aria-label="Toma Finalizada"
+                          />
+                        )}
+                      </HStack>
                     </HStack>
-                  </HStack>
-                  <Text fontWeight="medium" fontSize="md">{turn.patientName}</Text>
-                  <Text fontSize="sm" color="gray.600">
-                    {turn.cubicleName} - {turn.flebotomistName}
-                  </Text>
-                </Box>
-              ))}
+                    <Text fontWeight="medium" fontSize="md">{turn.patientName}</Text>
+                    <Text fontSize="sm" color="gray.600">
+                      {turn.cubicleName} - {turn.flebotomistName}
+                    </Text>
+                  </Box>
+                );
+              })}
               {inProgressTurns.length === 0 && (
                 <Text textAlign="center" color="gray.500" py={4}>
                   No hay pacientes en atención
@@ -1471,6 +1640,7 @@ export default function Attention() {
       </Tabs>
     );
   });
+  SidePanel.displayName = 'SidePanel';
 
   // Componente Clock separado para evitar re-renders
   const Clock = memo(() => {
@@ -1494,6 +1664,7 @@ export default function Attention() {
       </>
     );
   });
+  Clock.displayName = 'Clock';
 
   // Componente StatsFooter con Glassmorphism
   const StatsFooter = ({ stats }) => {
@@ -1535,23 +1706,21 @@ export default function Attention() {
 
   if (!mounted) {
     return (
-      <ChakraProvider theme={modernTheme}>
-        <ModernContainer>
-          <Box
-            display="flex"
-            alignItems="center"
-            justifyContent="center"
-            minHeight="100vh"
-          >
-            <GlassCard p={8} textAlign="center">
-              <Spinner size="xl" color="primary.500" thickness="4px" mb={4} />
-              <Text fontSize="xl" color="secondary.600">
-                Cargando panel de atención...
-              </Text>
-            </GlassCard>
-          </Box>
-        </ModernContainer>
-      </ChakraProvider>
+      <ModernContainer>
+        <Box
+          display="flex"
+          alignItems="center"
+          justifyContent="center"
+          minHeight="100vh"
+        >
+          <GlassCard p={8} textAlign="center">
+            <Spinner size="xl" color="primary.500" thickness="4px" mb={4} />
+            <Text fontSize="xl" color="secondary.600">
+              Cargando panel de atención...
+            </Text>
+          </GlassCard>
+        </Box>
+      </ModernContainer>
     );
   }
 
@@ -1565,8 +1734,7 @@ export default function Attention() {
   const currentPatient = inProgressTurns[0] || null;
 
   return (
-    <ChakraProvider theme={modernTheme}>
-      <ModernContainer
+    <ModernContainer
         pb={{ base: isMobile ? "80px" : 0, md: 0 }}
         sx={{
           overscrollBehavior: 'none',
@@ -1942,7 +2110,7 @@ export default function Attention() {
                   <Box>
                     <Text fontSize="md" mb={2}>
                       <strong>Prioridad actual:</strong>{" "}
-                      {patientToChangePriority.tipoAtencion === "Special" ? (
+                      {patientToChangePriority.isSpecial ? (
                         <Badge colorScheme="orange" fontSize="md" ml={2}>
                           <HStack spacing={1}>
                             <FaWheelchair />
@@ -1960,7 +2128,7 @@ export default function Attention() {
                     </Text>
                     <Text fontSize="md">
                       <strong>Nueva prioridad:</strong>{" "}
-                      {patientToChangePriority.tipoAtencion === "Special" ? (
+                      {patientToChangePriority.isSpecial ? (
                         <Badge colorScheme="blue" fontSize="md" ml={2}>
                           <HStack spacing={1}>
                             <FaUser />
@@ -2004,7 +2172,202 @@ export default function Attention() {
             </ModalFooter>
           </ModalContent>
         </Modal>
+
+        {/* Modal de Detalles del Paciente */}
+        <Modal isOpen={isDetailsOpen} onClose={onDetailsClose} size="xl" isCentered scrollBehavior="inside">
+          <ModalOverlay bg="blackAlpha.700" backdropFilter="blur(10px)" />
+          <ModalContent mx={4} maxH="90vh">
+            <ModalHeader bg="blue.500" color="white" borderTopRadius="md">
+              <HStack spacing={3}>
+                <FaUser size={20} />
+                <Text>Detalles del Paciente</Text>
+              </HStack>
+            </ModalHeader>
+            <ModalCloseButton color="white" />
+            <ModalBody py={6}>
+              {selectedPatientDetails && (
+                <VStack spacing={6} align="stretch">
+                  {/* Información del Paciente */}
+                  <Box>
+                    <Text fontSize="sm" fontWeight="bold" color="gray.500" mb={3} textTransform="uppercase">
+                      Información del Paciente
+                    </Text>
+                    <VStack align="stretch" spacing={2} p={4} bg="gray.50" borderRadius="md">
+                      <Flex justify="space-between">
+                        <Text fontWeight="semibold">Nombre:</Text>
+                        <Text>{selectedPatientDetails.patientName}</Text>
+                      </Flex>
+                      <Divider />
+                      <Flex justify="space-between">
+                        <Text fontWeight="semibold">Turno:</Text>
+                        <Badge colorScheme="purple" fontSize="md">#{selectedPatientDetails.assignedTurn}</Badge>
+                      </Flex>
+                      {selectedPatientDetails.age && (
+                        <>
+                          <Divider />
+                          <Flex justify="space-between">
+                            <Text fontWeight="semibold">Edad:</Text>
+                            <Text>{selectedPatientDetails.age} años</Text>
+                          </Flex>
+                        </>
+                      )}
+                      {selectedPatientDetails.gender && (
+                        <>
+                          <Divider />
+                          <Flex justify="space-between">
+                            <Text fontWeight="semibold">Género:</Text>
+                            <Text>{selectedPatientDetails.gender === 'M' || selectedPatientDetails.gender === 'Masculino' ? 'Masculino' : 'Femenino'}</Text>
+                          </Flex>
+                        </>
+                      )}
+                      {selectedPatientDetails.contactInfo && (
+                        <>
+                          <Divider />
+                          <Flex justify="space-between">
+                            <Text fontWeight="semibold">Contacto:</Text>
+                            <Text>{selectedPatientDetails.contactInfo}</Text>
+                          </Flex>
+                        </>
+                      )}
+                    </VStack>
+                  </Box>
+
+                  {/* Estudios Solicitados */}
+                  {selectedPatientDetails.studies && (
+                    <Box>
+                      <Text fontSize="sm" fontWeight="bold" color="gray.500" mb={3} textTransform="uppercase">
+                        Estudios Solicitados
+                      </Text>
+                      <Box p={4} bg="blue.50" borderRadius="md" borderLeft="4px solid" borderColor="blue.500">
+                        <VStack align="stretch" spacing={2}>
+                          {(() => {
+                            try {
+                              const studies = typeof selectedPatientDetails.studies === 'string'
+                                ? JSON.parse(selectedPatientDetails.studies)
+                                : selectedPatientDetails.studies;
+                              return Array.isArray(studies) && studies.length > 0 ? (
+                                studies.map((study, idx) => (
+                                  <HStack key={idx} spacing={2}>
+                                    <Box w="6px" h="6px" borderRadius="full" bg="blue.500" />
+                                    <Text fontSize="sm">{study}</Text>
+                                  </HStack>
+                                ))
+                              ) : (
+                                <Text fontSize="sm" color="gray.600">No se especificaron estudios</Text>
+                              );
+                            } catch (e) {
+                              return <Text fontSize="sm" color="gray.600">No se especificaron estudios</Text>;
+                            }
+                          })()}
+                        </VStack>
+                      </Box>
+                    </Box>
+                  )}
+
+                  {/* Tubos Detallados */}
+                  {(selectedPatientDetails.tubesDetails || selectedPatientDetails.tubesRequired) && (
+                    <Box>
+                      <Text fontSize="sm" fontWeight="bold" color="gray.500" mb={3} textTransform="uppercase">
+                        Tubos Requeridos
+                      </Text>
+                      {selectedPatientDetails.tubesDetails && Array.isArray(selectedPatientDetails.tubesDetails) && selectedPatientDetails.tubesDetails.length > 0 ? (
+                        <VStack spacing={2} align="stretch">
+                          {enrichTubesDetails(selectedPatientDetails.tubesDetails).map((tube, index) => (
+                            <Flex
+                              key={index}
+                              align="center"
+                              justify="space-between"
+                              p={3}
+                              bg="white"
+                              borderRadius="md"
+                              border="2px solid"
+                              borderColor="gray.200"
+                              borderLeftColor={tube.colorHex}
+                              borderLeftWidth="5px"
+                            >
+                              <HStack spacing={3} flex={1}>
+                                <Box
+                                  w="20px"
+                                  h="20px"
+                                  borderRadius="full"
+                                  bg={tube.colorHex}
+                                  border="2px solid white"
+                                  boxShadow="md"
+                                />
+                                <VStack align="start" spacing={0}>
+                                  <Text fontSize="sm" fontWeight="bold" color="gray.800">
+                                    {tube.color}
+                                  </Text>
+                                  <Text fontSize="xs" color="gray.600">
+                                    {tube.name}
+                                  </Text>
+                                </VStack>
+                              </HStack>
+                              <Badge colorScheme="blue" fontSize="md" px={3} py={1} borderRadius="md">
+                                × {tube.quantity}
+                              </Badge>
+                            </Flex>
+                          ))}
+                          <Divider my={2} />
+                          <Flex justify="space-between" align="center" p={2} bg="purple.50" borderRadius="md">
+                            <Text fontSize="md" fontWeight="bold" color="purple.700">
+                              Total de tubos:
+                            </Text>
+                            <Badge colorScheme="purple" fontSize="lg" px={4} py={2} borderRadius="md">
+                              {selectedPatientDetails.tubesDetails.reduce((sum, t) => sum + t.quantity, 0)} tubos
+                            </Badge>
+                          </Flex>
+                        </VStack>
+                      ) : selectedPatientDetails.tubesRequired ? (
+                        <Flex justify="space-between" align="center" p={4} bg="purple.50" borderRadius="md">
+                          <Text fontSize="md" fontWeight="bold" color="purple.700">
+                            Total de tubos:
+                          </Text>
+                          <Badge colorScheme="purple" fontSize="lg" px={4} py={2} borderRadius="md">
+                            {selectedPatientDetails.tubesRequired} tubos
+                          </Badge>
+                        </Flex>
+                      ) : null}
+                    </Box>
+                  )}
+
+                  {/* Observaciones */}
+                  {selectedPatientDetails.observations && (
+                    <Box>
+                      <Text fontSize="sm" fontWeight="bold" color="gray.500" mb={3} textTransform="uppercase">
+                        Observaciones
+                      </Text>
+                      <Box p={4} bg="yellow.50" borderRadius="md" borderLeft="4px solid" borderColor="yellow.400">
+                        <Text fontSize="sm" color="gray.700">
+                          {selectedPatientDetails.observations}
+                        </Text>
+                      </Box>
+                    </Box>
+                  )}
+
+                  {/* Información Clínica */}
+                  {selectedPatientDetails.clinicalInfo && (
+                    <Box>
+                      <Text fontSize="sm" fontWeight="bold" color="gray.500" mb={3} textTransform="uppercase">
+                        Información Clínica Relevante
+                      </Text>
+                      <Box p={4} bg="red.50" borderRadius="md" borderLeft="4px solid" borderColor="red.400">
+                        <Text fontSize="sm" color="gray.700">
+                          {selectedPatientDetails.clinicalInfo}
+                        </Text>
+                      </Box>
+                    </Box>
+                  )}
+                </VStack>
+              )}
+            </ModalBody>
+            <ModalFooter borderTop="1px solid" borderColor="gray.200">
+              <Button colorScheme="blue" onClick={onDetailsClose} size="lg">
+                Cerrar
+              </Button>
+            </ModalFooter>
+          </ModalContent>
+        </Modal>
       </ModernContainer>
-    </ChakraProvider>
   );
 }

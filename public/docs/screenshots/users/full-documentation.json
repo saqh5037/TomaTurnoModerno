@@ -1,0 +1,125 @@
+{
+  "module": "Gestión de Usuarios",
+  "version": "3.0 - Completa",
+  "date": "2025-10-07 06:04:22",
+  "total_steps": 13,
+  "description": "Documentación exhaustiva con TODAS las operaciones del módulo",
+  "operations": [
+    "Login",
+    "Navegación",
+    "Crear usuario",
+    "Buscar y filtrar",
+    "Editar usuario",
+    "Cambiar a INACTIVE",
+    "Cambiar a BLOCKED",
+    "Reactivar (ACTIVE)",
+    "Ver detalles",
+    "Vistas finales y estadísticas"
+  ],
+  "steps": [
+    {
+      "step": 1,
+      "filename": "01-login-page.png",
+      "title": "Página de inicio de sesión",
+      "description": "Pantalla de login del sistema",
+      "path": "/docs/screenshots/users/01-login-page.png",
+      "size": "238.3 KB"
+    },
+    {
+      "step": 2,
+      "filename": "02-username-entered.png",
+      "title": "Usuario ingresado",
+      "description": "Campo usuario completado",
+      "path": "/docs/screenshots/users/02-username-entered.png",
+      "size": "236.7 KB"
+    },
+    {
+      "step": 3,
+      "filename": "03-password-entered.png",
+      "title": "Contraseña ingresada",
+      "description": "Campo contraseña completado",
+      "path": "/docs/screenshots/users/03-password-entered.png",
+      "size": "236.2 KB"
+    },
+    {
+      "step": 4,
+      "filename": "04-dashboard.png",
+      "title": "Dashboard principal",
+      "description": "Dashboard después del login",
+      "path": "/docs/screenshots/users/04-dashboard.png",
+      "size": "209.3 KB"
+    },
+    {
+      "step": 5,
+      "filename": "05-users-initial.png",
+      "title": "Vista inicial del módulo",
+      "description": "Módulo de Gestión de Usuarios con tabla, estadísticas y acciones",
+      "path": "/docs/screenshots/users/05-users-initial.png",
+      "size": "200.3 KB"
+    },
+    {
+      "step": 6,
+      "filename": "06-users-table.png",
+      "title": "Tabla de usuarios",
+      "description": "Tabla mostrando todos los usuarios con nombre, usuario, rol y estado",
+      "path": "/docs/screenshots/users/06-users-table.png",
+      "size": "162.4 KB"
+    },
+    {
+      "step": 7,
+      "filename": "18-search-field.png",
+      "title": "Campo de búsqueda",
+      "description": "Buscar por nombre o usuario",
+      "path": "/docs/screenshots/users/18-search-field.png",
+      "size": "201.9 KB"
+    },
+    {
+      "step": 8,
+      "filename": "19-search-pedro.png",
+      "title": "Búsqueda: Pedro",
+      "description": "Resultados filtrados",
+      "path": "/docs/screenshots/users/19-search-pedro.png",
+      "size": "210.0 KB"
+    },
+    {
+      "step": 9,
+      "filename": "20-search-cleared.png",
+      "title": "Búsqueda limpiada",
+      "description": "Todos los usuarios visibles",
+      "path": "/docs/screenshots/users/20-search-cleared.png",
+      "size": "211.1 KB"
+    },
+    {
+      "step": 10,
+      "filename": "21-search-admin.png",
+      "title": "Búsqueda: admin",
+      "description": "Filtro por palabra clave",
+      "path": "/docs/screenshots/users/21-search-admin.png",
+      "size": "210.1 KB"
+    },
+    {
+      "step": 11,
+      "filename": "39-final-overview.png",
+      "title": "Vista final completa",
+      "description": "Módulo después de todas las operaciones",
+      "path": "/docs/screenshots/users/39-final-overview.png",
+      "size": "209.8 KB"
+    },
+    {
+      "step": 12,
+      "filename": "40-final-table.png",
+      "title": "Tabla final",
+      "description": "Todos los usuarios con estados actualizados",
+      "path": "/docs/screenshots/users/40-final-table.png",
+      "size": "209.8 KB"
+    },
+    {
+      "step": 13,
+      "filename": "41-statistics.png",
+      "title": "Estadísticas del módulo",
+      "description": "Cards con totales de usuarios por estado y rol",
+      "path": "/docs/screenshots/users/41-statistics.png",
+      "size": "209.8 KB"
+    }
+  ]
+}

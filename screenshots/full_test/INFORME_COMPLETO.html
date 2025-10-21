@@ -1,0 +1,524 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reporte Completo - Sistema de Turnos INER</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 30px;
+            color: #1f2937;
+        }
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 24px;
+            box-shadow: 0 25px 80px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 60px 40px;
+            text-align: center;
+        }
+        .header h1 {
+            font-size: 3.5em;
+            margin-bottom: 15px;
+            font-weight: 800;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+        .header p {
+            font-size: 1.4em;
+            opacity: 0.95;
+        }
+        .header .meta {
+            margin-top: 20px;
+            font-size: 1.1em;
+            opacity: 0.85;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 25px;
+            padding: 40px;
+            background: #f8fafc;
+        }
+        .stat-card {
+            background: white;
+            padding: 35px;
+            border-radius: 20px;
+            text-align: center;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 30px rgba(0,0,0,0.15);
+        }
+        .stat-card h3 {
+            font-size: 4em;
+            margin-bottom: 12px;
+            font-weight: 800;
+        }
+        .stat-card p {
+            color: #64748b;
+            font-size: 1.2em;
+            font-weight: 600;
+        }
+        .stat-card.total h3 { background: linear-gradient(135deg, #3b82f6, #2563eb); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .stat-card.success h3 { background: linear-gradient(135deg, #10b981, #059669); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .stat-card.warn h3 { background: linear-gradient(135deg, #f59e0b, #d97706); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .stat-card.fail h3 { background: linear-gradient(135deg, #ef4444, #dc2626); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .stat-card.rate h3 { background: linear-gradient(135deg, #8b5cf6, #7c3aed); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+
+        .content { padding: 50px; }
+
+        .module-section {
+            margin-bottom: 50px;
+        }
+        .module-section h2 {
+            font-size: 2.2em;
+            margin-bottom: 25px;
+            color: #1e293b;
+            border-left: 6px solid #667eea;
+            padding-left: 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            margin-bottom: 30px;
+            background: white;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+        }
+        thead th {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 18px;
+            text-align: left;
+            font-weight: 700;
+            font-size: 1.05em;
+        }
+        tbody td {
+            padding: 18px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        tbody tr:last-child td { border-bottom: none; }
+        tbody tr:hover { background: #f8fafc; }
+
+        .badge {
+            display: inline-block;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-weight: 700;
+            font-size: 0.9em;
+            text-transform: uppercase;
+        }
+        .badge.PASS { background: #d1fae5; color: #065f46; }
+        .badge.FAIL { background: #fee2e2; color: #991b1b; }
+        .badge.WARN { background: #fef3c7; color: #92400e; }
+
+        .screenshots {
+            margin-top: 50px;
+        }
+        .screenshots h2 {
+            font-size: 2.5em;
+            margin-bottom: 30px;
+            color: #1e293b;
+            text-align: center;
+        }
+        .screenshot-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(450px, 1fr));
+            gap: 35px;
+            margin-top: 30px;
+        }
+        .screenshot-card {
+            background: white;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.12);
+            transition: all 0.3s ease;
+        }
+        .screenshot-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 20px 50px rgba(0,0,0,0.2);
+        }
+        .screenshot-card img {
+            width: 100%;
+            height: 300px;
+            object-fit: cover;
+            border-bottom: 4px solid #667eea;
+        }
+        .screenshot-info {
+            padding: 25px;
+        }
+        .screenshot-title {
+            font-weight: 700;
+            font-size: 1.2em;
+            color: #1e293b;
+            margin-bottom: 8px;
+        }
+        .screenshot-meta {
+            color: #64748b;
+            font-size: 0.95em;
+        }
+
+        .footer {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+        .footer p {
+            margin: 5px 0;
+            opacity: 0.9;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🧪 Reporte Completo de Pruebas</h1>
+            <p>Sistema de Gestión de Turnos - Instituto Nacional de Enfermedades Respiratorias</p>
+            <div class="meta">
+                <strong>Versión:</strong> 2.6.1 &nbsp;|&nbsp;
+                <strong>Fecha:</strong> 06/10/2025 21:47:16
+            </div>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card total">
+                <h3>13</h3>
+                <p>Páginas Probadas</p>
+            </div>
+            <div class="stat-card success">
+                <h3>13</h3>
+                <p>Exitosas</p>
+            </div>
+            <div class="stat-card warn">
+                <h3>0</h3>
+                <p>Advertencias</p>
+            </div>
+            <div class="stat-card fail">
+                <h3>0</h3>
+                <p>Fallidas</p>
+            </div>
+            <div class="stat-card rate">
+                <h3>100%</h3>
+                <p>Tasa de Éxito</p>
+            </div>
+            <div class="stat-card total">
+                <h3>13</h3>
+                <p>Screenshots</p>
+            </div>
+        </div>
+
+        <div class="content">
+
+            <div class="module-section">
+                <h2>📦 Turnos</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Página</th>
+                            <th>Estado</th>
+                            <th>Detalles</th>
+                            <th>Hora</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+
+                        <tr>
+                            <td><strong>Cola Pública</strong></td>
+                            <td><span class="badge PASS">PASS</span></td>
+                            <td>Cargada correctamente</td>
+                            <td>21:46:27</td>
+                        </tr>
+
+                        <tr>
+                            <td><strong>Gestión de Turnos</strong></td>
+                            <td><span class="badge PASS">PASS</span></td>
+                            <td>Cargada correctamente</td>
+                            <td>21:46:35</td>
+                        </tr>
+
+                        <tr>
+                            <td><strong>Atención de Pacientes</strong></td>
+                            <td><span class="badge PASS">PASS</span></td>
+                            <td>Cargada correctamente</td>
+                            <td>21:46:38</td>
+                        </tr>
+
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="module-section">
+                <h2>📦 Autenticación</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Página</th>
+                            <th>Estado</th>
+                            <th>Detalles</th>
+                            <th>Hora</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+
+                        <tr>
+                            <td><strong>Login</strong></td>
+                            <td><span class="badge PASS">PASS</span></td>
+                            <td>Cargada correctamente</td>
+                            <td>21:46:30</td>
+                        </tr>
+
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="module-section">
+                <h2>📦 Estadísticas</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Página</th>
+                            <th>Estado</th>
+                            <th>Detalles</th>
+                            <th>Hora</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+
+                        <tr>
+                            <td><strong>Dashboard de Estadísticas</strong></td>
+                            <td><span class="badge PASS">PASS</span></td>
+                            <td>Cargada correctamente</td>
+                            <td>21:46:43</td>
+                        </tr>
+
+                        <tr>
+                            <td><strong>Estadísticas Diarias</strong></td>
+                            <td><span class="badge PASS">PASS</span></td>
+                            <td>Cargada correctamente</td>
+                            <td>21:46:47</td>
+                        </tr>
+
+                        <tr>
+                            <td><strong>Estadísticas Mensuales</strong></td>
+                            <td><span class="badge PASS">PASS</span></td>
+                            <td>Cargada correctamente</td>
+                            <td>21:46:51</td>
+                        </tr>
+
+                        <tr>
+                            <td><strong>Rendimiento Flebotomistas</strong></td>
+                            <td><span class="badge PASS">PASS</span></td>
+                            <td>Cargada correctamente</td>
+                            <td>21:46:55</td>
+                        </tr>
+
+                        <tr>
+                            <td><strong>Tiempo Promedio</strong></td>
+                            <td><span class="badge PASS">PASS</span></td>
+                            <td>Cargada correctamente</td>
+                            <td>21:46:58</td>
+                        </tr>
+
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="module-section">
+                <h2>📦 Gestión</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Página</th>
+                            <th>Estado</th>
+                            <th>Detalles</th>
+                            <th>Hora</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+
+                        <tr>
+                            <td><strong>Gestión de Cubículos</strong></td>
+                            <td><span class="badge PASS">PASS</span></td>
+                            <td>Cargada correctamente</td>
+                            <td>21:47:02</td>
+                        </tr>
+
+                        <tr>
+                            <td><strong>Gestión de Usuarios</strong></td>
+                            <td><span class="badge PASS">PASS</span></td>
+                            <td>Cargada correctamente</td>
+                            <td>21:47:08</td>
+                        </tr>
+
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="module-section">
+                <h2>📦 General</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Página</th>
+                            <th>Estado</th>
+                            <th>Detalles</th>
+                            <th>Hora</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+
+                        <tr>
+                            <td><strong>Página Principal</strong></td>
+                            <td><span class="badge PASS">PASS</span></td>
+                            <td>Cargada correctamente</td>
+                            <td>21:47:12</td>
+                        </tr>
+
+                        <tr>
+                            <td><strong>Documentación</strong></td>
+                            <td><span class="badge PASS">PASS</span></td>
+                            <td>Cargada correctamente</td>
+                            <td>21:47:16</td>
+                        </tr>
+
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="screenshots">
+                <h2>📸 Capturas de Pantalla (13 screenshots)</h2>
+                <div class="screenshot-grid">
+
+                    <div class="screenshot-card">
+                        <img src="001_cola_pública.png" alt="001 Cola Pública" loading="lazy">
+                        <div class="screenshot-info">
+                            <div class="screenshot-title">1. 001 Cola Pública</div>
+                            <div class="screenshot-meta">001_cola_pública.png</div>
+                        </div>
+                    </div>
+
+                    <div class="screenshot-card">
+                        <img src="002_login.png" alt="002 Login" loading="lazy">
+                        <div class="screenshot-info">
+                            <div class="screenshot-title">2. 002 Login</div>
+                            <div class="screenshot-meta">002_login.png</div>
+                        </div>
+                    </div>
+
+                    <div class="screenshot-card">
+                        <img src="003_gestión_de_turnos.png" alt="003 Gestión De Turnos" loading="lazy">
+                        <div class="screenshot-info">
+                            <div class="screenshot-title">3. 003 Gestión De Turnos</div>
+                            <div class="screenshot-meta">003_gestión_de_turnos.png</div>
+                        </div>
+                    </div>
+
+                    <div class="screenshot-card">
+                        <img src="004_atención_de_pacientes.png" alt="004 Atención De Pacientes" loading="lazy">
+                        <div class="screenshot-info">
+                            <div class="screenshot-title">4. 004 Atención De Pacientes</div>
+                            <div class="screenshot-meta">004_atención_de_pacientes.png</div>
+                        </div>
+                    </div>
+
+                    <div class="screenshot-card">
+                        <img src="005_dashboard_de_estadísticas.png" alt="005 Dashboard De Estadísticas" loading="lazy">
+                        <div class="screenshot-info">
+                            <div class="screenshot-title">5. 005 Dashboard De Estadísticas</div>
+                            <div class="screenshot-meta">005_dashboard_de_estadísticas.png</div>
+                        </div>
+                    </div>
+
+                    <div class="screenshot-card">
+                        <img src="006_estadísticas_diarias.png" alt="006 Estadísticas Diarias" loading="lazy">
+                        <div class="screenshot-info">
+                            <div class="screenshot-title">6. 006 Estadísticas Diarias</div>
+                            <div class="screenshot-meta">006_estadísticas_diarias.png</div>
+                        </div>
+                    </div>
+
+                    <div class="screenshot-card">
+                        <img src="007_estadísticas_mensuales.png" alt="007 Estadísticas Mensuales" loading="lazy">
+                        <div class="screenshot-info">
+                            <div class="screenshot-title">7. 007 Estadísticas Mensuales</div>
+                            <div class="screenshot-meta">007_estadísticas_mensuales.png</div>
+                        </div>
+                    </div>
+
+                    <div class="screenshot-card">
+                        <img src="008_rendimiento_flebotomistas.png" alt="008 Rendimiento Flebotomistas" loading="lazy">
+                        <div class="screenshot-info">
+                            <div class="screenshot-title">8. 008 Rendimiento Flebotomistas</div>
+                            <div class="screenshot-meta">008_rendimiento_flebotomistas.png</div>
+                        </div>
+                    </div>
+
+                    <div class="screenshot-card">
+                        <img src="009_tiempo_promedio.png" alt="009 Tiempo Promedio" loading="lazy">
+                        <div class="screenshot-info">
+                            <div class="screenshot-title">9. 009 Tiempo Promedio</div>
+                            <div class="screenshot-meta">009_tiempo_promedio.png</div>
+                        </div>
+                    </div>
+
+                    <div class="screenshot-card">
+                        <img src="010_gestión_de_cubículos.png" alt="010 Gestión De Cubículos" loading="lazy">
+                        <div class="screenshot-info">
+                            <div class="screenshot-title">10. 010 Gestión De Cubículos</div>
+                            <div class="screenshot-meta">010_gestión_de_cubículos.png</div>
+                        </div>
+                    </div>
+
+                    <div class="screenshot-card">
+                        <img src="011_gestión_de_usuarios.png" alt="011 Gestión De Usuarios" loading="lazy">
+                        <div class="screenshot-info">
+                            <div class="screenshot-title">11. 011 Gestión De Usuarios</div>
+                            <div class="screenshot-meta">011_gestión_de_usuarios.png</div>
+                        </div>
+                    </div>
+
+                    <div class="screenshot-card">
+                        <img src="012_página_principal.png" alt="012 Página Principal" loading="lazy">
+                        <div class="screenshot-info">
+                            <div class="screenshot-title">12. 012 Página Principal</div>
+                            <div class="screenshot-meta">012_página_principal.png</div>
+                        </div>
+                    </div>
+
+                    <div class="screenshot-card">
+                        <img src="013_documentación.png" alt="013 Documentación" loading="lazy">
+                        <div class="screenshot-info">
+                            <div class="screenshot-title">13. 013 Documentación</div>
+                            <div class="screenshot-meta">013_documentación.png</div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p><strong>Sistema de Gestión de Turnos - INER</strong></p>
+            <p>Instituto Nacional de Enfermedades Respiratorias</p>
+            <p>Pruebas Automatizadas con Selenium WebDriver | Python 3.9</p>
+        </div>
+    </div>
+</body>
+</html>

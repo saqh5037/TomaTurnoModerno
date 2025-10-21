@@ -10,7 +10,6 @@ import {
   Text,
   IconButton,
   VStack,
-  ChakraProvider,
   Spinner,
   Badge,
   Flex,
@@ -18,17 +17,14 @@ import {
   SimpleGrid
 } from "@chakra-ui/react";
 import { Bar } from "react-chartjs-2";
-import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip as ChartTooltip, Legend } from "chart.js";
+// ChartJS is now registered globally in _app.js via lib/chartConfig.js
 import { FaFileExcel, FaFilePdf, FaArrowLeft, FaClock, FaChartBar, FaDownload, FaCalendarAlt, FaStopwatch } from "react-icons/fa";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
 import { useRouter } from "next/router";
 import { useAuth } from "../../contexts/AuthContext";
-import { modernTheme, fadeInUp, slideInFromLeft, slideInFromRight, GlassCard, ModernContainer, ModernHeader } from '../../components/theme/ModernTheme';
-
-// Registrar los componentes necesarios de Chart.js
-ChartJS.register(CategoryScale, LinearScale, BarElement, Title, ChartTooltip, Legend);
+import { fadeInUp, slideInFromLeft, slideInFromRight, GlassCard, ModernContainer, ModernHeader } from '../../components/theme/ModernTheme';
 
 const AverageTimeStatistics = memo(function AverageTimeStatistics() {
   const [filteredStats, setFilteredStats] = useState({
@@ -446,8 +442,7 @@ const AverageTimeStatistics = memo(function AverageTimeStatistics() {
   // No renderizar hasta que esté montado para evitar errores de hidratación
   if (!mounted) {
     return (
-      <ChakraProvider theme={modernTheme}>
-        <ModernContainer>
+      <ModernContainer>
           <Box
             display="flex"
             alignItems="center"
@@ -462,14 +457,12 @@ const AverageTimeStatistics = memo(function AverageTimeStatistics() {
             </GlassCard>
           </Box>
         </ModernContainer>
-      </ChakraProvider>
     );
   }
 
   if (loading) {
     return (
-      <ChakraProvider theme={modernTheme}>
-        <ModernContainer>
+      <ModernContainer>
           <Box
             display="flex"
             alignItems="center"
@@ -489,14 +482,12 @@ const AverageTimeStatistics = memo(function AverageTimeStatistics() {
             </GlassCard>
           </Box>
         </ModernContainer>
-      </ChakraProvider>
     );
   }
 
   if (error) {
     return (
-      <ChakraProvider theme={modernTheme}>
-        <ModernContainer>
+      <ModernContainer>
           <Box
             display="flex"
             alignItems="center"
@@ -521,7 +512,6 @@ const AverageTimeStatistics = memo(function AverageTimeStatistics() {
             </GlassCard>
           </Box>
         </ModernContainer>
-      </ChakraProvider>
     );
   }
 
@@ -550,8 +540,7 @@ const AverageTimeStatistics = memo(function AverageTimeStatistics() {
   }
 
   return (
-    <ChakraProvider theme={modernTheme}>
-      <ModernContainer>
+    <ModernContainer>
         {/* Header Principal con Glassmorphism */}
         <ModernHeader
           title="Tiempo Promedio de Atención"
@@ -1012,7 +1001,6 @@ const AverageTimeStatistics = memo(function AverageTimeStatistics() {
           </Text>
         </Box>
       </ModernContainer>
-    </ChakraProvider>
   );
 });
 

@@ -1,0 +1,138 @@
+{
+  "module": "Gestión de Usuarios",
+  "version": "2.0",
+  "date": "2025-10-07 06:00:30",
+  "total_steps": 15,
+  "description": "Documentación completa del módulo de Gestión de Usuarios con todas las operaciones",
+  "phases": [
+    "Login al sistema",
+    "Navegación al módulo",
+    "Crear nuevo usuario",
+    "Búsqueda y filtros",
+    "Editar usuario",
+    "Cambiar estado",
+    "Vista final"
+  ],
+  "steps": [
+    {
+      "step": 1,
+      "filename": "01-login-page.png",
+      "title": "Página de inicio de sesión",
+      "description": "Pantalla de login donde los usuarios ingresan sus credenciales para acceder al sistema.",
+      "path": "/docs/screenshots/users/01-login-page.png",
+      "size": "237.0 KB"
+    },
+    {
+      "step": 2,
+      "filename": "02-username-entered.png",
+      "title": "Usuario ingresado",
+      "description": "Campo de usuario completado con 'admin'.",
+      "path": "/docs/screenshots/users/02-username-entered.png",
+      "size": "235.4 KB"
+    },
+    {
+      "step": 3,
+      "filename": "03-password-entered.png",
+      "title": "Contraseña ingresada",
+      "description": "Campo de contraseña completado (se muestra oculta por seguridad).",
+      "path": "/docs/screenshots/users/03-password-entered.png",
+      "size": "235.0 KB"
+    },
+    {
+      "step": 4,
+      "filename": "04-dashboard-logged-in.png",
+      "title": "Dashboard principal",
+      "description": "Dashboard administrativo después de autenticación exitosa.",
+      "path": "/docs/screenshots/users/04-dashboard-logged-in.png",
+      "size": "209.1 KB"
+    },
+    {
+      "step": 5,
+      "filename": "05-users-module-initial.png",
+      "title": "Módulo de Gestión de Usuarios - Vista inicial",
+      "description": "Vista inicial del módulo mostrando la tabla de usuarios, estadísticas y botón de crear.",
+      "path": "/docs/screenshots/users/05-users-module-initial.png",
+      "size": "200.3 KB"
+    },
+    {
+      "step": 6,
+      "filename": "06-users-table-view.png",
+      "title": "Tabla de usuarios",
+      "description": "Tabla completa mostrando: Nombre, Usuario, Rol, Estado y acciones disponibles.",
+      "path": "/docs/screenshots/users/06-users-table-view.png",
+      "size": "183.2 KB"
+    },
+    {
+      "step": 7,
+      "filename": "07-create-button-located.png",
+      "title": "Botón 'Crear Usuario' ubicado",
+      "description": "Botón para crear nuevo usuario en la esquina superior derecha del módulo.",
+      "path": "/docs/screenshots/users/07-create-button-located.png",
+      "size": "200.3 KB"
+    },
+    {
+      "step": 8,
+      "filename": "08-create-modal-opened.png",
+      "title": "Modal de creación abierto",
+      "description": "Formulario de creación de usuario con campos: Nombre completo, Usuario, Contraseña, Rol y Estado.",
+      "path": "/docs/screenshots/users/08-create-modal-opened.png",
+      "size": "207.0 KB"
+    },
+    {
+      "step": 9,
+      "filename": "09-name-field-filled.png",
+      "title": "Campo 'Nombre completo' llenado",
+      "description": "Nombre del usuario: 'María González López'.",
+      "path": "/docs/screenshots/users/09-name-field-filled.png",
+      "size": "207.0 KB"
+    },
+    {
+      "step": 10,
+      "filename": "10-username-field-filled.png",
+      "title": "Campo 'Usuario' llenado",
+      "description": "Nombre de usuario único: 'maria.gonzalez' (será usado para login).",
+      "path": "/docs/screenshots/users/10-username-field-filled.png",
+      "size": "207.0 KB"
+    },
+    {
+      "step": 11,
+      "filename": "11-password-field-filled.png",
+      "title": "Campo 'Contraseña' llenado",
+      "description": "Contraseña segura ingresada (mínimo 6 caracteres).",
+      "path": "/docs/screenshots/users/11-password-field-filled.png",
+      "size": "207.0 KB"
+    },
+    {
+      "step": 12,
+      "filename": "16-form-complete-ready.png",
+      "title": "Formulario completo listo para guardar",
+      "description": "Todos los campos validados y listos para crear el usuario.",
+      "path": "/docs/screenshots/users/16-form-complete-ready.png",
+      "size": "207.0 KB"
+    },
+    {
+      "step": 13,
+      "filename": "17-user-created-success.png",
+      "title": "Usuario creado exitosamente",
+      "description": "Confirmación: Usuario creado y agregado a la tabla.",
+      "path": "/docs/screenshots/users/17-user-created-success.png",
+      "size": "164.1 KB"
+    },
+    {
+      "step": 14,
+      "filename": "30-final-complete-view.png",
+      "title": "Vista final completa del módulo",
+      "description": "Módulo de Gestión de Usuarios después de realizar: crear, editar, buscar y cambiar estado.",
+      "path": "/docs/screenshots/users/30-final-complete-view.png",
+      "size": "159.1 KB"
+    },
+    {
+      "step": 15,
+      "filename": "31-final-table-view.png",
+      "title": "Tabla final con todos los usuarios",
+      "description": "Vista completa de la tabla mostrando todos los usuarios y sus estados actuales.",
+      "path": "/docs/screenshots/users/31-final-table-view.png",
+      "size": "160.7 KB"
+    }
+  ]
+}

@@ -9,7 +9,6 @@ import {
   Button,
   Textarea,
   useToast,
-  ChakraProvider,
   extendTheme,
   Container,
   Divider,
@@ -146,8 +145,7 @@ const SatisfactionSurvey = () => {
 
   if (isSubmitted) {
     return (
-      <ChakraProvider theme={satisfactionTheme}>
-        <Box
+      <Box
           minH="100vh"
           background="linear-gradient(135deg, #E6F7FF 0%, #F0F9FF 50%, #FFF0F6 100%)"
           py={8}
@@ -177,13 +175,11 @@ const SatisfactionSurvey = () => {
             </VStack>
           </Container>
         </Box>
-      </ChakraProvider>
     );
   }
 
   return (
-    <ChakraProvider theme={satisfactionTheme}>
-      <Box
+    <Box
         minH="100vh"
         background="linear-gradient(135deg, #E6F7FF 0%, #F0F9FF 50%, #FFF0F6 100%)"
         py={8}
@@ -298,7 +294,6 @@ const SatisfactionSurvey = () => {
           </VStack>
         </Container>
       </Box>
-    </ChakraProvider>
   );
 };
 
