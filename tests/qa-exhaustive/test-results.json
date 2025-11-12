@@ -1,0 +1,154 @@
+{
+  "timestamp": "2025-10-22T01:42:09.779Z",
+  "version": "2.6.2",
+  "summary": {
+    "total": 23,
+    "passed": 12,
+    "failed": 11,
+    "skipped": 0,
+    "passRate": 52.17
+  },
+  "timings": [
+    {
+      "name": "POST /api/auth/login - credenciales inválidas",
+      "duration": 78,
+      "category": "Auth"
+    },
+    {
+      "name": "POST /api/turns/create - turno con nombre normal",
+      "duration": 143,
+      "category": "Turns"
+    },
+    {
+      "name": "POST /api/turns/create - turno con caracteres UTF-8 (ñ, ü, á, é, í, ó, ú)",
+      "duration": 8,
+      "category": "Turns"
+    },
+    {
+      "name": "POST /api/turns/create - nombre con todos los caracteres especiales",
+      "duration": 9,
+      "category": "Turns"
+    },
+    {
+      "name": "POST /api/turns/create - validación Zod: datos inválidos",
+      "duration": 41,
+      "category": "Turns"
+    },
+    {
+      "name": "GET /api/cubicles - listar todos los cubículos",
+      "duration": 97,
+      "category": "Cubicles"
+    },
+    {
+      "name": "GET /api/cubicles/status - estado de cubículos",
+      "duration": 61,
+      "category": "Cubicles"
+    },
+    {
+      "name": "GET /api/cubicles/6 - obtener cubículo específico",
+      "duration": 958,
+      "category": "Cubicles"
+    },
+    {
+      "name": "GET /api/statistics/daily - estadísticas diarias",
+      "duration": 99,
+      "category": "Statistics"
+    },
+    {
+      "name": "Performance - Health endpoint < 100ms",
+      "duration": 10,
+      "category": "Performance"
+    },
+    {
+      "name": "Performance - Auth login < 300ms",
+      "duration": 79,
+      "category": "Performance"
+    },
+    {
+      "name": "Performance - Dashboard < 500ms",
+      "duration": 21,
+      "category": "Performance"
+    }
+  ],
+  "errors": [
+    {
+      "name": "GET /api/health - debe retornar status healthy",
+      "error": "Response time 204ms exceeded limit of 200ms",
+      "category": "Health"
+    },
+    {
+      "name": "POST /api/auth/login - credenciales válidas",
+      "error": "Expected status 200, got 401. Response: {\"error\":\"Contraseña incorrecta\"}",
+      "category": "Auth"
+    },
+    {
+      "name": "GET /api/auth/verify - token válido",
+      "error": "Expected status 200, got 401. Response: {\"success\":false,\"valid\":false,\"error\":\"Token no proporcionado\"}",
+      "category": "Auth"
+    },
+    {
+      "name": "GET /api/turns/queue - listar cola de turnos",
+      "error": "Debe retornar un array",
+      "category": "Turns"
+    },
+    {
+      "name": "GET /api/queue/list - listar cola con sesión",
+      "error": "Debe retornar un array",
+      "category": "Queue"
+    },
+    {
+      "name": "GET /api/attention/list - listar pacientes en atención",
+      "error": "Debe retornar un array",
+      "category": "Queue"
+    },
+    {
+      "name": "GET /api/statistics/dashboard - dashboard principal",
+      "error": "Expected object to have property 'totalTurns'",
+      "category": "Statistics"
+    },
+    {
+      "name": "GET /api/statistics/monthly - estadísticas mensuales",
+      "error": "Expected status 200, got 405. Response: null",
+      "category": "Statistics"
+    },
+    {
+      "name": "GET /api/statistics/phlebotomists - rendimiento flebotomistas",
+      "error": "Expected status 200, got 405. Response: null",
+      "category": "Statistics"
+    },
+    {
+      "name": "GET /api/users - listar usuarios",
+      "error": "Expected status 200, got 401. Response: {\"success\":false,\"error\":\"No autorizado\"}",
+      "category": "Users"
+    },
+    {
+      "name": "GET /api/users/analytics - analytics de usuarios",
+      "error": "Expected status 200, got 401. Response: {\"success\":false,\"error\":\"No autorizado\"}",
+      "category": "Users"
+    }
+  ],
+  "timingsByCategory": {
+    "Auth": [
+      78
+    ],
+    "Turns": [
+      143,
+      8,
+      9,
+      41
+    ],
+    "Cubicles": [
+      97,
+      61,
+      958
+    ],
+    "Statistics": [
+      99
+    ],
+    "Performance": [
+      10,
+      79,
+      21
+    ]
+  }
+}

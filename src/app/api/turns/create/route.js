@@ -1,6 +1,7 @@
 import prisma from '@/lib/prisma';
 import { z } from 'zod';
 import { calculateTotalTubes, TUBE_TYPES } from '@/lib/tubesCatalog';
+import DOMPurify from 'isomorphic-dompurify';
 
 // Generar array de IDs de tubos válidos desde el catálogo actualizado (43 tipos INER)
 const validTubeTypes = TUBE_TYPES.map(t => t.id);
@@ -84,19 +85,19 @@ export async function POST(req) {
       finalTubesDetails = null;  // No tenemos detalles
     }
 
-    // Estructura de datos para la creación en Prisma
+    // Estructura de datos para la creación en Prisma (con sanitización XSS)
     const dataToInsert = {
-      patientName: validatedData.patientName,
+      patientName: DOMPurify.sanitize(validatedData.patientName),
       age: validatedData.age,
       gender: validatedData.gender,
-      contactInfo: validatedData.contactInfo || null,
+      contactInfo: validatedData.contactInfo ? DOMPurify.sanitize(validatedData.contactInfo) : null,
       studies: Array.isArray(validatedData.studies)
-        ? JSON.stringify(validatedData.studies)
+        ? JSON.stringify(validatedData.studies.map(s => DOMPurify.sanitize(s)))
         : "[]",
       tubesRequired: finalTubesRequired,
       tubesDetails: finalTubesDetails,  // Nuevo campo JSON
-      observations: validatedData.observations || null,
-      clinicalInfo: validatedData.clinicalInfo || null,
+      observations: validatedData.observations ? DOMPurify.sanitize(validatedData.observations) : null,
+      clinicalInfo: validatedData.clinicalInfo ? DOMPurify.sanitize(validatedData.clinicalInfo) : null,
       tipoAtencion: validatedData.tipoAtencion,
       status: "Pending",
     };

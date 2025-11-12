@@ -136,10 +136,25 @@ const DocumentationHub = () => {
 
     // Filter by category
     if (selectedCategory !== 'all') {
-      modules = modules.filter(module =>
-        module.tags?.includes(selectedCategory) ||
-        module.difficulty === selectedCategory
-      );
+      // Handle difficulty filtering (basic, intermediate, advanced)
+      if (['basic', 'intermediate', 'advanced'].includes(selectedCategory)) {
+        modules = modules.filter(module => module.difficulty === selectedCategory);
+      }
+      // Handle video filtering
+      else if (selectedCategory === 'video') {
+        modules = modules.filter(module =>
+          module.tags?.includes('video') ||
+          module.tags?.includes('videos') ||
+          (module.sections && module.sections.some(s => s.content?.videos?.length > 0))
+        );
+      }
+      // Handle other tag-based filtering
+      else {
+        modules = modules.filter(module =>
+          module.tags?.includes(selectedCategory) ||
+          module.difficulty === selectedCategory
+        );
+      }
     }
 
     return modules;
@@ -182,6 +197,45 @@ const DocumentationHub = () => {
     e.stopPropagation();
     setPreviewModule(module);
     onPreviewOpen();
+  };
+
+  // Handle quick access buttons
+  const handleQuickAccess = (section) => {
+    // Temporary implementation - show toast for sections under development
+    const sectionInfo = {
+      faq: {
+        title: 'Preguntas Frecuentes',
+        description: 'Esta sección está en desarrollo. Próximamente disponible.',
+        status: 'info'
+      },
+      videos: {
+        title: 'Video Tutoriales',
+        description: 'Biblioteca de videos tutoriales en construcción.',
+        status: 'info'
+      },
+      downloads: {
+        title: 'Centro de Descargas',
+        description: 'Sección de descargas en desarrollo.',
+        status: 'info'
+      },
+      metrics: {
+        title: 'Métricas de Aprendizaje',
+        description: 'Panel de métricas próximamente disponible.',
+        status: 'info'
+      }
+    };
+
+    const info = sectionInfo[section];
+    if (info) {
+      toast({
+        title: info.title,
+        description: info.description,
+        status: info.status,
+        duration: 4000,
+        isClosable: true,
+        position: 'top'
+      });
+    }
   };
 
   // Calculate stats
@@ -632,7 +686,7 @@ const DocumentationHub = () => {
                 <Button
                   leftIcon={<FaQuestionCircle />}
                   variant="outline"
-                  onClick={() => router.push('/docs/faq')}
+                  onClick={() => handleQuickAccess('faq')}
                   _hover={{
                     transform: 'translateY(-2px)',
                     boxShadow: 'md',
@@ -644,7 +698,7 @@ const DocumentationHub = () => {
                 <Button
                   leftIcon={<FaVideo />}
                   variant="outline"
-                  onClick={() => router.push('/docs/videos')}
+                  onClick={() => handleQuickAccess('videos')}
                   _hover={{
                     transform: 'translateY(-2px)',
                     boxShadow: 'md',
@@ -656,7 +710,7 @@ const DocumentationHub = () => {
                 <Button
                   leftIcon={<FaDownload />}
                   variant="outline"
-                  onClick={() => router.push('/docs/downloads')}
+                  onClick={() => handleQuickAccess('downloads')}
                   _hover={{
                     transform: 'translateY(-2px)',
                     boxShadow: 'md',
@@ -668,7 +722,7 @@ const DocumentationHub = () => {
                 <Button
                   leftIcon={<FaChartBar />}
                   variant="outline"
-                  onClick={() => router.push('/docs/metrics')}
+                  onClick={() => handleQuickAccess('metrics')}
                   _hover={{
                     transform: 'translateY(-2px)',
                     boxShadow: 'md',

@@ -2,6 +2,12 @@ import { NextResponse } from "next/server";
 import jwt from "jsonwebtoken";
 import prisma from "../../../../../lib/prisma.js";
 
+const JWT_SECRET = process.env.NEXTAUTH_SECRET || process.env.JWT_SECRET;
+
+if (!JWT_SECRET) {
+  throw new Error('CRITICAL: NEXTAUTH_SECRET or JWT_SECRET environment variable must be configured');
+}
+
 // POST - Actualizar cubículo seleccionado en la sesión activa
 export async function POST(request) {
   try {
@@ -18,7 +24,7 @@ export async function POST(request) {
     let decodedToken;
 
     try {
-      decodedToken = jwt.verify(token, process.env.NEXTAUTH_SECRET || "your-secret-key");
+      decodedToken = jwt.verify(token, JWT_SECRET);
     } catch (error) {
       return NextResponse.json(
         { success: false, error: "Token inválido" },

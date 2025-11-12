@@ -4,7 +4,11 @@ import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
-const JWT_SECRET = process.env.NEXTAUTH_SECRET || process.env.JWT_SECRET || 'your-secret-key';
+const JWT_SECRET = process.env.NEXTAUTH_SECRET || process.env.JWT_SECRET;
+
+if (!JWT_SECRET) {
+  throw new Error('CRITICAL: NEXTAUTH_SECRET or JWT_SECRET environment variable must be configured');
+}
 
 export async function PUT(req) {
   try {

@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { Box } from '@chakra-ui/react';
+import DOMPurify from 'isomorphic-dompurify';
 
 const MermaidDiagram = ({ chart }) => {
   const containerRef = useRef(null);
@@ -38,7 +39,8 @@ const MermaidDiagram = ({ chart }) => {
         // Create the element
         const element = document.createElement('div');
         element.id = id;
-        element.innerHTML = chart;
+        // Sanitize chart content to prevent XSS attacks
+        element.innerHTML = DOMPurify.sanitize(chart);
         containerRef.current.appendChild(element);
 
         // Render the diagram
@@ -47,9 +49,9 @@ const MermaidDiagram = ({ chart }) => {
         });
       } catch (error) {
         console.error('Error rendering Mermaid diagram:', error);
-        // Fallback: show the raw chart text
+        // Fallback: show the raw chart text (sanitized)
         if (containerRef.current) {
-          containerRef.current.innerHTML = `<pre>${chart}</pre>`;
+          containerRef.current.innerHTML = `<pre>${DOMPurify.sanitize(chart)}</pre>`;
         }
       }
     };
