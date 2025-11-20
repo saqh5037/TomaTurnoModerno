@@ -2246,16 +2246,42 @@ export default function Attention() {
                                 ? JSON.parse(selectedPatientDetails.studies)
                                 : selectedPatientDetails.studies;
                               return Array.isArray(studies) && studies.length > 0 ? (
-                                studies.map((study, idx) => (
-                                  <HStack key={idx} spacing={2}>
-                                    <Box w="6px" h="6px" borderRadius="full" bg="blue.500" />
-                                    <Text fontSize="sm">{study}</Text>
-                                  </HStack>
-                                ))
+                                studies.map((study, idx) => {
+                                  // Manejar tanto objetos como strings
+                                  const studyName = typeof study === 'object' ? study.name : study;
+                                  const container = typeof study === 'object' && study.container ? study.container : null;
+                                  const sample = typeof study === 'object' && study.sample ? study.sample : null;
+
+                                  return (
+                                    <VStack key={idx} align="stretch" spacing={1} p={2} bg="white" borderRadius="md">
+                                      <HStack spacing={2}>
+                                        <Box w="6px" h="6px" borderRadius="full" bg="blue.500" />
+                                        <Text fontSize="sm" fontWeight="medium">{studyName}</Text>
+                                      </HStack>
+                                      {(container || sample) && (
+                                        <HStack spacing={3} pl={4} fontSize="xs" color="gray.600">
+                                          {container && (
+                                            <HStack spacing={1}>
+                                              <FaVial size={10} />
+                                              <Text>Tubo: {typeof container === 'object' ? container.type : container}</Text>
+                                            </HStack>
+                                          )}
+                                          {sample && (
+                                            <HStack spacing={1}>
+                                              <Text>•</Text>
+                                              <Text>Muestra: {typeof sample === 'object' ? sample.type : sample}</Text>
+                                            </HStack>
+                                          )}
+                                        </HStack>
+                                      )}
+                                    </VStack>
+                                  );
+                                })
                               ) : (
                                 <Text fontSize="sm" color="gray.600">No se especificaron estudios</Text>
                               );
                             } catch (e) {
+                              console.error('Error parsing studies:', e);
                               return <Text fontSize="sm" color="gray.600">No se especificaron estudios</Text>;
                             }
                           })()}
@@ -2301,6 +2327,11 @@ export default function Attention() {
                                   <Text fontSize="xs" color="gray.600">
                                     {tube.name}
                                   </Text>
+                                  {tube.sampleType && (
+                                    <Text fontSize="xs" color="blue.600" fontWeight="medium" mt={1}>
+                                      Muestra: {tube.sampleType}
+                                    </Text>
+                                  )}
                                 </VStack>
                               </HStack>
                               <Badge colorScheme="blue" fontSize="md" px={3} py={1} borderRadius="md">
