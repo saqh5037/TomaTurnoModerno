@@ -2,7 +2,7 @@
 
 Sistema moderno de gestión de turnos médicos con estadísticas avanzadas y reportes PDF profesionales.
 
-**Versión:** 2.5.0 | **Última actualización:** 25 de Septiembre de 2025 | **Estado:** Producción INER
+**Versión:** 2.7.0 | **Última actualización:** 18 de Noviembre de 2025 | **Estado:** Producción INER
 
 ## 📋 Características
 
@@ -90,7 +90,19 @@ Sistema moderno de gestión de turnos médicos con estadísticas avanzadas y rep
    node scripts/seedFullYearData.js
    ```
 
-6. **Iniciar el servidor**
+6. **Ejecutar tests** (opcional)
+   ```bash
+   # Ejecutar todos los tests
+   npm test
+
+   # Tests con coverage
+   npm run test:coverage
+
+   # Tests en modo watch
+   npm run test:watch
+   ```
+
+7. **Iniciar el servidor**
    ```bash
    # Desarrollo
    npm run dev
@@ -181,9 +193,13 @@ npx prisma migrate deploy # Aplicar migraciones (prod)
 npx prisma studio        # Interfaz gráfica de BD
 npx prisma db seed       # Cargar datos de prueba
 
+# Testing
+npm test                 # Ejecutar todos los tests unitarios (66 tests)
+npm run test:watch       # Tests en modo watch
+npm run test:coverage    # Tests con reporte de cobertura
+
 # Calidad
 npm run lint             # Ejecutar ESLint
-npm test                 # Ejecutar tests
 
 # PM2 (Producción)
 pm2 status               # Ver estado de procesos
@@ -212,13 +228,62 @@ pm2 restart toma-turno   # Reiniciar aplicación
 - **Loading states** y feedback visual
 - **Navegación intuitiva** entre módulos
 
+## 🧪 Testing
+
+El proyecto cuenta con una suite completa de tests unitarios:
+
+- **66 tests totales** con cobertura del 70%+
+- **32 tests** para procesamiento de estudios (`studiesProcessor`)
+- **34 tests** para mapeo de tubos LABSIS ↔ INER (`labsisTubeMapping`)
+- Framework: Jest con soporte para ESM
+- Ejecutar: `npm test`
+
+### Arquitectura de Testing
+
+```
+__tests__/
+├── studiesProcessor.test.js    # Tests de parseo y agrupación
+└── labsisTubeMapping.test.js   # Tests de mapeo bidireccional
+```
+
+Ver [docs/LABSIS_INTEGRATION.md](docs/LABSIS_INTEGRATION.md) para más detalles sobre la integración con LABSIS.
+
+## 🔬 Integración LABSIS
+
+El sistema está integrado con LABSIS (Laboratory Information System) para enriquecer los turnos con información detallada de tubos y estudios:
+
+### Características de Integración
+
+- **Mapeo bidireccional** entre catálogos LABSIS e INER
+- **Agrupación automática** de estudios por tipo de tubo
+- **Validación robusta** con esquemas Zod
+- **Backward compatibility** con formato legacy
+- **43 tipos de tubos** del catálogo INER
+- **15+ mapeos** de tubos LABSIS a INER
+
+### Flujo de Procesamiento
+
+1. LABSIS envía JSON con estudios y contenedores
+2. Sistema valida y parsea formato (legacy/structured)
+3. Mapea contenedores LABSIS a catálogo INER
+4. Agrupa estudios por tipo de tubo
+5. Almacena en base de datos con formato enriquecido
+
+### Documentación
+
+- [LABSIS_INTEGRATION.md](docs/LABSIS_INTEGRATION.md) - Guía completa de integración
+- [tubesCatalog.js](lib/tubesCatalog.js) - Catálogo de 43 tubos INER
+- [labsisTubeMapping.js](lib/labsisTubeMapping.js) - Mapeo bidireccional
+- [studiesProcessor.js](lib/studiesProcessor.js) - Procesamiento de estudios
+
 ## 🔐 Seguridad
 
 - **Autenticación JWT** con expiración
 - **Protección de rutas** por rol
-- **Validación de entrada** en APIs
-- **Sanitización** de datos de usuario
+- **Validación de entrada** en APIs con Zod
+- **Sanitización XSS** con DOMPurify
 - **Variables de entorno** para credenciales
+- **SQL injection prevention** con Prisma ORM
 
 ## 📝 Contribuir
 

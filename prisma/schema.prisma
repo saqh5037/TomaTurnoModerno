@@ -41,35 +41,38 @@ enum UserStatus {
 }
 
 model TurnRequest {
-  id            Int       @id @default(autoincrement())
-  patientName   String
-  age           Int
-  gender        String
-  contactInfo   String?
-  studies       String
-  tubesRequired Int                        // Mantener para compatibilidad (se calcula automáticamente desde tubesDetails)
-  tubesDetails  Json?                      // NUEVO: Array detallado de tubos [{ type: "sst", quantity: 2 }]
-  observations  String?
-  clinicalInfo  String?
-  status        String    @default("Pending")
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  assignedTurn  Int?
-  attendedAt    DateTime?
-  attendedBy    Int?
-  calledAt      DateTime?
-  tipoAtencion  String    @default("General")
-  cubicleId     Int?
-  isCalled      Boolean   @default(false)
-  finishedAt    DateTime?
-  callCount     Int       @default(0)      // Contador de veces que se ha llamado al paciente
-  isDeferred    Boolean   @default(false)  // Indica si es una toma diferida (regresado a cola)
-  deferredAt    DateTime?                  // Timestamp de cuando se difirió (para ordenamiento correcto)
-  suggestedFor  Int?                       // ID del flebotomista al que se sugiere este paciente
-  suggestedAt   DateTime?                  // Timestamp de cuando se hizo la sugerencia (para timeout)
-  user          User?     @relation("UserTurnRequests", fields: [attendedBy], references: [id])
-  suggestedUser User?     @relation("SuggestedTurnRequests", fields: [suggestedFor], references: [id])
-  cubicle       Cubicle?  @relation("TurnRequestToCubicle", fields: [cubicleId], references: [id])
+  id               Int       @id @default(autoincrement())
+  patientName      String
+  age              Int
+  gender           String
+  contactInfo      String?
+  studies          String                       // MANTENER String temporalmente para compatibilidad durante migración
+  studies_json     Json?                        // NUEVO: Json nativo para almacenar objetos estructurados (reemplazará studies)
+  tubesRequired    Int                          // Mantener para compatibilidad (se calcula automáticamente desde tubesDetails)
+  tubesDetails     Json?                        // Array detallado de tubos [{ type: "sst", quantity: 2 }]
+  observations     String?
+  clinicalInfo     String?
+  status           String    @default("Pending")
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  assignedTurn     Int?
+  attendedAt       DateTime?
+  attendedBy       Int?
+  calledAt         DateTime?
+  tipoAtencion     String    @default("General")
+  cubicleId        Int?
+  isCalled         Boolean   @default(false)
+  finishedAt       DateTime?
+  callCount        Int       @default(0)      // Contador de veces que se ha llamado al paciente
+  isDeferred       Boolean   @default(false)  // Indica si es una toma diferida (regresado a cola)
+  deferredAt       DateTime?                  // Timestamp de cuando se difirió (para ordenamiento correcto)
+  suggestedFor     Int?                       // ID del flebotomista al que se sugiere este paciente
+  suggestedAt      DateTime?                  // Timestamp de cuando se hizo la sugerencia (para timeout)
+  labsisOrderId    String?                    // NUEVO: ID de orden en sistema LABSIS para trazabilidad
+  samplesGenerated Json?                      // NUEVO: Array de muestras físicas generadas con barcodes y correlativos
+  user             User?     @relation("UserTurnRequests", fields: [attendedBy], references: [id])
+  suggestedUser    User?     @relation("SuggestedTurnRequests", fields: [suggestedFor], references: [id])
+  cubicle          Cubicle?  @relation("TurnRequestToCubicle", fields: [cubicleId], references: [id])
 
   @@index([status])
   @@index([isCalled])
