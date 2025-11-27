@@ -2,8 +2,8 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-**Last Updated**: October 16, 2025
-**Latest Release**: v2.6.1
+**Last Updated**: November 27, 2025
+**Latest Release**: v2.7.0
 **Status**: Production Ready - Active deployment at INER Medical Institute
 
 ## 🚀 Essential Commands
@@ -29,7 +29,9 @@ pm2 monit                    # Real-time PM2 monitoring
 
 # Quality & Testing
 npm run lint                 # Run ESLint
-npm test                     # Run tests (limited coverage)
+npm test                     # Run all tests (66 tests, ~70% coverage)
+npm run test:watch           # Tests in watch mode
+npm run test:coverage        # Generate coverage report
 
 # Data Generation Scripts
 node scripts/seedFullYearData.js    # Generate realistic full year test data
@@ -97,9 +99,11 @@ const turn = await prisma.turnRequest.findUnique({
 // Key database models and enums
 // User: Staff with roles (Admin, Flebotomista, Supervisor), UserStatus enum (ACTIVE, INACTIVE, BLOCKED)
 // TurnRequest: Patient appointments with status tracking, timestamps (createdAt, attendedAt, calledAt, finishedAt),
-//              tipoAtencion (General/Special), isDeferred flag for queue management
+//              tipoAtencion (General/Special), isDeferred flag for queue management,
+//              studies_json (Json - structured studies from LABSIS), labsisOrderId (String - LABSIS order ID),
+//              samplesGenerated (Json - physical samples with barcodes), suggestedFor/suggestedAt (patient assignment)
 // Cubicle: Physical locations with CubicleType enum (GENERAL, SPECIAL) and ACTIVE/INACTIVE status
-// Session: JWT session management with expiry tracking and refresh tokens
+// Session: JWT session management with expiry tracking and refresh tokens, selectedCubicleId
 // AuditLog: Complete action tracking for compliance with oldValue/newValue JSON fields
 // SatisfactionSurvey: Patient feedback with rating and comment
 ```
@@ -177,12 +181,32 @@ Complete CMS in `/api/docs` with modules, events, bookmarks, and feedback tracki
 
 ### 5. Key Business Features
 - **Real-time Queue Management**: Patient turn assignment and tracking with deferred patient support
-- **Cubicle Management**: Support for GENERAL and SPECIAL cubicle types with occupancy tracking (v2.6.1)
+- **Cubicle Management**: Support for GENERAL and SPECIAL cubicle types with occupancy tracking
 - **Performance Analytics**: Daily, monthly, and per-phlebotomist statistics
 - **PDF Reports**: Professional reports with INER branding and recommendations
 - **Role-Based Access**: Admin and Flebotomista specific workflows
-- **Priority Management**: Supervisors can change patient priority between General/Special (v2.6.1)
-- **Deferred Patients**: Smart sorting algorithm that maintains priority hierarchy (v2.6.1)
+- **Priority Management**: Supervisors can change patient priority between General/Special
+- **Deferred Patients**: Smart sorting algorithm that maintains priority hierarchy
+- **LABSIS Integration** (v2.7.0): Bidirectional tube mapping, structured study data, barcode tracking
+
+### 6. LABSIS Integration (v2.7.0)
+External laboratory system integration for enriched patient data:
+
+```javascript
+// Key components:
+// lib/studiesProcessor.js - Parses and processes study data (legacy/structured formats)
+// lib/labsisTubeMapping.js - Bidirectional LABSIS ↔ INER tube mapping
+// lib/tubesCatalog.js - 43 INER tube types catalog
+
+// LABSIS sends studies with container info → system maps to INER catalog
+// Supports: legacy string arrays, semi-structured, and fully structured formats
+// Auto-generates tubesDetails from processed studies
+// See docs/LABSIS_INTEGRATION.md for complete API documentation
+```
+
+**Key endpoints:**
+- `POST /api/turns/create` - Accepts LABSIS JSON with structured studies
+- Migration script: `scripts/migrate-studies-to-structured-format.js`
 
 ## ⚠️ Production Considerations
 
@@ -243,12 +267,13 @@ pages/                  # Frontend pages (Pages Router)
   └── users/          # User management UI
 components/             # React components (Chakra UI + Tailwind)
 contexts/              # React Context providers (AuthContext is primary)
-lib/                   # Utilities, helpers, and prisma client
+lib/                   # Utilities, helpers, prisma client, studiesProcessor.js, labsisTubeMapping.js, tubesCatalog.js
 prisma/
   ├── schema.prisma    # Database schema (User, TurnRequest, Cubicle, Session, AuditLog, SatisfactionSurvey)
   └── migrations/      # Database migrations
-scripts/               # Utility scripts (seedFullYearData.js, testStatistics.js, seedDocumentationData.js)
-tests/                 # Test files (limited coverage)
+scripts/               # Utility scripts (seedFullYearData.js, testStatistics.js, migrate-studies-to-structured-format.js)
+tests/                 # Test files (Jest, 66 tests for studiesProcessor and labsisTubeMapping)
+__tests__/             # Additional test files
 public/                # Static assets
 ecosystem.config.js    # PM2 configuration (fork mode, 1GB limit, 3AM restart)
 middleware.ts          # Rate limiting and security headers
@@ -303,11 +328,10 @@ await prisma.auditLog.create({
 
 ## 🚨 Known Issues & Technical Debt
 
-1. **Security**: Input validation needs Zod implementation across all endpoints
-2. **Testing**: Coverage below 20% - critical paths need tests
-3. **TypeScript**: Incomplete migration causing type safety issues
-4. **Performance**: Missing pagination on large data queries
-5. **Documentation**: API documentation needs OpenAPI/Swagger setup
+1. **TypeScript**: Incomplete migration causing type safety issues - new files should use TypeScript
+2. **Performance**: Missing pagination on large data queries in some areas
+3. **Documentation**: API documentation needs OpenAPI/Swagger setup
+4. **Validation**: Zod validation partially implemented - LABSIS integration uses Zod schemas
 
 ## 🔄 Common Development Tasks
 
@@ -333,15 +357,27 @@ await prisma.auditLog.create({
 
 ### Running Tests
 ```bash
-# Run all tests
+# Run all tests (66 tests total)
 npm test
 
+# Tests in watch mode (for development)
+npm run test:watch
+
+# Generate coverage report
+npm run test:coverage
+
 # Run specific test file
-npm test -- tests/functional/turns.test.js
+npm test -- __tests__/studiesProcessor.test.js
+npm test -- __tests__/labsisTubeMapping.test.js
 
 # Generate test data for manual testing
 node scripts/seedFullYearData.js
 ```
+
+### Testing Architecture
+- **Framework**: Jest with ESM support (`NODE_OPTIONS=--experimental-vm-modules`)
+- **studiesProcessor.test.js**: 32 tests for study parsing and grouping
+- **labsisTubeMapping.test.js**: 34 tests for bidirectional LABSIS ↔ INER mapping
 
 ## 📌 Important Notes
 
