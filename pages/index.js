@@ -52,7 +52,7 @@ const HomePage = memo(function HomePage() {
     console.log(`[HomePage] useEffect - Route changed to: ${router.pathname}`);
 
     // If we navigated away from home page, reset loading state
-    if (router.pathname !== '/' && isNavigating) {
+    if (isNavigating) {
       console.log(`[HomePage] Detected route change away from /, resetting isNavigating`);
       setIsNavigating(false);
     }
