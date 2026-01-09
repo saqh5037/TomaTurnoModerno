@@ -19,14 +19,13 @@ export async function GET(request) {
       orderBy: { name: 'asc' }
     });
 
-    // Obtener usuarios con sesiones activas (última actividad en los últimos 10 minutos)
+    // Obtener usuarios con sesiones activas que tengan un cubículo seleccionado
     const now = new Date();
-    const tenMinutesAgo = new Date(now.getTime() - 10 * 60 * 1000);
 
     const activeSessions = await prisma.session.findMany({
       where: {
         expiresAt: { gt: now },
-        lastActivity: { gte: tenMinutesAgo }
+        selectedCubicleId: { not: null }  // Solo sesiones con cubículo seleccionado
       },
       select: {
         id: true,

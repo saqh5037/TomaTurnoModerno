@@ -182,6 +182,7 @@ const HomePage = memo(function HomePage() {
                 fontWeight="medium"
               >
                 TomaTurno - INER | {isAdmin ? '👨‍💼 Administrador' : isSupervisor ? '👨‍💼 Supervisor' : '👩‍⚕️ Flebotomista'}
+                {user?.name && ` - ${user.name}`}
               </Text>
             </Box>
             <VStack spacing={2} align="stretch">
@@ -230,11 +231,13 @@ const HomePage = memo(function HomePage() {
               <Button
                 leftIcon={<FaSignOutAlt />}
                 size="sm"
-                variant="outline"
+                colorScheme="red"
+                variant="solid"
                 onClick={handleLogout}
                 _hover={{
                   transform: 'translateY(-1px)',
-                  boxShadow: 'md'
+                  boxShadow: 'md',
+                  bg: 'red.600'
                 }}
               >
                 Cerrar Sesión

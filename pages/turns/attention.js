@@ -75,8 +75,10 @@ import {
   FaBars,
   FaChartLine,
   FaExchangeAlt,
-  FaVial
+  FaVial,
+  FaSignOutAlt
 } from "react-icons/fa";
+import { useAuth } from '../../contexts/AuthContext';
 import { useRouter } from 'next/router';
 import { fadeInUp, slideInFromLeft, slideInFromRight, GlassCard, ModernContainer, pulseGlow } from '../../components/theme/ModernTheme';
 import { TUBE_TYPES, getTubeById, enrichTubesDetails } from '../../lib/tubesCatalog';
@@ -107,6 +109,13 @@ const slideUp = keyframes`
 export default function Attention() {
   console.log('[Attention] ========== COMPONENT RENDER ==========');
   const router = useRouter();
+  const { logout } = useAuth();
+
+  const handleLogout = () => {
+    console.log('[Attention] handleLogout called');
+    logout();
+    router.push('/login');
+  };
 
   // Estados existentes
   const [userId, setUserId] = useState(null);
@@ -942,6 +951,12 @@ export default function Attention() {
         // Limpiar paciente activo
         setActivePatient(null);
         setPatientToDefer(null);
+
+        // Resetear el ref para permitir nueva asignación de holding
+        holdingAssignedRef.current = false;
+
+        // Asignar el siguiente turno en holding automáticamente
+        await assignHolding(true);
 
         // Refrescar listas
         fetchTurns();
@@ -1782,6 +1797,24 @@ export default function Attention() {
               <Box display={{ base: "none", md: "block" }}>
                 <Clock />
               </Box>
+
+              {/* Botón de Cerrar Sesión */}
+              <Tooltip label="Cerrar sesión" placement="bottom">
+                <Button
+                  leftIcon={<FaSignOutAlt />}
+                  size="sm"
+                  colorScheme="red"
+                  variant="solid"
+                  onClick={handleLogout}
+                  _hover={{
+                    transform: 'translateY(-1px)',
+                    boxShadow: 'md',
+                    bg: 'red.600'
+                  }}
+                >
+                  Salir
+                </Button>
+              </Tooltip>
             </HStack>
           </Flex>
         </GlassCard>
