@@ -547,9 +547,11 @@ const QueueTV = memo(function QueueTV() {
                                                         {turn.patientName}
                                                     </Text>
                                                     <Flex align="center" gap={10} mt={3}>
-                                                        <Text color="secondary.800" fontSize="4xl" fontWeight="bold">
-                                                            Turno: <strong style={{color: '#10b981'}}>#{turn.assignedTurn}</strong>
-                                                        </Text>
+                                                        {turn.workOrder && (
+                                                            <Text color="secondary.800" fontSize="4xl" fontWeight="bold">
+                                                                OT: <strong style={{color: '#10b981'}}>{turn.workOrder}</strong>
+                                                            </Text>
+                                                        )}
                                                         <Text color="secondary.800" fontSize="4xl" fontWeight="bold">
                                                             Cubículo: <strong style={{color: '#10b981'}}>{turn.cubicle?.name}</strong>
                                                         </Text>
@@ -701,9 +703,11 @@ const QueueTV = memo(function QueueTV() {
                                                     >
                                                         {turn.patientName}
                                                     </Text>
-                                                    <Text color="secondary.800" fontSize="4xl" fontWeight="bold" mt={3}>
-                                                        Turno: <strong style={{color: '#f59e0b'}}>#{turn.assignedTurn}</strong>
-                                                    </Text>
+                                                    {turn.workOrder && (
+                                                        <Text color="secondary.800" fontSize="4xl" fontWeight="bold" mt={3}>
+                                                            OT: <strong style={{color: '#f59e0b'}}>{turn.workOrder}</strong>
+                                                        </Text>
+                                                    )}
                                                 </Box>
                                             </Flex>
                                             

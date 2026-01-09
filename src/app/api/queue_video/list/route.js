@@ -19,7 +19,9 @@ export async function GET() {
         status: true,
         createdAt: true,
         cubicle: { select: { name: true } },
-        user: { select: { name: true } }
+        user: { select: { name: true } },
+        patientID: true,
+        workOrder: true,
       },
     });
 
@@ -38,7 +40,9 @@ export async function GET() {
         status: true,
         createdAt: true,
         cubicle: { select: { name: true } },
-        user: { select: { name: true } }
+        user: { select: { name: true } },
+        patientID: true,
+        workOrder: true,
       },
     });
 
@@ -56,6 +60,8 @@ export async function GET() {
         patientName: true,
         assignedTurn: true,
         cubicle: { select: { name: true } },
+        patientID: true,
+        workOrder: true,
       },
       take: 1, // Solo necesitamos el primero para el anuncio
     });

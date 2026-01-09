@@ -1,17 +1,19 @@
 import prisma from "@/lib/prisma";
+import { releaseExpiredHoldings } from "@/lib/holdingUtils";
 
 export async function GET(request) {
   try {
-    // Obtener userId de los query params (opcional, para filtrar sugerencias)
+    // Obtener userId de los query params (para filtrar holdings de otros usuarios)
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get('userId');
+    const userIdNum = userId ? parseInt(userId, 10) : null;
+
+    // Limpiar holdings expirados antes de listar
+    await releaseExpiredHoldings();
 
     // Consulta para turnos pendientes
-    // Ordenamiento: Por "tiempo efectivo de cola" = COALESCE(deferredAt, createdAt)
-    // Esto asegura que:
-    // - Pacientes no diferidos se ordenan por createdAt
-    // - Pacientes diferidos se ordenan por deferredAt (que se setea al final de la cola al diferir)
-    // - Nuevos pacientes creados después de un diferimiento aparecen según su createdAt
+    // Filtra turnos en holding de OTROS usuarios (solo muestra los propios o sin holding)
+    // Ordenamiento: Por prioridad (Special primero), luego por tiempo efectivo de cola
     const pendingTurns = await prisma.$queryRaw`
       SELECT
         id,
@@ -26,16 +28,22 @@ export async function GET(request) {
         "callCount",
         "suggestedFor",
         "suggestedAt",
+        "holdingBy",
+        "holdingAt",
         "createdAt",
         "deferredAt",
         "tubesRequired",
         "tubesDetails",
         observations,
-        "clinicalInfo"
+        "clinicalInfo",
+        patient_id as "patientID",
+        work_order as "workOrder"
       FROM "TurnRequest"
       WHERE status = 'Pending'
+        AND ("holdingBy" IS NULL OR "holdingBy" = ${userIdNum})
       ORDER BY
         CASE WHEN "tipoAtencion" = 'Special' THEN 0 ELSE 1 END,
+        "isDeferred" ASC,
         COALESCE("deferredAt", "createdAt") ASC
     `;
 
@@ -58,8 +66,13 @@ export async function GET(request) {
         tubesDetails: true,
         observations: true,
         clinicalInfo: true,
+        patientID: true,  // CI/Expediente del paciente
+        workOrder: true,  // Número de orden de trabajo
+        attendedBy: true, // Para identificar quién está atendiendo
+        cubicleId: true, // Para restaurar el cubículo
         cubicle: {
           select: {
+            id: true,
             name: true,
           },
         },
@@ -94,12 +107,18 @@ export async function GET(request) {
           isSpecial: turn.tipoAtencion === "Special",
           isDeferred: turn.isDeferred,
           callCount: turn.callCount,
-          isSuggestedForMe: userId ? turn.suggestedFor === parseInt(userId) : false,
+          // Campos de holding (nuevo sistema)
+          isHeldByMe: userIdNum ? turn.holdingBy === userIdNum : false,
+          holdingBy: turn.holdingBy,
+          // Campos de sugerencia (deprecated, mantener para compatibilidad)
+          isSuggestedForMe: userIdNum ? turn.suggestedFor === userIdNum : false,
           suggestedFor: turn.suggestedFor,
           tubesRequired: turn.tubesRequired,
           tubesDetails: turn.tubesDetails,
           observations: turn.observations,
           clinicalInfo: turn.clinicalInfo,
+          patientID: turn.patientID,
+          workOrder: turn.workOrder,
         })),
         inProgressTurns: inProgressTurns.map((turn) => ({
           id: turn.id,
@@ -114,11 +133,16 @@ export async function GET(request) {
           isDeferred: turn.isDeferred,
           callCount: turn.callCount,
           cubicleName: turn.cubicle?.name || "Sin cubículo",
+          cubicleId: turn.cubicleId,
+          cubicle: turn.cubicle,
           flebotomistName: turn.user?.name || "Sin flebotomista",
+          attendedBy: turn.attendedBy, // Para identificar el paciente del usuario actual
           tubesRequired: turn.tubesRequired,
           tubesDetails: turn.tubesDetails,
           observations: turn.observations,
           clinicalInfo: turn.clinicalInfo,
+          patientID: turn.patientID,
+          workOrder: turn.workOrder,
         })),
       }),
       { status: 200, headers: { "Content-Type": "application/json" } }

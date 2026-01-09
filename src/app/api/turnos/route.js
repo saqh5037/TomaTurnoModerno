@@ -212,6 +212,8 @@ export async function POST(request) {
     const labsisData = await request.json();
 
     console.log('[/api/turnos] Solicitud recibida de LABSIS:', {
+      patientID: labsisData.patientID,
+      workOrder: labsisData.workOrder,
       patientName: labsisData.patientName,
       tubesDetails: labsisData.tubesDetails
     });
@@ -392,8 +394,12 @@ export async function GET() {
     usage: {
       method: 'POST',
       requiredFields: ['patientName', 'age', 'gender', 'studies'],
-      optionalFields: ['contactInfo', 'tubesDetails', 'observations', 'clinicalInfo', 'tipoAtencion'],
-      tubesDetailsRequired: ['containerCode', 'sampleType', 'quantity']
+      optionalFields: ['patientID', 'workOrder', 'contactInfo', 'tubesDetails', 'observations', 'clinicalInfo', 'tipoAtencion', 'labsisOrderId'],
+      tubesDetailsRequired: ['containerCode', 'sampleType', 'quantity'],
+      hisFields: {
+        patientID: 'CI/Expediente del paciente',
+        workOrder: 'Número de orden de trabajo (OT)'
+      }
     },
     containerCodes: {
       common: ['ROJO', 'MOR', 'MORQ', 'VERD', 'AZUL', 'GARR', 'EST', 'ESTL'],

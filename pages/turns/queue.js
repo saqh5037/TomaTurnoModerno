@@ -502,17 +502,20 @@ const Queue = memo(function Queue() {
                                             <Text color="#1E293B" flex="1" fontWeight="bold" fontSize="md" isTruncated>
                                                 {turn.patientName}
                                             </Text>
-                                            <Box
-                                                bg="gray.100"
-                                                color="gray.700"
-                                                px={2}
-                                                py={0.5}
-                                                borderRadius="sm"
-                                                fontSize="sm"
-                                                fontWeight="bold"
-                                            >
-                                                #{turn.assignedTurn}
-                                            </Box>
+                                            {/* OT (Orden de Trabajo) */}
+                                            {turn.workOrder && (
+                                                <Box
+                                                    bg="teal.100"
+                                                    color="teal.700"
+                                                    px={2}
+                                                    py={0.5}
+                                                    borderRadius="sm"
+                                                    fontSize="xs"
+                                                    fontWeight="bold"
+                                                >
+                                                    {turn.workOrder}
+                                                </Box>
+                                            )}
                                         </Flex>
                                     ))}
                                 </VStack>
@@ -592,12 +595,23 @@ const Queue = memo(function Queue() {
                                                 {turn.tipoAtencion === "Special" && (
                                                     <Box as={FaWheelchair} color="#EF4444" fontSize="md" mr={1} />
                                                 )}
-                                                <Text fontWeight="bold" color="#F59E0B" fontSize="xs" mr={1}>
-                                                    #{turn.assignedTurn}
-                                                </Text>
                                                 <Text color="#1E293B" flex="1" fontWeight="medium" fontSize="sm" isTruncated>
                                                     {turn.patientName}
                                                 </Text>
+                                                {/* OT (Orden de Trabajo) */}
+                                                {turn.workOrder && (
+                                                    <Box
+                                                        bg="teal.100"
+                                                        color="teal.700"
+                                                        px={1.5}
+                                                        py={0.5}
+                                                        borderRadius="sm"
+                                                        fontSize="xs"
+                                                        fontWeight="bold"
+                                                    >
+                                                        {turn.workOrder}
+                                                    </Box>
+                                                )}
                                             </Flex>
                                         ))}
                                     </VStack>
@@ -627,12 +641,23 @@ const Queue = memo(function Queue() {
                                                 {turn.tipoAtencion === "Special" && (
                                                     <Box as={FaWheelchair} color="#EF4444" fontSize="md" mr={1} />
                                                 )}
-                                                <Text fontWeight="bold" color="#F59E0B" fontSize="xs" mr={1}>
-                                                    #{turn.assignedTurn}
-                                                </Text>
                                                 <Text color="#1E293B" flex="1" fontWeight="medium" fontSize="sm" isTruncated>
                                                     {turn.patientName}
                                                 </Text>
+                                                {/* OT */}
+                                                {turn.workOrder && (
+                                                    <Box
+                                                        bg="teal.100"
+                                                        color="teal.700"
+                                                        px={1.5}
+                                                        py={0.5}
+                                                        borderRadius="sm"
+                                                        fontSize="xs"
+                                                        fontWeight="bold"
+                                                    >
+                                                        {turn.workOrder}
+                                                    </Box>
+                                                )}
                                             </Flex>
                                         ))}
                                     </VStack>

@@ -15,7 +15,9 @@ export async function GET(req) {
         "assignedTurn",
         "tipoAtencion",
         "isDeferred",
-        "callCount"
+        "callCount",
+        patient_id as "patientID",
+        work_order as "workOrder"
       FROM "TurnRequest"
       WHERE status = 'Pending'
       ORDER BY
@@ -32,6 +34,8 @@ export async function GET(req) {
         t."tipoAtencion",
         t."isDeferred",
         t."callCount",
+        t.patient_id as "patientID",
+        t.work_order as "workOrder",
         c.name as "cubicleName"
       FROM "TurnRequest" t
       LEFT JOIN "Cubicle" c ON t."cubicleId" = c.id
@@ -50,6 +54,8 @@ export async function GET(req) {
         t."tipoAtencion",
         t."isDeferred",
         t."callCount",
+        t.patient_id as "patientID",
+        t.work_order as "workOrder",
         c.name as "cubicleName"
       FROM "TurnRequest" t
       LEFT JOIN "Cubicle" c ON t."cubicleId" = c.id

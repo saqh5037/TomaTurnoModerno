@@ -81,7 +81,11 @@ const TurnSchema = z.object({
 
   // NUEVOS CAMPOS LABSIS
   labsisOrderId: z.string().max(50).optional(),       // ID de orden en LABSIS
-  samplesGenerated: z.array(SampleGeneratedSchema).optional()  // Muestras físicas generadas
+  samplesGenerated: z.array(SampleGeneratedSchema).optional(),  // Muestras físicas generadas
+
+  // NUEVOS CAMPOS HIS (expediente y orden de trabajo)
+  patientID: z.string().max(50).optional(),           // CI/Expediente del paciente
+  workOrder: z.string().max(50).optional()            // Número de orden de trabajo (OT)
 });
 
 // API para crear turnos manuales con validación Zod y soporte UTF-8
@@ -216,7 +220,11 @@ export async function POST(req) {
 
       // NUEVOS CAMPOS LABSIS
       labsisOrderId: validatedData.labsisOrderId || null,
-      samplesGenerated: validatedData.samplesGenerated || null
+      samplesGenerated: validatedData.samplesGenerated || null,
+
+      // NUEVOS CAMPOS HIS (expediente y orden de trabajo)
+      patientID: validatedData.patientID || null,
+      workOrder: validatedData.workOrder || null
     };
 
     console.log("Datos a insertar en Prisma:", {

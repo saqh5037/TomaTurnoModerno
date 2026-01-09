@@ -22,7 +22,9 @@ export async function GET() {
           }
         },
         user: { select: { name: true } },
-        isCalled: true
+        isCalled: true,
+        patientID: true,
+        workOrder: true,
       },
     }) || [];
 
@@ -44,7 +46,9 @@ export async function GET() {
           }
         },
         user: { select: { name: true } },
-        isCalled: true
+        isCalled: true,
+        patientID: true,
+        workOrder: true,
       },
     }) || [];
 

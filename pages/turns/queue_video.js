@@ -387,9 +387,11 @@ const QueueVideoScreen = memo(function QueueVideoScreen() {
                           </HStack>
                         </VStack>
                       </HStack>
-                      <Badge colorScheme="green" fontSize="lg" px={3} py={1}>
-                        #{turn.assignedTurn}
-                      </Badge>
+                      {turn.workOrder && (
+                        <Badge colorScheme="teal" fontSize="lg" px={3} py={1}>
+                          {turn.workOrder}
+                        </Badge>
+                      )}
                     </Flex>
                   </Box>
                 ))
@@ -477,9 +479,11 @@ const QueueVideoScreen = memo(function QueueVideoScreen() {
                           {turn.patientName}
                         </Text>
                       </HStack>
-                      <Badge colorScheme="orange" fontSize="md" px={2}>
-                        #{turn.assignedTurn}
-                      </Badge>
+                      {turn.workOrder && (
+                        <Badge colorScheme="teal" fontSize="md" px={2}>
+                          {turn.workOrder}
+                        </Badge>
+                      )}
                     </Flex>
                   </Box>
                 ))

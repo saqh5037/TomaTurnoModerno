@@ -119,6 +119,9 @@ export default function Attention() {
   const [processingTurns, setProcessingTurns] = useState(new Set());
   const [hidingTurns, setHidingTurns] = useState(new Set());
   const [skippedTurns, setSkippedTurns] = useState(new Set()); // Turnos saltados por este flebotomista
+  const [heldTurn, setHeldTurn] = useState(null); // Turno en holding asignado automáticamente
+  const [isLoadingHolding, setIsLoadingHolding] = useState(true); // Estado de carga del holding
+  const holdingAssignedRef = useRef(false); // Ref para evitar múltiples asignaciones de holding
 
   console.log('[Attention] State - mounted:', mounted, 'userId:', userId, 'selectedCubicle:', selectedCubicle);
   console.log('[Attention] pendingTurns:', pendingTurns.length, 'inProgressTurns:', inProgressTurns.length);
@@ -269,6 +272,19 @@ export default function Attention() {
       const data = await response.json();
       setPendingTurns(data.pendingTurns || []);
       setInProgressTurns(data.inProgressTurns || []);
+
+      // Si el usuario tiene un paciente en "In Progress", establecerlo como activePatient
+      // Esto es importante para recuperar el estado después de recargar la página
+      if (userId && data.inProgressTurns) {
+        const myInProgressTurn = data.inProgressTurns.find(t => t.attendedBy === userId);
+        if (myInProgressTurn && !activePatient) {
+          console.log("[Attention] Recuperando paciente en atención:", myInProgressTurn.id, myInProgressTurn.patientName);
+          setActivePatient(myInProgressTurn);
+          // Marcar que ya tenemos paciente activo, no necesitamos holding
+          holdingAssignedRef.current = true;
+          setIsLoadingHolding(false);
+        }
+      }
     } catch (error) {
       console.error("Error al cargar los turnos:", error);
       toast({
@@ -280,16 +296,58 @@ export default function Attention() {
         position: "top",
       });
     }
-  }, [toast, userId]);
+  }, [toast, userId, activePatient]);
 
-  // Función para asignar sugerencias automáticamente
-  const assignSuggestions = useCallback(async () => {
-    try {
-      await fetch("/api/queue/assignSuggestions", { method: "POST" });
-    } catch (error) {
-      console.error("Error al asignar sugerencias:", error);
+  // Función para asignar holding automáticamente
+  const assignHolding = useCallback(async (forceAssign = false) => {
+    if (!userId) return null;
+
+    // Evitar múltiples asignaciones simultáneas
+    if (!forceAssign && holdingAssignedRef.current) {
+      console.log("[Attention] Holding ya asignado, saltando...");
+      return heldTurn;
     }
-  }, []);
+
+    setIsLoadingHolding(true);
+    holdingAssignedRef.current = true;
+
+    try {
+      const response = await fetch("/api/queue/assignHolding", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.turn) {
+          setHeldTurn(data.turn);
+          console.log("[Attention] Turno asignado en holding:", data.turn.id, data.turn.patientName);
+          return data.turn;
+        } else {
+          // No hay turnos disponibles
+          setHeldTurn(null);
+          console.log("[Attention] No hay turnos disponibles para holding");
+        }
+      }
+      return null;
+    } catch (error) {
+      console.error("Error al asignar holding:", error);
+      return null;
+    } finally {
+      setIsLoadingHolding(false);
+    }
+  }, [userId, heldTurn]);
+
+  // Función para liberar holding
+  const releaseHolding = useCallback(() => {
+    if (!userId) return;
+
+    // Usar sendBeacon para envío confiable al cerrar la página
+    const data = JSON.stringify({ userId });
+    navigator.sendBeacon("/api/queue/releaseHolding", data);
+    console.log("[Attention] Holding liberado para usuario:", userId);
+  }, [userId]);
 
   // Cargar turnos con polling
   useEffect(() => {
@@ -300,14 +358,49 @@ export default function Attention() {
     }
   }, [mounted, fetchTurns]);
 
-  // Asignar sugerencias automáticamente cada 15 segundos
+  // Asignar holding automáticamente al montar (solo una vez)
   useEffect(() => {
-    if (mounted && userId) {
-      assignSuggestions(); // Llamada inicial
-      const intervalId = setInterval(assignSuggestions, 15000);
-      return () => clearInterval(intervalId);
+    if (mounted && userId && !activePatient && !holdingAssignedRef.current) {
+      // Asignar holding inicial
+      assignHolding();
     }
-  }, [mounted, userId, assignSuggestions]);
+  }, [mounted, userId, activePatient]); // NO incluir assignHolding en dependencias
+
+  // Liberar holding cuando el usuario sale de la página o cierra la pestaña
+  useEffect(() => {
+    if (!userId) return;
+
+    const handleBeforeUnload = () => {
+      // Usar sendBeacon para envío confiable al cerrar
+      const data = JSON.stringify({ userId });
+      navigator.sendBeacon("/api/queue/releaseHolding", data);
+      console.log("[Attention] Holding liberado via beforeunload");
+    };
+
+    const handleVisibilityChange = () => {
+      // Liberar holding cuando el usuario cambia de pestaña o minimiza
+      if (document.visibilityState === 'hidden') {
+        const data = JSON.stringify({ userId });
+        navigator.sendBeacon("/api/queue/releaseHolding", data);
+        holdingAssignedRef.current = false; // Permitir reasignación al volver
+        setHeldTurn(null);
+        console.log("[Attention] Holding liberado via visibilitychange (hidden)");
+      } else if (document.visibilityState === 'visible') {
+        // Cuando vuelve a ser visible, reasignar holding
+        console.log("[Attention] Pestaña visible, reasignando holding...");
+        assignHolding(true); // Forzar reasignación
+      }
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      // NO liberar aquí - solo en beforeunload/visibilitychange
+    };
+  }, [userId]); // NO incluir releaseHolding ni assignHolding para evitar re-ejecuciones
 
   const formatTime = (date) => {
     if (!date || !mounted) return "--:--";
@@ -407,41 +500,76 @@ export default function Attention() {
     return role === 'supervisor' || role === 'admin' || role === 'administrador';
   };
 
-  // Nueva función para saltar turno (sin modificar orden en BD)
+  // Función para saltar turno actual y obtener el siguiente
   const handleSkipPatient = async (turnId) => {
-    if (!turnId) return;
+    if (!turnId || !userId) return;
 
-    // Agregar el turno a la lista de saltados para este flebotomista
-    const newSkippedTurns = new Set(skippedTurns).add(turnId);
+    // Prevenir clicks duplicados
+    if (processingTurns.has(`skip-${turnId}`)) return;
+    setProcessingTurns(prev => new Set(prev).add(`skip-${turnId}`));
 
-    // Verificar si hemos saltado todos los turnos pendientes
-    const availableTurnsAfterSkip = pendingTurns.filter(turn => !newSkippedTurns.has(turn.id));
+    try {
+      const response = await fetch("/api/queue/skipHolding", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, currentTurnId: turnId }),
+      });
 
-    if (availableTurnsAfterSkip.length === 0 && pendingTurns.length > 0) {
-      // Si ya saltamos todos, limpiar la lista y volver al primero
-      setSkippedTurns(new Set());
+      if (response.ok) {
+        const data = await response.json();
+
+        if (data.success && data.nextTurn) {
+          // Actualizar el turno en holding con el nuevo
+          setHeldTurn(data.nextTurn);
+
+          if (data.cycleCompleted) {
+            toast({
+              title: "Ciclo completado",
+              description: "No hay más pacientes, volviendo al anterior",
+              status: "info",
+              duration: 2000,
+              position: "top",
+            });
+          } else {
+            toast({
+              title: "Paciente saltado",
+              description: `Ahora tienes a ${data.nextTurn.patientName}`,
+              status: "success",
+              duration: 2000,
+              position: "top",
+            });
+          }
+        } else {
+          toast({
+            title: "Sin más pacientes",
+            description: "No hay más pacientes disponibles para saltar",
+            status: "warning",
+            duration: 2000,
+            position: "top",
+          });
+        }
+
+        // Actualizar la lista de turnos
+        await fetchTurns();
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Error al saltar paciente");
+      }
+    } catch (error) {
+      console.error("Error al saltar paciente:", error);
       toast({
-        title: "Ciclo completado",
-        description: "Volviendo al primer paciente",
-        status: "info",
-        duration: 2000,
+        title: "Error",
+        description: error.message || "No se pudo saltar al siguiente paciente",
+        status: "error",
+        duration: 3000,
         position: "top",
       });
-    } else {
-      // Si aún hay pacientes disponibles, agregar a saltados
-      setSkippedTurns(newSkippedTurns);
-      toast({
-        title: "Turno saltado",
-        description: "Mostrando siguiente paciente disponible",
-        status: "info",
-        duration: 2000,
-        position: "top",
+    } finally {
+      setProcessingTurns(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(`skip-${turnId}`);
+        return newSet;
       });
-    }
-
-    // Limpiar paciente activo si estaba activo
-    if (activePatient && activePatient.id === turnId) {
-      setActivePatient(null);
     }
   };
 
@@ -471,8 +599,8 @@ export default function Attention() {
       return;
     }
 
-    // Verificar que el turno existe
-    const turnToCall = pendingTurns.find(t => t.id === turnId);
+    // Verificar que el turno existe (puede estar en pendingTurns o en heldTurn)
+    const turnToCall = pendingTurns.find(t => t.id === turnId) || (heldTurn?.id === turnId ? heldTurn : null);
     if (!turnToCall) {
       toast({
         title: "Error",
@@ -534,6 +662,11 @@ export default function Attention() {
         };
         setActivePatient(calledPatient);
 
+        // Limpiar el turno en holding ya que ahora está en atención
+        if (heldTurn && heldTurn.id === turnId) {
+          setHeldTurn(null);
+        }
+
         // Si este turno estaba saltado, quitarlo de la lista de saltados
         setSkippedTurns(prev => {
           const newSet = new Set(prev);
@@ -555,14 +688,17 @@ export default function Attention() {
           newSet.delete(turnId);
           return newSet;
         });
-        
+
         const restoredTurns = await fetch("/api/attention/list");
         if (restoredTurns.ok) {
           const data = await restoredTurns.json();
           setPendingTurns(data.pendingTurns || []);
         }
-        
-        throw new Error("Error al llamar al paciente.");
+
+        // Leer el mensaje de error del API
+        const errorData = await response.json().catch(() => ({}));
+        const errorMessage = errorData.error || "Error al llamar al paciente.";
+        throw new Error(errorMessage);
       }
     } catch (error) {
       console.error("Error al llamar al paciente:", error);
@@ -582,9 +718,9 @@ export default function Attention() {
       
       toast({
         title: "Error",
-        description: "No se pudo llamar al paciente.",
+        description: error.message || "No se pudo llamar al paciente.",
         status: "error",
-        duration: 3000,
+        duration: 4000,
         isClosable: true,
         position: "top",
       });
@@ -682,10 +818,12 @@ export default function Attention() {
       const response = await fetch("/api/attention/complete", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ turnId }),
+        body: JSON.stringify({ turnId, userId }),
       });
 
       if (response.ok) {
+        const data = await response.json();
+
         // Mostrar solo un mensaje de éxito
         toast({
           title: "✓ Atención finalizada",
@@ -698,6 +836,14 @@ export default function Attention() {
 
         // Limpiar paciente activo después de completar
         setActivePatient(null);
+
+        // Actualizar el turno en holding con el siguiente asignado por el backend
+        if (data.nextHoldingTurn) {
+          setHeldTurn(data.nextHoldingTurn);
+          console.log("[Attention] Nuevo turno en holding:", data.nextHoldingTurn.id, data.nextHoldingTurn.patientName);
+        } else {
+          setHeldTurn(null);
+        }
 
         // También quitar de saltados si estaba ahí
         setSkippedTurns(prev => {
@@ -919,6 +1065,15 @@ export default function Attention() {
       // Actualizar los datos
       await fetchTurns();
 
+      // Actualizar heldTurn si es el mismo paciente para reflejar el cambio de prioridad inmediatamente
+      if (heldTurn && heldTurn.id === patient.id) {
+        setHeldTurn(prev => ({
+          ...prev,
+          isSpecial: newPriority === "Special",
+          tipoAtencion: newPriority
+        }));
+      }
+
     } catch (error) {
       console.error("Error al cambiar prioridad:", error);
       toast({
@@ -991,7 +1146,29 @@ export default function Attention() {
   };
 
   // Componente CurrentPatientCard con Glassmorphism
-  const CurrentPatientCard = ({ patient, onCall, onComplete, onRepeat, onDefer, isProcessing, selectedCubicle, isActive, isSupervisor }) => {
+  const CurrentPatientCard = ({ patient, onCall, onComplete, onRepeat, onDefer, isProcessing, selectedCubicle, isActive, isSupervisor, isLoading }) => {
+    // Mostrar spinner mientras se carga el holding
+    if (isLoading) {
+      return (
+        <GlassCard
+          p={{ base: 4, md: 6, lg: 8 }}
+          minH={{ base: "250px", md: "400px", lg: "500px" }}
+          display="flex"
+          flexDirection="column"
+          alignItems="center"
+          justifyContent="center"
+        >
+          <Spinner size="xl" color="primary.500" thickness="4px" mb={4} />
+          <Text fontSize="2xl" color="secondary.500" fontWeight="semibold">
+            Obteniendo siguiente paciente...
+          </Text>
+          <Text fontSize="md" color="secondary.400" mt={2}>
+            Por favor espere
+          </Text>
+        </GlassCard>
+      );
+    }
+
     if (!patient) {
       return (
         <GlassCard
@@ -1072,6 +1249,21 @@ export default function Attention() {
             <Text fontSize={{ base: "2xl", sm: "3xl", md: "4xl" }} fontWeight="semibold" color="gray.800">
               {patient.patientName}
             </Text>
+            {/* Información de expediente y orden de trabajo */}
+            {(patient.patientID || patient.workOrder) && (
+              <HStack justify="center" spacing={4} mt={2} flexWrap="wrap">
+                {patient.patientID && (
+                  <Badge colorScheme="purple" fontSize="sm" px={2} py={1}>
+                    ID: {patient.patientID}
+                  </Badge>
+                )}
+                {patient.workOrder && (
+                  <Badge colorScheme="teal" fontSize="sm" px={2} py={1}>
+                    OT: {patient.workOrder}
+                  </Badge>
+                )}
+              </HStack>
+            )}
             {patient.waitTime && (
               <Text fontSize="md" color="secondary.500" mt={2}>
                 <FaClock style={{ display: 'inline', marginRight: '4px' }} />
@@ -1335,309 +1527,50 @@ export default function Attention() {
     );
   };
 
-  // Componente SidePanel (memoizado para evitar re-renders innecesarios)
-  const SidePanel = memo(({ pendingTurns, inProgressTurns, onCall, onComplete, onRepeat, onDefer, processingTurns, tabIndex, onTabChange, isSupervisor }) => {
-    const pendingScrollRef = useRef(null);
-    const inProgressScrollRef = useRef(null);
-    const pendingScrollPosition = useRef(0);
-    const inProgressScrollPosition = useRef(0);
-
-    // Guardar posición del scroll constantemente
-    useEffect(() => {
-      const pendingPanel = pendingScrollRef.current;
-      const inProgressPanel = inProgressScrollRef.current;
-
-      const savePendingScroll = () => {
-        if (pendingPanel) {
-          pendingScrollPosition.current = pendingPanel.scrollTop;
-        }
-      };
-
-      const saveInProgressScroll = () => {
-        if (inProgressPanel) {
-          inProgressScrollPosition.current = inProgressPanel.scrollTop;
-        }
-      };
-
-      if (pendingPanel) {
-        pendingPanel.addEventListener('scroll', savePendingScroll, { passive: true });
-      }
-      if (inProgressPanel) {
-        inProgressPanel.addEventListener('scroll', saveInProgressScroll, { passive: true });
-      }
-
-      return () => {
-        if (pendingPanel) {
-          pendingPanel.removeEventListener('scroll', savePendingScroll);
-        }
-        if (inProgressPanel) {
-          inProgressPanel.removeEventListener('scroll', saveInProgressScroll);
-        }
-      };
-    }, []);
-
-    // Restaurar posición del scroll inmediatamente después de re-render (antes del paint)
-    useLayoutEffect(() => {
-      if (pendingScrollRef.current) {
-        pendingScrollRef.current.scrollTop = pendingScrollPosition.current;
-      }
-    }, [pendingTurns]);
-
-    useLayoutEffect(() => {
-      if (inProgressScrollRef.current) {
-        inProgressScrollRef.current.scrollTop = inProgressScrollPosition.current;
-      }
-    }, [inProgressTurns]);
-
+  // Componente SidePanel simplificado - Solo muestra stats (sin listas de pacientes)
+  const SidePanel = memo(({ pendingCount, inProgressCount, myAttended }) => {
     return (
-      <Tabs
-        colorScheme="blue"
-        size="md"
-        index={tabIndex}
-        onChange={onTabChange}
-        display="flex"
-        flexDirection="column"
-        flex="1"
-        overflow="hidden"
-      >
-        <TabList>
-          <Tab fontWeight="semibold" fontSize="md">
-            En Espera ({pendingTurns.length})
-          </Tab>
-          <Tab fontWeight="semibold" fontSize="md">
-            En Atención ({inProgressTurns.length})
-          </Tab>
-        </TabList>
+      <VStack spacing={4} align="stretch">
+        <Heading size="md" color="gray.700" textAlign="center">
+          Resumen
+        </Heading>
 
-        <TabPanels flex="1" overflow="hidden">
-          <TabPanel
-            ref={pendingScrollRef}
-            px={0}
-            py={2}
-            h="100%"
-            maxH="400px"
-            overflowY="scroll"
-            overscrollBehavior="none"
-            position="relative"
-            css={{
-              '&::-webkit-scrollbar': {
-                width: '8px',
-              },
-              '&::-webkit-scrollbar-track': {
-                background: '#f1f1f1',
-                borderRadius: '10px',
-              },
-              '&::-webkit-scrollbar-thumb': {
-                background: '#888',
-                borderRadius: '10px',
-              },
-              '&::-webkit-scrollbar-thumb:hover': {
-                background: '#555',
-              },
-              overscrollBehaviorY: 'none',
-              WebkitOverflowScrolling: 'auto',
-              touchAction: 'pan-y',
-              scrollbarWidth: 'thin',
-            }}
-          >
-            <VStack spacing={2} align="stretch" pb={4}>
-              {pendingTurns.map((turn, index) => (
-                <HStack
-                  key={turn.id}
-                  p={4}
-                  bg={
-                    turn.isSuggestedForMe ? "green.50" :
-                    turn.isDeferred ? "yellow.100" :
-                    index === 0 ? "blue.50" : "gray.50"
-                  }
-                  borderRadius="lg"
-                  justify="space-between"
-                  borderLeft="4px solid"
-                  borderLeftColor={
-                    turn.isSuggestedForMe ? "green.500" :
-                    turn.isDeferred ? "orange.400" :
-                    turn.isSpecial ? "orange.400" : "blue.400"
-                  }
-                  minH="60px"
-                  boxShadow={turn.isSuggestedForMe ? "0 0 0 2px #48BB78" : "none"}
-                >
-                  <HStack spacing={3}>
-                    {/* Indicador de paciente sugerido para mí */}
-                    {turn.isSuggestedForMe && (
-                      <Badge colorScheme="green" fontSize="xs" px={2}>
-                        TU TURNO
-                      </Badge>
-                    )}
-                    {/* Ícono de reloj de arena para pacientes diferidos */}
-                    {turn.isDeferred && <FaHourglass color="#f59e0b" size={18} />}
-                    {/* Ícono de silla de ruedas para pacientes especiales */}
-                    {turn.isSpecial && <FaWheelchair color="#FF9500" size={18} />}
-                    <Badge colorScheme={turn.isSuggestedForMe ? "green" : "blue"} fontSize="lg" px={2} py={1}>
-                      #{turn.assignedTurn}
-                    </Badge>
-                    <Text fontWeight="medium" fontSize="md">{turn.patientName}</Text>
-                  </HStack>
-                  {index === 0 && (
-                    <IconButton
-                      size="md"
-                      icon={<FaBell />}
-                      colorScheme={turn.isSuggestedForMe ? "green" : "blue"}
-                      variant="solid"
-                      onClick={() => onCall(turn.id)}
-                      isDisabled={processingTurns.has(turn.id)}
-                      aria-label="Llamar paciente"
-                    />
-                  )}
-                </HStack>
-              ))}
-              {pendingTurns.length === 0 && (
-                <Text textAlign="center" color="gray.500" py={4}>
-                  No hay pacientes esperando
-                </Text>
-              )}
+        <Box p={4} bg="orange.50" borderRadius="lg" borderLeft="4px solid" borderLeftColor="orange.400">
+          <HStack justify="space-between">
+            <VStack align="start" spacing={0}>
+              <Text fontSize="sm" color="gray.600">Total en Espera</Text>
+              <Text fontSize="xs" color="gray.500">Pacientes pendientes</Text>
             </VStack>
-          </TabPanel>
+            <Badge colorScheme="orange" fontSize="2xl" px={4} py={2} borderRadius="lg">
+              {pendingCount}
+            </Badge>
+          </HStack>
+        </Box>
 
-          <TabPanel
-            ref={inProgressScrollRef}
-            px={0}
-            py={2}
-            h="100%"
-            maxH="400px"
-            overflowY="scroll"
-            overscrollBehavior="none"
-            position="relative"
-            css={{
-              '&::-webkit-scrollbar': {
-                width: '8px',
-              },
-              '&::-webkit-scrollbar-track': {
-                background: '#f1f1f1',
-                borderRadius: '10px',
-              },
-              '&::-webkit-scrollbar-thumb': {
-                background: '#888',
-                borderRadius: '10px',
-              },
-              '&::-webkit-scrollbar-thumb:hover': {
-                background: '#555',
-              },
-              overscrollBehaviorY: 'none',
-              WebkitOverflowScrolling: 'auto',
-              touchAction: 'pan-y',
-              scrollbarWidth: 'thin',
-            }}
-          >
-            <VStack spacing={2} align="stretch" pb={4}>
-              {inProgressTurns.map((turn) => {
-                // Determinar si el paciente pertenece al cubículo actual del usuario
-                const myCubicle = cubicles.find(c => c.id === parseInt(selectedCubicle));
-                const isMyPatient = turn.cubicleName === myCubicle?.name;
-                const isActivePatient = activePatient?.id === turn.id;
-
-                return (
-                  <Box
-                    key={turn.id}
-                    p={4}
-                    bg={isActivePatient ? "green.200" : "green.50"}
-                    borderRadius="lg"
-                    borderLeft="4px solid"
-                    borderLeftColor={isActivePatient ? "green.600" : "green.400"}
-                    minH="80px"
-                    cursor={isMyPatient ? "pointer" : "not-allowed"}
-                    onClick={isMyPatient ? () => handleSelectInProgressPatient(turn) : undefined}
-                    opacity={isMyPatient ? 1 : 0.6}
-                    position="relative"
-                    transition="all 0.2s"
-                    _hover={isMyPatient ? {
-                      bg: isActivePatient ? "green.200" : "green.100",
-                      transform: "scale(1.02)",
-                      boxShadow: "md"
-                    } : undefined}
-                  >
-                    {/* Badge indicando estado */}
-                    {!isMyPatient && (
-                      <Badge
-                        position="absolute"
-                        top={2}
-                        right={2}
-                        colorScheme="gray"
-                        fontSize="xs"
-                      >
-                        Otro cubículo
-                      </Badge>
-                    )}
-                    {isActivePatient && (
-                      <Badge
-                        position="absolute"
-                        top={2}
-                        right={2}
-                        colorScheme="green"
-                        fontSize="xs"
-                      >
-                        ● Activo
-                      </Badge>
-                    )}
-
-                    <HStack justify="space-between" mb={2}>
-                      <Badge colorScheme="green" fontSize="lg" px={2} py={1}>#{turn.assignedTurn}</Badge>
-                      <HStack spacing={2}>
-                        <IconButton
-                          size="md"
-                          icon={<FaVolumeUp />}
-                          colorScheme="orange"
-                          variant="solid"
-                          onClick={(e) => {
-                            e.stopPropagation(); // Evitar que se dispare el onClick del Box
-                            onRepeat(turn.id);
-                          }}
-                          isDisabled={processingTurns.has(`repeat-${turn.id}`)}
-                          aria-label="Repetir llamado"
-                        />
-                        <IconButton
-                          size="md"
-                          icon={<FaHourglass />}
-                          colorScheme="red"
-                          variant="solid"
-                          onClick={(e) => {
-                            e.stopPropagation(); // Evitar que se dispare el onClick del Box
-                            onDefer(turn.id);
-                          }}
-                          isDisabled={processingTurns.has(turn.id)}
-                          aria-label="Regresar a Cola"
-                        />
-                        {isSupervisor && (
-                          <IconButton
-                            size="md"
-                            icon={<FaCheckCircle />}
-                            colorScheme="green"
-                            variant="solid"
-                            onClick={(e) => {
-                              e.stopPropagation(); // Evitar que se dispare el onClick del Box
-                              onComplete(turn.id);
-                            }}
-                            isDisabled={processingTurns.has(turn.id)}
-                            aria-label="Toma Finalizada"
-                          />
-                        )}
-                      </HStack>
-                    </HStack>
-                    <Text fontWeight="medium" fontSize="md">{turn.patientName}</Text>
-                    <Text fontSize="sm" color="gray.600">
-                      {turn.cubicleName} - {turn.flebotomistName}
-                    </Text>
-                  </Box>
-                );
-              })}
-              {inProgressTurns.length === 0 && (
-                <Text textAlign="center" color="gray.500" py={4}>
-                  No hay pacientes en atención
-                </Text>
-              )}
+        <Box p={4} bg="green.50" borderRadius="lg" borderLeft="4px solid" borderLeftColor="green.400">
+          <HStack justify="space-between">
+            <VStack align="start" spacing={0}>
+              <Text fontSize="sm" color="gray.600">En Atención</Text>
+              <Text fontSize="xs" color="gray.500">Siendo atendidos</Text>
             </VStack>
-          </TabPanel>
-        </TabPanels>
-      </Tabs>
+            <Badge colorScheme="green" fontSize="2xl" px={4} py={2} borderRadius="lg">
+              {inProgressCount}
+            </Badge>
+          </HStack>
+        </Box>
+
+        <Box p={4} bg="blue.50" borderRadius="lg" borderLeft="4px solid" borderLeftColor="blue.400">
+          <HStack justify="space-between">
+            <VStack align="start" spacing={0}>
+              <Text fontSize="sm" color="gray.600">Mis Atendidos</Text>
+              <Text fontSize="xs" color="gray.500">Hoy</Text>
+            </VStack>
+            <Badge colorScheme="blue" fontSize="2xl" px={4} py={2} borderRadius="lg">
+              {myAttended}
+            </Badge>
+          </HStack>
+        </Box>
+      </VStack>
     );
   });
   SidePanel.displayName = 'SidePanel';
@@ -1725,13 +1658,14 @@ export default function Attention() {
   }
 
   // Obtener el próximo paciente y el actual
-  // Filtrar turnos saltados para este flebotomista
-  const availablePendingTurns = pendingTurns.filter(turn => !skippedTurns.has(turn.id));
-
-  // Determinar qué paciente mostrar en la tarjeta principal
-  const nextPatient = availablePendingTurns[0] || null;
+  // IMPORTANTE: Solo usar heldTurn, NO fallback a pendingTurns[0] para evitar colisiones
+  // El turno en holding es el único que este usuario puede atender
+  const nextPatient = heldTurn;
   const displayPatient = activePatient || nextPatient;
   const currentPatient = inProgressTurns[0] || null;
+
+  // Flag para mostrar estado de carga o "sin pacientes"
+  const showLoadingHolding = isLoadingHolding && !heldTurn && !activePatient;
 
   return (
     <ModernContainer
@@ -1872,6 +1806,7 @@ export default function Attention() {
                 selectedCubicle={selectedCubicle}
                 isActive={!!activePatient && displayPatient?.id === activePatient?.id}
                 isSupervisor={isSupervisorOrAdmin()}
+                isLoading={showLoadingHolding}
               />
 
               {/* Indicador de turnos saltados */}
@@ -1917,35 +1852,10 @@ export default function Attention() {
                 flexDirection="column"
               >
                 <SidePanel
-                  pendingTurns={pendingTurns}
-                  inProgressTurns={inProgressTurns}
-                  onCall={handleCallPatient}
-                  onComplete={handleCompleteAttention}
-                  onRepeat={handleRepeatCall}
-                  onDefer={handleDeferTurn}
-                  processingTurns={processingTurns}
-                  tabIndex={sidePanelTabIndex}
-                  onTabChange={setSidePanelTabIndex}
-                  isSupervisor={isSupervisorOrAdmin()}
+                  pendingCount={pendingTurns.length}
+                  inProgressCount={inProgressTurns.length}
+                  myAttended={dailyStats.totalAttended}
                 />
-
-                <Divider my={4} />
-
-                {/* Mini Stats */}
-                <VStack spacing={3} align="stretch">
-                  <HStack justify="space-between">
-                    <Text fontSize="sm" color="gray.600">Total Espera:</Text>
-                    <Badge colorScheme="orange" fontSize="md">{pendingTurns.length}</Badge>
-                  </HStack>
-                  <HStack justify="space-between">
-                    <Text fontSize="sm" color="gray.600">En Atención:</Text>
-                    <Badge colorScheme="green" fontSize="md">{inProgressTurns.length}</Badge>
-                  </HStack>
-                  <HStack justify="space-between">
-                    <Text fontSize="sm" color="gray.600">Mis Atendidos:</Text>
-                    <Badge colorScheme="blue" fontSize="md">{dailyStats.totalAttended}</Badge>
-                  </HStack>
-                </VStack>
               </GlassCard>
             )}
           </Grid>
@@ -1967,33 +1877,14 @@ export default function Attention() {
           <DrawerOverlay />
           <DrawerContent maxW={{ base: "100%", sm: "md" }}>
             <DrawerCloseButton />
-            <DrawerHeader>Pacientes</DrawerHeader>
+            <DrawerHeader>Resumen</DrawerHeader>
             <DrawerBody>
               <SidePanel
-                pendingTurns={pendingTurns}
-                inProgressTurns={inProgressTurns}
-                onCall={handleCallPatient}
-                onComplete={handleCompleteAttention}
-                onRepeat={handleRepeatCall}
-                onDefer={handleDeferTurn}
-                processingTurns={processingTurns}
-                tabIndex={sidePanelTabIndex}
-                onTabChange={setSidePanelTabIndex}
-                isSupervisor={isSupervisorOrAdmin()}
+                pendingCount={pendingTurns.length}
+                inProgressCount={inProgressTurns.length}
+                myAttended={dailyStats.totalAttended}
               />
             </DrawerBody>
-            <DrawerFooter>
-              <VStack w="full" align="stretch" spacing={2}>
-                <HStack justify="space-between">
-                  <Text fontSize="sm">En Espera:</Text>
-                  <Badge colorScheme="orange">{pendingTurns.length}</Badge>
-                </HStack>
-                <HStack justify="space-between">
-                  <Text fontSize="sm">Mis Atendidos:</Text>
-                  <Badge colorScheme="green">{dailyStats.totalAttended}</Badge>
-                </HStack>
-              </VStack>
-            </DrawerFooter>
           </DrawerContent>
         </Drawer>
 

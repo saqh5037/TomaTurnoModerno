@@ -199,6 +199,8 @@ export default function ManualTurnAssignment() {
   console.log('[ManualTurn] ========== COMPONENT RENDER ==========');
   const [formData, setFormData] = useState({
     patientName: '',
+    patientID: '',      // CI/Expediente del paciente (opcional)
+    workOrder: '',      // Número de orden de trabajo (opcional)
     age: '',
     gender: '',
     contactInfo: '',
@@ -337,6 +339,8 @@ export default function ManualTurnAssignment() {
         // Resetear formulario
         setFormData({
           patientName: '',
+          patientID: '',
+          workOrder: '',
           age: '',
           gender: '',
           contactInfo: '',
@@ -514,6 +518,35 @@ export default function ManualTurnAssignment() {
                         size="sm"
                       />
                     </FormControl>
+
+                    {/* Campos opcionales: ID Paciente y Orden de Trabajo */}
+                    <HStack spacing={3} width="100%">
+                      <FormControl>
+                        <FormLabel fontSize="sm" fontWeight="semibold" color="secondary.700">
+                          ID Paciente / Expediente
+                        </FormLabel>
+                        <Input
+                          name="patientID"
+                          value={formData.patientID}
+                          onChange={handleChange}
+                          placeholder="CI o expediente (opcional)"
+                          size="sm"
+                        />
+                      </FormControl>
+
+                      <FormControl>
+                        <FormLabel fontSize="sm" fontWeight="semibold" color="secondary.700">
+                          Orden de Trabajo (OT)
+                        </FormLabel>
+                        <Input
+                          name="workOrder"
+                          value={formData.workOrder}
+                          onChange={handleChange}
+                          placeholder="Número de OT (opcional)"
+                          size="sm"
+                        />
+                      </FormControl>
+                    </HStack>
 
                     <HStack spacing={3} width="100%">
                       <FormControl isRequired>

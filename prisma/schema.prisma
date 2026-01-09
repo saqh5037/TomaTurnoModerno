@@ -27,6 +27,7 @@ model User {
   sessions          Session[]
   turnRequests      TurnRequest[] @relation("UserTurnRequests")
   suggestedTurns    TurnRequest[] @relation("SuggestedTurnRequests")
+  holdingTurns      TurnRequest[] @relation("HoldingTurnRequests")
 
   @@index([isActive])
   @@index([status])
@@ -66,12 +67,17 @@ model TurnRequest {
   callCount        Int       @default(0)      // Contador de veces que se ha llamado al paciente
   isDeferred       Boolean   @default(false)  // Indica si es una toma diferida (regresado a cola)
   deferredAt       DateTime?                  // Timestamp de cuando se difirió (para ordenamiento correcto)
-  suggestedFor     Int?                       // ID del flebotomista al que se sugiere este paciente
-  suggestedAt      DateTime?                  // Timestamp de cuando se hizo la sugerencia (para timeout)
+  suggestedFor     Int?                       // ID del flebotomista al que se sugiere este paciente (DEPRECATED - usar holdingBy)
+  suggestedAt      DateTime?                  // Timestamp de cuando se hizo la sugerencia (DEPRECATED - usar holdingAt)
+  holdingBy        Int?                       // ID del flebotomista que tiene este turno en holding (reservado)
+  holdingAt        DateTime?                  // Timestamp de cuando se puso en holding (para timeout de 5 min)
   labsisOrderId    String?                    // NUEVO: ID de orden en sistema LABSIS para trazabilidad
   samplesGenerated Json?                      // NUEVO: Array de muestras físicas generadas con barcodes y correlativos
+  patientID        String?   @map("patient_id")   // CI/Expediente del paciente enviado por HIS
+  workOrder        String?   @map("work_order")   // Número de orden de trabajo (OT) enviado por HIS
   user             User?     @relation("UserTurnRequests", fields: [attendedBy], references: [id])
   suggestedUser    User?     @relation("SuggestedTurnRequests", fields: [suggestedFor], references: [id])
+  holdingUser      User?     @relation("HoldingTurnRequests", fields: [holdingBy], references: [id])
   cubicle          Cubicle?  @relation("TurnRequestToCubicle", fields: [cubicleId], references: [id])
 
   @@index([status])
@@ -87,6 +93,8 @@ model TurnRequest {
   @@index([deferredAt])
   @@index([suggestedFor])
   @@index([status, suggestedFor])
+  @@index([holdingBy])
+  @@index([status, holdingBy])
 }
 
 model Cubicle {
