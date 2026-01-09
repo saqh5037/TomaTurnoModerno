@@ -29,7 +29,8 @@ const ROLE_RESTRICTED_ROUTES = {
   '/statistics/daily': ['admin', 'Admin', 'Administrador', 'supervisor'],
   '/statistics/average-time': ['admin', 'Admin', 'Administrador', 'supervisor'],
   '/statistics/phlebotomists': ['admin', 'Admin', 'Administrador', 'supervisor'],
-  '/cubicles': ['admin', 'Admin', 'Administrador']
+  '/cubicles': ['admin', 'Admin', 'Administrador'],
+  '/admin/control-panel': ['admin', 'Admin', 'Administrador', 'supervisor']
 };
 
 // Rutas para flebotomistas (removimos /turns/manual de aquí)
