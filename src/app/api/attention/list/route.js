@@ -43,7 +43,6 @@ export async function GET(request) {
         AND ("holdingBy" IS NULL OR "holdingBy" = ${userIdNum})
       ORDER BY
         CASE WHEN "tipoAtencion" = 'Special' THEN 0 ELSE 1 END,
-        "isDeferred" ASC,
         COALESCE("deferredAt", "createdAt") ASC
     `;
 

@@ -25,6 +25,7 @@ export async function POST(req) {
         callCount: true,
         status: true,
         patientName: true,
+        tipoAtencion: true,  // Para filtrar por tipo al calcular deferredAt
         createdAt: true
       }
     });
@@ -46,19 +47,18 @@ export async function POST(req) {
       );
     }
 
-    // Calcular deferredAt: debe ser DESPUÉS del último paciente pendiente
-    // para que se vaya al final de la cola
-    const maxCreatedAt = await prisma.turnRequest.aggregate({
-      _max: {
-        createdAt: true
-      },
-      where: { status: "Pending" }
-    });
+    // Calcular deferredAt: debe ser DESPUÉS del último paciente pendiente DEL MISMO TIPO
+    // para que se vaya al final de su grupo (Special o General)
+    const maxTimeResult = await prisma.$queryRaw`
+      SELECT MAX(COALESCE("deferredAt", "createdAt")) as max_time
+      FROM "TurnRequest"
+      WHERE status = 'Pending' AND "tipoAtencion" = ${turn.tipoAtencion}
+    `;
 
-    // Si hay pacientes pendientes, defer después del último
+    // Si hay pacientes pendientes del mismo tipo, defer después del último
     // Si no hay, usar el createdAt del propio paciente
-    const baseTime = maxCreatedAt._max.createdAt || turn.createdAt;
-    const deferredAt = new Date(baseTime.getTime() + 1000); // +1 segundo
+    const baseTime = maxTimeResult[0]?.max_time || turn.createdAt;
+    const deferredAt = new Date(new Date(baseTime).getTime() + 1000); // +1 segundo
 
     // Actualizar el turno a estado diferido
     const now = new Date();
