@@ -111,8 +111,21 @@ export default function Attention() {
   const router = useRouter();
   const { logout } = useAuth();
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     console.log('[Attention] handleLogout called');
+    // Liberar holdings antes del logout
+    if (userId) {
+      try {
+        await fetch('/api/queue/releaseHolding', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId })
+        });
+        console.log('[Attention] Holdings liberados antes de logout');
+      } catch (e) {
+        console.error('[Attention] Error liberando holding:', e);
+      }
+    }
     logout();
     router.push('/login');
   };

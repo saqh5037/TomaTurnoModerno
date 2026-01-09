@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import jwt from "jsonwebtoken";
 import prisma from "../../../../../lib/prisma.js";
+import { releaseUserHoldings } from "@/lib/holdingUtils";
 
 // POST - Cerrar sesión y limpiar datos de sesión
 export async function POST(request) {
@@ -38,6 +39,12 @@ export async function POST(request) {
         expiresAt: { gt: new Date() }
       }
     });
+
+    // Liberar cualquier turno en holding del usuario
+    const releasedCount = await releaseUserHoldings(decodedToken.userId);
+    if (releasedCount > 0) {
+      console.log(`[Logout] Liberados ${releasedCount} turnos en holding del usuario ${decodedToken.userId}`);
+    }
 
     if (session) {
       // Limpiar el cubículo seleccionado y marcar como expirada

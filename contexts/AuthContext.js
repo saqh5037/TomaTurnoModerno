@@ -275,13 +275,30 @@ export const AuthProvider = ({ children }) => {
       }, 15 * 60 * 1000);
 
       // Logout a los 20 minutos
-      inactivityTimer = setTimeout(() => {
+      inactivityTimer = setTimeout(async () => {
         toast({
           title: 'Sesión cerrada',
           description: 'Tu sesión ha sido cerrada por inactividad',
           status: 'info',
           duration: 5000,
         });
+
+        // Liberar holdings antes de cerrar sesión
+        const userData = localStorage.getItem('userData');
+        if (userData) {
+          try {
+            const user = JSON.parse(userData);
+            await fetch('/api/queue/releaseHolding', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ userId: user.id })
+            });
+            console.log('[AuthContext] Holdings liberados por inactividad');
+          } catch (e) {
+            console.error('[AuthContext] Error liberando holdings por inactividad:', e);
+          }
+        }
+
         // Limpiar localStorage
         localStorage.removeItem('token');
         localStorage.removeItem('userData');
