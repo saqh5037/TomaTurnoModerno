@@ -31,36 +31,27 @@ export async function POST(request) {
       });
     }
 
-    // Buscar la sesión activa
-    const session = await prisma.session.findFirst({
-      where: {
-        token: token,
-        userId: decodedToken.userId,
-        expiresAt: { gt: new Date() }
-      }
-    });
-
     // Liberar cualquier turno en holding del usuario
     const releasedCount = await releaseUserHoldings(decodedToken.userId);
     if (releasedCount > 0) {
       console.log(`[Logout] Liberados ${releasedCount} turnos en holding del usuario ${decodedToken.userId}`);
     }
 
-    if (session) {
-      // Limpiar el cubículo seleccionado y marcar como expirada
-      await prisma.session.update({
-        where: { id: session.id },
-        data: {
-          selectedCubicleId: null,
-          expiresAt: new Date(), // Marcar como expirada inmediatamente
-          lastActivity: new Date()
-        }
-      });
+    // Limpiar TODAS las sesiones activas del usuario (no solo la del token actual)
+    // Esto asegura que el cubículo se libere aunque haya múltiples sesiones
+    const updateResult = await prisma.session.updateMany({
+      where: {
+        userId: decodedToken.userId,
+        expiresAt: { gt: new Date() }
+      },
+      data: {
+        selectedCubicleId: null,
+        expiresAt: new Date(), // Marcar como expirada inmediatamente
+        lastActivity: new Date()
+      }
+    });
 
-      console.log(`[Logout] Sesión ${session.id} cerrada para usuario ${decodedToken.userId}`);
-    } else {
-      console.log(`[Logout] No se encontró sesión activa para usuario ${decodedToken.userId}`);
-    }
+    console.log(`[Logout] ${updateResult.count} sesiones cerradas para usuario ${decodedToken.userId}`);
 
     return NextResponse.json({
       success: true,
