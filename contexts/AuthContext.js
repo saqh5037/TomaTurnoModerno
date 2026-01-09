@@ -283,19 +283,21 @@ export const AuthProvider = ({ children }) => {
           duration: 5000,
         });
 
-        // Liberar holdings antes de cerrar sesión
-        const userData = localStorage.getItem('userData');
-        if (userData) {
+        const token = localStorage.getItem('token');
+
+        // Llamar al endpoint de logout para liberar holdings Y cubículo
+        if (token) {
           try {
-            const user = JSON.parse(userData);
-            await fetch('/api/queue/releaseHolding', {
+            await fetch('/api/auth/logout', {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ userId: user.id })
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+              },
             });
-            console.log('[AuthContext] Holdings liberados por inactividad');
+            console.log('[AuthContext] Sesión cerrada en servidor por inactividad');
           } catch (e) {
-            console.error('[AuthContext] Error liberando holdings por inactividad:', e);
+            console.error('[AuthContext] Error cerrando sesión por inactividad:', e);
           }
         }
 
