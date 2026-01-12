@@ -52,6 +52,7 @@ export async function GET(request) {
     const search = searchParams.get('search');
     const priority = searchParams.get('priority'); // Special o General
     const showHolding = searchParams.get('showHolding'); // 'true' para mostrar solo holdings
+    const activeOnly = searchParams.get('activeOnly'); // 'true' para mostrar solo turnos activos sin filtro de fecha
 
     // Inicio del día actual
     const today = new Date();
@@ -59,15 +60,26 @@ export async function GET(request) {
     const now = new Date();
 
     // Construir condiciones de filtro
-    const where = {
-      createdAt: { gte: today }
-    };
+    const where = {};
 
-    // Filtro por estado
+    // Por defecto filtra por fecha de hoy, pero si activeOnly=true muestra todos los activos
+    if (activeOnly === 'true') {
+      // Solo turnos activos (Pending o In Progress) sin filtro de fecha
+      where.status = { in: ['Pending', 'In Progress'] };
+    } else {
+      // Filtro por fecha de hoy (comportamiento original)
+      where.createdAt = { gte: today };
+    }
+
+    // Filtro por estado (sobrescribe el filtro de activeOnly si se especifica)
     if (status) {
       if (status === 'Holding') {
         where.status = 'Pending';
         where.holdingBy = { not: null };
+      } else if (status === 'Calling') {
+        // Nuevo estado: siendo llamado (In Progress + isCalled = false)
+        where.status = 'In Progress';
+        where.isCalled = false;
       } else {
         where.status = status;
         if (status === 'Pending') {
@@ -112,7 +124,7 @@ export async function GET(request) {
     }
 
     // Obtener turnos con relaciones
-    const turns = await prisma.turnRequest.findMany({
+    const turnsRaw = await prisma.turnRequest.findMany({
       where,
       include: {
         cubicle: {
@@ -124,12 +136,27 @@ export async function GET(request) {
         holdingUser: {
           select: { id: true, name: true }
         }
-      },
-      orderBy: [
-        { status: 'asc' }, // Pending primero, luego In Progress, luego Attended
-        { tipoAtencion: 'desc' }, // Special primero
-        { createdAt: 'asc' }
-      ]
+      }
+    });
+
+    // Ordenar consistente con /api/queue/list:
+    // 1. Por estado (Pending primero, luego In Progress, luego otros)
+    // 2. Por tipoAtencion (Special primero)
+    // 3. Por COALESCE(deferredAt, createdAt) - tiempo efectivo de cola
+    const statusOrder = { 'Pending': 0, 'In Progress': 1, 'Attended': 2, 'Cancelled': 3 };
+    const turns = turnsRaw.sort((a, b) => {
+      // Primero por estado
+      const statusDiff = (statusOrder[a.status] ?? 4) - (statusOrder[b.status] ?? 4);
+      if (statusDiff !== 0) return statusDiff;
+
+      // Luego por tipo de atención (Special primero)
+      if (a.tipoAtencion === 'Special' && b.tipoAtencion !== 'Special') return -1;
+      if (b.tipoAtencion === 'Special' && a.tipoAtencion !== 'Special') return 1;
+
+      // Finalmente por tiempo efectivo de cola (COALESCE(deferredAt, createdAt))
+      const aTime = a.deferredAt || a.createdAt;
+      const bTime = b.deferredAt || b.createdAt;
+      return new Date(aTime) - new Date(bTime);
     });
 
     // Enriquecer datos con tiempos y alertas

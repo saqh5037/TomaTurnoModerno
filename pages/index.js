@@ -18,7 +18,8 @@ import {
   FaUserCircle,
   FaBook,
   FaHome,
-  FaStethoscope
+  FaStethoscope,
+  FaCog
 } from 'react-icons/fa';
 import { fadeInUp, slideInFromLeft, GlassCard, ModernContainer } from '../components/theme/ModernTheme';
 import { useRouter } from 'next/router';
@@ -447,6 +448,64 @@ const HomePage = memo(function HomePage() {
                 </VStack>
               </VStack>
             </GlassCard>
+
+            {/* Panel de Control - Solo Admin */}
+            {isAdmin && (
+              <GlassCard
+                p={8}
+                minW="280px"
+                maxW="340px"
+                flex="1"
+                cursor="pointer"
+                onClick={() => handleNavigation('/admin/control-panel')}
+                _hover={{
+                  transform: 'translateY(-10px)',
+                  boxShadow: '2xl',
+                  background: "rgba(255, 255, 255, 0.4)"
+                }}
+                transition="all 0.3s ease"
+                animation={`${fadeInUp} 1.8s ease-out`}
+                position="relative"
+                overflow="hidden"
+                border="2px solid rgba(139, 92, 246, 0.2)"
+              >
+                <Box
+                  position="absolute"
+                  top={0}
+                  left={0}
+                  right={0}
+                  height="5px"
+                  background="linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)"
+                  borderTopRadius="2xl"
+                />
+
+                <VStack spacing={6} align="center">
+                  <Box
+                    w={16}
+                    h={16}
+                    borderRadius="2xl"
+                    background="linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)"
+                    display="flex"
+                    alignItems="center"
+                    justifyContent="center"
+                    color="white"
+                    fontSize="3xl"
+                    boxShadow="xl"
+                  >
+                    <FaCog />
+                  </Box>
+
+                  <VStack spacing={3} textAlign="center">
+                    <Text fontWeight="bold" fontSize="xl" color="secondary.800">
+                      Panel de Control
+                    </Text>
+                    <Text fontSize="md" color="secondary.600">
+                      Monitoreo y control del sistema
+                    </Text>
+                  </VStack>
+                </VStack>
+              </GlassCard>
+            )}
 
           </Flex>
 

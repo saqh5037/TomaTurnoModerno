@@ -37,21 +37,15 @@ export async function POST(request) {
       console.log(`[Logout] Liberados ${releasedCount} turnos en holding del usuario ${decodedToken.userId}`);
     }
 
-    // Limpiar TODAS las sesiones activas del usuario (no solo la del token actual)
-    // Esto asegura que el cubículo se libere aunque haya múltiples sesiones
-    const updateResult = await prisma.session.updateMany({
+    // ELIMINAR todas las sesiones del usuario de la BD
+    // Esto evita acumulación de sesiones huérfanas y corrige el contador de usuarios en línea
+    const deleteResult = await prisma.session.deleteMany({
       where: {
-        userId: decodedToken.userId,
-        expiresAt: { gt: new Date() }
-      },
-      data: {
-        selectedCubicleId: null,
-        expiresAt: new Date(), // Marcar como expirada inmediatamente
-        lastActivity: new Date()
+        userId: decodedToken.userId
       }
     });
 
-    console.log(`[Logout] ${updateResult.count} sesiones cerradas para usuario ${decodedToken.userId}`);
+    console.log(`[Logout] ${deleteResult.count} sesiones ELIMINADAS de BD para usuario ${decodedToken.userId} (${decodedToken.username || 'unknown'})`);
 
     return NextResponse.json({
       success: true,

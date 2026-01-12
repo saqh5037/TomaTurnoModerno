@@ -45,7 +45,11 @@ import {
   Divider,
   Card,
   CardBody,
-  Icon
+  CardHeader,
+  Icon,
+  Grid,
+  GridItem,
+  Progress
 } from '@chakra-ui/react';
 import {
   FiRefreshCw,
@@ -60,7 +64,11 @@ import {
   FiEdit,
   FiTrash2,
   FiPlay,
-  FiPause
+  FiPause,
+  FiPhoneCall,
+  FiSquare,
+  FiActivity,
+  FiStar
 } from 'react-icons/fi';
 import { useAuth } from '../../contexts/AuthContext';
 import { useRouter } from 'next/router';
@@ -157,6 +165,8 @@ function AdminControlPanel() {
     try {
       const token = getToken();
       const params = new URLSearchParams();
+      // Por defecto mostrar solo turnos activos (sin filtro de fecha)
+      params.append('activeOnly', 'true');
       if (statusFilter) params.append('status', statusFilter);
       if (phlebotomistFilter) params.append('phlebotomistId', phlebotomistFilter);
       if (searchTerm) params.append('search', searchTerm);
@@ -182,14 +192,14 @@ function AdminControlPanel() {
     loadTurns();
   }, [loadDashboard, loadTurns]);
 
-  // Auto-refresh cada 5 segundos
+  // Auto-refresh cada 3 segundos (igual que monitoreo)
   useEffect(() => {
     if (!autoRefresh) return;
 
     const interval = setInterval(() => {
       loadDashboard();
       loadTurns();
-    }, 5000);
+    }, 3000);
 
     return () => clearInterval(interval);
   }, [autoRefresh, loadDashboard, loadTurns]);
@@ -214,10 +224,22 @@ function AdminControlPanel() {
     setActionLoading(true);
     try {
       const token = getToken();
-      const body = { turnId: selectedTurn.id };
+
+      // Determinar endpoint y body según el tipo de acción
+      let endpoint = `/api/admin/${actionType}`;
+      let body = { turnId: selectedTurn.id };
+
+      // Acciones especiales que usan APIs diferentes
+      if (actionType === 'defer-turn') {
+        endpoint = '/api/queue/defer';
+        body = { id: selectedTurn.id };
+      } else if (actionType === 'change-priority') {
+        body.newPriority = selectedTurn.isSpecial ? 'General' : 'Special';
+      }
+
       if (actionReason) body.reason = actionReason.trim();
 
-      const response = await fetch(`/api/admin/${actionType}`, {
+      const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -334,7 +356,9 @@ function AdminControlPanel() {
     'release-holding': 'Liberar Holding',
     'force-complete': 'Forzar Finalización',
     'cancel-turn': 'Cancelar Turno',
-    'return-to-queue': 'Regresar a Cola'
+    'return-to-queue': 'Regresar a Cola',
+    'change-priority': 'Cambiar Prioridad',
+    'defer-turn': 'Diferir Turno'
   };
 
   // Formatear tiempo
@@ -352,10 +376,20 @@ function AdminControlPanel() {
         <Container maxW="container.xl" py={6}>
           {/* Header */}
           <Flex justify="space-between" align="center" mb={6}>
-            <Box>
-              <Heading size="lg" color="gray.800">Panel de Control</Heading>
-              <Text color="gray.500">Gestión de turnos en tiempo real</Text>
-            </Box>
+            <HStack spacing={4}>
+              <IconButton
+                icon={<FiArrowLeft />}
+                aria-label="Volver"
+                variant="ghost"
+                size="lg"
+                onClick={() => router.push('/')}
+                _hover={{ bg: 'gray.100' }}
+              />
+              <Box>
+                <Heading size="lg" color="gray.800">Panel de Control</Heading>
+                <Text color="gray.500">Gestión de turnos en tiempo real</Text>
+              </Box>
+            </HStack>
             <HStack>
               <HStack>
                 <Text fontSize="sm" color="gray.500">Auto-refresh</Text>
@@ -394,74 +428,172 @@ function AdminControlPanel() {
             </Alert>
           )}
 
-          {/* Tarjetas de estadísticas */}
+          {/* Tarjetas de estadísticas EN TIEMPO REAL */}
           {dashboard && (
-            <SimpleGrid columns={{ base: 2, md: 3, lg: 6 }} spacing={4} mb={6}>
-              <StatCard
-                label="Total Hoy"
-                value={dashboard.summary.total}
-                icon={FiUsers}
-              />
-              <StatCard
-                label="En Espera"
-                value={dashboard.summary.pending}
-                color="yellow.500"
-                icon={FiClock}
-              />
-              <StatCard
-                label="En Holding"
-                value={dashboard.summary.holding}
-                color="orange.500"
-                icon={FiPause}
-              />
-              <StatCard
-                label="En Atención"
-                value={dashboard.summary.inProgress}
-                color="green.500"
-                icon={FiPlay}
-              />
-              <StatCard
-                label="Finalizados"
-                value={dashboard.summary.attended}
-                color="gray.500"
-                icon={FiCheckCircle}
-              />
-              <StatCard
-                label="Cancelados"
-                value={dashboard.summary.cancelled}
-                color="red.500"
-                icon={FiXCircle}
-              />
-            </SimpleGrid>
+            <>
+              <Text fontSize="sm" fontWeight="bold" color="gray.600" mb={2}>
+                Estado Actual (Tiempo Real)
+              </Text>
+              <SimpleGrid columns={{ base: 2, md: 4, lg: 7 }} spacing={3} mb={4}>
+                <StatCard
+                  label="En Espera"
+                  value={dashboard.realtime?.pendingCount ?? dashboard.summary.pending}
+                  color="yellow.500"
+                  icon={FiClock}
+                />
+                <StatCard
+                  label="En Holding"
+                  value={dashboard.realtime?.holdingCount ?? dashboard.summary.holding}
+                  color="orange.500"
+                  icon={FiPause}
+                />
+                <StatCard
+                  label="Llamando"
+                  value={dashboard.realtime?.inCallingCount ?? dashboard.summary.inCalling ?? 0}
+                  color="blue.500"
+                  icon={FiPhoneCall}
+                />
+                <StatCard
+                  label="En Atención"
+                  value={dashboard.realtime?.inProgressCount ?? dashboard.summary.inAttention ?? 0}
+                  color="green.500"
+                  icon={FiPlay}
+                />
+                <StatCard
+                  label="Total Activos"
+                  value={dashboard.realtime?.totalActive ?? (dashboard.summary.pending + dashboard.summary.holding + dashboard.summary.inProgress)}
+                  color="purple.500"
+                  icon={FiActivity}
+                />
+                <StatCard
+                  label="Finalizados Hoy"
+                  value={dashboard.summary.attended}
+                  color="gray.500"
+                  icon={FiCheckCircle}
+                />
+                <StatCard
+                  label="Cancelados"
+                  value={dashboard.summary.cancelled}
+                  color="red.500"
+                  icon={FiXCircle}
+                />
+              </SimpleGrid>
+            </>
           )}
 
-          {/* Tiempos promedio */}
+          {/* Tiempos promedio + Flebotomistas + Cubículos */}
           {dashboard && (
-            <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4} mb={6}>
+            <SimpleGrid columns={{ base: 1, lg: 3 }} spacing={4} mb={6}>
+              {/* Tiempos promedio */}
               <Card bg="white" shadow="sm">
-                <CardBody>
-                  <HStack justify="space-between">
-                    <Box>
-                      <Text fontSize="sm" color="gray.500">Tiempo promedio de espera</Text>
-                      <Text fontSize="2xl" fontWeight="bold" color="blue.600">
+                <CardHeader pb={2}>
+                  <Text fontWeight="bold" fontSize="sm" color="gray.600">Tiempos Promedio Hoy</Text>
+                </CardHeader>
+                <CardBody pt={0}>
+                  <VStack spacing={3} align="stretch">
+                    <HStack justify="space-between">
+                      <Text fontSize="sm" color="gray.500">Espera</Text>
+                      <Text fontSize="lg" fontWeight="bold" color="blue.600">
                         {dashboard.summary.avgWaitTime} min
                       </Text>
-                    </Box>
-                    <Icon as={FiClock} boxSize={8} color="blue.400" />
-                  </HStack>
-                </CardBody>
-              </Card>
-              <Card bg="white" shadow="sm">
-                <CardBody>
-                  <HStack justify="space-between">
-                    <Box>
-                      <Text fontSize="sm" color="gray.500">Tiempo promedio de atención</Text>
-                      <Text fontSize="2xl" fontWeight="bold" color="green.600">
+                    </HStack>
+                    <HStack justify="space-between">
+                      <Text fontSize="sm" color="gray.500">Atención</Text>
+                      <Text fontSize="lg" fontWeight="bold" color="green.600">
                         {dashboard.summary.avgAttentionTime} min
                       </Text>
-                    </Box>
-                    <Icon as={FiUser} boxSize={8} color="green.400" />
+                    </HStack>
+                  </VStack>
+                </CardBody>
+              </Card>
+
+              {/* Flebotomistas Activos */}
+              <Card bg="white" shadow="sm">
+                <CardHeader pb={2}>
+                  <HStack justify="space-between">
+                    <Text fontWeight="bold" fontSize="sm" color="gray.600">
+                      Flebotomistas en Servicio
+                    </Text>
+                    <Badge colorScheme="green">{dashboard.phlebotomistsCount || 0}</Badge>
                   </HStack>
+                </CardHeader>
+                <CardBody pt={0} maxH="200px" overflowY="auto">
+                  {dashboard.phlebotomists?.length > 0 ? (
+                    <VStack spacing={2} align="stretch">
+                      {dashboard.phlebotomists.map(p => (
+                        <HStack key={p.id} justify="space-between" p={2} bg="gray.50" borderRadius="md">
+                          <VStack align="start" spacing={0}>
+                            <Text fontSize="sm" fontWeight="medium">{p.name}</Text>
+                            <Text fontSize="xs" color="gray.500">{p.cubicleName}</Text>
+                          </VStack>
+                          <VStack align="end" spacing={0}>
+                            <Badge
+                              colorScheme={
+                                p.status === 'atendiendo' ? 'green' :
+                                p.status === 'llamando' ? 'blue' :
+                                p.status === 'con_holding' ? 'orange' : 'gray'
+                              }
+                              fontSize="xs"
+                            >
+                              {p.status === 'atendiendo' ? 'Atendiendo' :
+                               p.status === 'llamando' ? 'Llamando' :
+                               p.status === 'con_holding' ? 'Con Holding' : 'Disponible'}
+                            </Badge>
+                            {p.currentPatient && (
+                              <Text fontSize="xs" color="gray.600">#{p.currentTurnNumber}</Text>
+                            )}
+                          </VStack>
+                        </HStack>
+                      ))}
+                    </VStack>
+                  ) : (
+                    <Text fontSize="sm" color="gray.400" textAlign="center">
+                      No hay flebotomistas activos
+                    </Text>
+                  )}
+                </CardBody>
+              </Card>
+
+              {/* Estado de Cubículos */}
+              <Card bg="white" shadow="sm">
+                <CardHeader pb={2}>
+                  <HStack justify="space-between">
+                    <Text fontWeight="bold" fontSize="sm" color="gray.600">
+                      Cubículos
+                    </Text>
+                    <HStack spacing={2}>
+                      <Badge colorScheme="green">{dashboard.cubicles?.occupiedCount || 0} ocupados</Badge>
+                      <Badge colorScheme="gray">{dashboard.cubicles?.freeCount || 0} libres</Badge>
+                    </HStack>
+                  </HStack>
+                </CardHeader>
+                <CardBody pt={0}>
+                  <SimpleGrid columns={3} spacing={2}>
+                    {dashboard.cubicles?.all?.map(c => (
+                      <Box
+                        key={c.id}
+                        p={2}
+                        borderRadius="md"
+                        bg={c.status === 'atendiendo' ? 'green.100' :
+                            c.status === 'llamando' ? 'blue.100' :
+                            c.status === 'disponible' ? 'yellow.100' : 'gray.100'}
+                        borderWidth="1px"
+                        borderColor={c.status === 'atendiendo' ? 'green.300' :
+                                    c.status === 'llamando' ? 'blue.300' :
+                                    c.status === 'disponible' ? 'yellow.300' : 'gray.300'}
+                      >
+                        <Text fontSize="xs" fontWeight="bold">{c.name}</Text>
+                        <Text fontSize="xs" color="gray.600" noOfLines={1}>
+                          {c.phlebotomistName || '-'}
+                        </Text>
+                        {c.currentTurnNumber && (
+                          <Badge size="sm" colorScheme={c.status === 'atendiendo' ? 'green' : 'blue'}>
+                            #{c.currentTurnNumber}
+                          </Badge>
+                        )}
+                      </Box>
+                    ))}
+                  </SimpleGrid>
                 </CardBody>
               </Card>
             </SimpleGrid>
@@ -481,6 +613,7 @@ function AdminControlPanel() {
                   >
                     <option value="Pending">En Espera</option>
                     <option value="Holding">En Holding</option>
+                    <option value="Calling">Llamando</option>
                     <option value="In Progress">En Atención</option>
                     <option value="Attended">Finalizados</option>
                     <option value="Cancelled">Cancelados</option>
@@ -588,16 +721,17 @@ function AdminControlPanel() {
                           <Td>{formatTime(turn.waitTime)}</Td>
                           <Td>{formatTime(turn.attentionTime)}</Td>
                           <Td>
-                            <HStack spacing={1}>
+                            <HStack spacing={2} flexWrap="wrap">
                               {/* Liberar Holding */}
                               {turn.visualStatus === 'Holding' && (
                                 <Tooltip label="Liberar Holding">
                                   <IconButton
                                     icon={<FiUnlock />}
-                                    size="xs"
+                                    size="sm"
                                     colorScheme="orange"
-                                    variant="ghost"
+                                    variant="solid"
                                     onClick={() => openActionModal(turn, 'release-holding')}
+                                    aria-label="Liberar Holding"
                                   />
                                 </Tooltip>
                               )}
@@ -607,10 +741,39 @@ function AdminControlPanel() {
                                 <Tooltip label="Regresar a Cola">
                                   <IconButton
                                     icon={<FiArrowLeft />}
-                                    size="xs"
+                                    size="sm"
                                     colorScheme="blue"
-                                    variant="ghost"
+                                    variant="solid"
                                     onClick={() => openActionModal(turn, 'return-to-queue')}
+                                    aria-label="Regresar a Cola"
+                                  />
+                                </Tooltip>
+                              )}
+
+                              {/* Cambiar Prioridad (Pending o In Progress) */}
+                              {['Pending', 'In Progress'].includes(turn.status) && (
+                                <Tooltip label={turn.isSpecial ? "Quitar Prioridad" : "Hacer Prioritario"}>
+                                  <IconButton
+                                    icon={<FiStar />}
+                                    size="sm"
+                                    colorScheme="yellow"
+                                    variant={turn.isSpecial ? "solid" : "outline"}
+                                    onClick={() => openActionModal(turn, 'change-priority')}
+                                    aria-label="Cambiar Prioridad"
+                                  />
+                                </Tooltip>
+                              )}
+
+                              {/* Diferir turno (solo Pending sin holding) */}
+                              {turn.status === 'Pending' && !turn.holdingBy && (
+                                <Tooltip label="Diferir (enviar al final)">
+                                  <IconButton
+                                    icon={<FiClock />}
+                                    size="sm"
+                                    colorScheme="yellow"
+                                    variant="solid"
+                                    onClick={() => openActionModal(turn, 'defer-turn')}
+                                    aria-label="Diferir Turno"
                                   />
                                 </Tooltip>
                               )}
@@ -620,10 +783,11 @@ function AdminControlPanel() {
                                 <Tooltip label="Forzar Finalización">
                                   <IconButton
                                     icon={<FiCheckCircle />}
-                                    size="xs"
+                                    size="sm"
                                     colorScheme="green"
-                                    variant="ghost"
+                                    variant="solid"
                                     onClick={() => openActionModal(turn, 'force-complete')}
+                                    aria-label="Forzar Finalización"
                                   />
                                 </Tooltip>
                               )}
@@ -634,19 +798,21 @@ function AdminControlPanel() {
                                   <Tooltip label="Reasignar Cubículo">
                                     <IconButton
                                       icon={<FiEdit />}
-                                      size="xs"
+                                      size="sm"
                                       colorScheme="purple"
-                                      variant="ghost"
+                                      variant="outline"
                                       onClick={() => openReassignModal(turn, 'cubicle')}
+                                      aria-label="Reasignar Cubículo"
                                     />
                                   </Tooltip>
                                   <Tooltip label="Reasignar Flebotomista">
                                     <IconButton
                                       icon={<FiUser />}
-                                      size="xs"
+                                      size="sm"
                                       colorScheme="teal"
-                                      variant="ghost"
+                                      variant="outline"
                                       onClick={() => openReassignModal(turn, 'phlebotomist')}
+                                      aria-label="Reasignar Flebotomista"
                                     />
                                   </Tooltip>
                                 </>
@@ -657,10 +823,11 @@ function AdminControlPanel() {
                                 <Tooltip label="Cancelar Turno">
                                   <IconButton
                                     icon={<FiXCircle />}
-                                    size="xs"
+                                    size="sm"
                                     colorScheme="red"
-                                    variant="ghost"
+                                    variant="solid"
                                     onClick={() => openActionModal(turn, 'cancel-turn')}
+                                    aria-label="Cancelar Turno"
                                   />
                                 </Tooltip>
                               )}

@@ -51,8 +51,8 @@ export async function GET(request) {
     today.setHours(0, 0, 0, 0);
     const now = new Date();
 
-    // Contar turnos por estado (solo del día actual)
-    const [pending, inProgress, attended, cancelled, holding] = await Promise.all([
+    // Contar turnos por estado (solo del día actual para estadísticas)
+    const [pending, inProgressTotal, attended, cancelled, holding, inCalling, inAttention] = await Promise.all([
       // Pending (sin holding)
       prisma.turnRequest.count({
         where: {
@@ -61,25 +61,25 @@ export async function GET(request) {
           createdAt: { gte: today }
         }
       }),
-      // In Progress
+      // In Progress (total)
       prisma.turnRequest.count({
         where: {
           status: "In Progress",
           createdAt: { gte: today }
         }
       }),
-      // Attended (finalizados)
+      // Attended (finalizados HOY - por finishedAt, no createdAt)
       prisma.turnRequest.count({
         where: {
           status: "Attended",
-          createdAt: { gte: today }
+          finishedAt: { gte: today }
         }
       }),
-      // Cancelled
+      // Cancelled (cancelados HOY - por finishedAt, no createdAt)
       prisma.turnRequest.count({
         where: {
           status: "Cancelled",
-          createdAt: { gte: today }
+          finishedAt: { gte: today }
         }
       }),
       // En Holding
@@ -89,10 +89,167 @@ export async function GET(request) {
           holdingBy: { not: null },
           createdAt: { gte: today }
         }
+      }),
+      // In Calling (In Progress + isCalled = false) - siendo llamados
+      prisma.turnRequest.count({
+        where: {
+          status: "In Progress",
+          isCalled: false,
+          createdAt: { gte: today }
+        }
+      }),
+      // In Attention (In Progress + isCalled = true) - en atención real
+      prisma.turnRequest.count({
+        where: {
+          status: "In Progress",
+          isCalled: true,
+          createdAt: { gte: today }
+        }
       })
     ]);
 
-    const total = pending + inProgress + attended + cancelled + holding;
+    const total = pending + inProgressTotal + attended + cancelled + holding;
+
+    // ========== DATOS EN TIEMPO REAL (sin filtro de fecha) ==========
+    const [realtimePending, realtimeHolding, realtimeInCalling, realtimeInProgress] = await Promise.all([
+      // Pending activos (sin holding, sin filtro de fecha)
+      prisma.turnRequest.count({
+        where: {
+          status: "Pending",
+          holdingBy: null
+        }
+      }),
+      // En Holding activos
+      prisma.turnRequest.count({
+        where: {
+          status: "Pending",
+          holdingBy: { not: null }
+        }
+      }),
+      // Siendo llamados (In Progress + isCalled = false)
+      prisma.turnRequest.count({
+        where: {
+          status: "In Progress",
+          isCalled: false
+        }
+      }),
+      // En atención real (In Progress + isCalled = true)
+      prisma.turnRequest.count({
+        where: {
+          status: "In Progress",
+          isCalled: true
+        }
+      })
+    ]);
+
+    // ========== FLEBOTOMISTAS ACTIVOS ==========
+    const activeSessions = await prisma.session.findMany({
+      where: {
+        expiresAt: { gt: now },
+        selectedCubicleId: { not: null }
+      },
+      include: {
+        user: {
+          select: { id: true, name: true, role: true }
+        }
+      }
+    });
+
+    // Obtener cubículos de las sesiones activas
+    const activeCubicleIds = activeSessions
+      .map(s => s.selectedCubicleId)
+      .filter(id => id !== null);
+
+    const cubiclesData = await prisma.cubicle.findMany({
+      where: { isActive: true },
+      select: { id: true, name: true, type: true }
+    });
+
+    // Obtener turnos en progreso para cada flebotomista
+    const turnsInProgress = await prisma.turnRequest.findMany({
+      where: {
+        status: "In Progress",
+        attendedBy: { not: null }
+      },
+      select: {
+        id: true,
+        assignedTurn: true,
+        patientName: true,
+        attendedBy: true,
+        cubicleId: true,
+        isCalled: true
+      }
+    });
+
+    // Obtener turnos en holding
+    const turnsInHolding = await prisma.turnRequest.findMany({
+      where: {
+        status: "Pending",
+        holdingBy: { not: null }
+      },
+      select: {
+        id: true,
+        assignedTurn: true,
+        patientName: true,
+        holdingBy: true
+      }
+    });
+
+    // Construir lista de flebotomistas activos
+    const phlebotomists = activeSessions
+      .filter(s => s.user && ['flebotomista', 'Flebotomista'].includes(s.user.role))
+      .map(session => {
+        const cubicle = cubiclesData.find(c => c.id === session.selectedCubicleId);
+        const currentTurn = turnsInProgress.find(t => t.attendedBy === session.user.id);
+        const holdingTurn = turnsInHolding.find(t => t.holdingBy === session.user.id);
+
+        let status = 'disponible';
+        let currentPatient = null;
+        let currentTurnNumber = null;
+
+        if (currentTurn) {
+          status = currentTurn.isCalled ? 'atendiendo' : 'llamando';
+          currentPatient = currentTurn.patientName;
+          currentTurnNumber = currentTurn.assignedTurn;
+        } else if (holdingTurn) {
+          status = 'con_holding';
+          currentPatient = holdingTurn.patientName;
+          currentTurnNumber = holdingTurn.assignedTurn;
+        }
+
+        return {
+          id: session.user.id,
+          name: session.user.name,
+          cubicleId: session.selectedCubicleId,
+          cubicleName: cubicle?.name || 'Sin cubículo',
+          cubicleType: cubicle?.type || 'GENERAL',
+          status,
+          currentPatient,
+          currentTurnNumber,
+          lastActivity: session.lastActivity
+        };
+      });
+
+    // ========== ESTADO DE CUBÍCULOS ==========
+    const cubicles = cubiclesData.map(cubicle => {
+      const session = activeSessions.find(s => s.selectedCubicleId === cubicle.id);
+      const turn = turnsInProgress.find(t => t.cubicleId === cubicle.id);
+
+      return {
+        id: cubicle.id,
+        name: cubicle.name,
+        type: cubicle.type,
+        isOccupied: !!session,
+        phlebotomistId: session?.user?.id || null,
+        phlebotomistName: session?.user?.name || null,
+        currentPatient: turn?.patientName || null,
+        currentTurnNumber: turn?.assignedTurn || null,
+        status: turn ? (turn.isCalled ? 'atendiendo' : 'llamando') : (session ? 'disponible' : 'libre')
+      };
+    });
+
+    const occupiedCubicles = cubicles.filter(c => c.isOccupied);
+    const freeCubicles = cubicles.filter(c => !c.isOccupied);
 
     // Calcular tiempos promedio
     const avgTimes = await prisma.$queryRaw`
@@ -213,12 +370,34 @@ export async function GET(request) {
         summary: {
           total,
           pending,
-          inProgress,
+          inProgress: inProgressTotal,
+          inCalling,
+          inAttention,
           attended,
           cancelled,
           holding,
           avgWaitTime: parseFloat(avgWaitTime),
           avgAttentionTime: parseFloat(avgAttentionTime)
+        },
+        // Datos en tiempo real (sin filtro de fecha) - para espejo exacto de monitoreo
+        realtime: {
+          pendingCount: realtimePending,
+          holdingCount: realtimeHolding,
+          inCallingCount: realtimeInCalling,
+          inProgressCount: realtimeInProgress,
+          totalActive: realtimePending + realtimeHolding + realtimeInCalling + realtimeInProgress
+        },
+        // Flebotomistas activos con su estado
+        phlebotomists,
+        phlebotomistsCount: phlebotomists.length,
+        // Estado de cubículos
+        cubicles: {
+          all: cubicles,
+          occupied: occupiedCubicles,
+          free: freeCubicles,
+          occupiedCount: occupiedCubicles.length,
+          freeCount: freeCubicles.length,
+          totalCount: cubicles.length
         },
         alerts,
         alertsCount: alerts.length,

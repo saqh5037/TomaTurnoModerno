@@ -4,6 +4,16 @@ import { useToast } from '@chakra-ui/react';
 
 const AuthContext = createContext({});
 
+// Rutas que NO requieren autenticación - no redirigir desde estas
+const PUBLIC_ROUTES = [
+  '/login',
+  '/turns/queue',
+  '/turns/queue_video',
+  '/turns/queue-tv',
+  '/announce',
+  '/satisfaction-survey'
+];
+
 export const AuthProvider = ({ children }) => {
   console.log('[AuthContext] ========== PROVIDER RENDER ==========');
   const [user, setUser] = useState(null);
@@ -148,7 +158,8 @@ export const AuthProvider = ({ children }) => {
               localStorage.removeItem('userData');
               localStorage.removeItem('refreshToken');
               setUser(null);
-              if (router.pathname !== '/login') {
+              // NO redirigir si estamos en una ruta pública
+              if (!PUBLIC_ROUTES.includes(router.pathname)) {
                 router.push('/login');
               }
             }
@@ -311,8 +322,8 @@ export const AuthProvider = ({ children }) => {
         // Limpiar estado
         setUser(null);
 
-        // Redirigir al login
-        if (router.pathname !== '/login') {
+        // Redirigir al login (solo si no estamos en ruta pública)
+        if (!PUBLIC_ROUTES.includes(router.pathname)) {
           router.push('/login');
         }
       }, 20 * 60 * 1000);
@@ -349,7 +360,8 @@ export const AuthProvider = ({ children }) => {
       if (e.key === 'token' && !e.newValue) {
         // Token eliminado en otra pestaña (logout)
         setUser(null);
-        if (router.pathname !== '/login') {
+        // NO redirigir si estamos en una ruta pública
+        if (!PUBLIC_ROUTES.includes(router.pathname)) {
           router.push('/login');
         }
       } else if (e.key === 'userData' && e.newValue) {
