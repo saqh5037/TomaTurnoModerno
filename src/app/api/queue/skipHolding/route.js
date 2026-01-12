@@ -1,15 +1,28 @@
 import prisma from "@/lib/prisma";
 
 /**
+ * Transforma un turno agregando isSpecial derivado de tipoAtencion
+ * @param {Object|null} turn - El turno a transformar
+ * @returns {Object|null} El turno con isSpecial agregado
+ */
+function transformTurn(turn) {
+  if (!turn) return null;
+  return {
+    ...turn,
+    isSpecial: turn.tipoAtencion === "Special"
+  };
+}
+
+/**
  * POST /api/queue/skipHolding
  * Salta el turno actual en holding y asigna el siguiente disponible
  *
- * Body: { userId: number, currentTurnId: number }
+ * Body: { userId: number, currentTurnId: number, skippedTurnIds?: number[] }
  * Response: { success: boolean, skippedTurn: object, nextTurn: object }
  */
 export async function POST(request) {
   try {
-    const { userId, currentTurnId } = await request.json();
+    const { userId, currentTurnId, skippedTurnIds = [] } = await request.json();
 
     if (!userId) {
       return Response.json(
@@ -45,12 +58,18 @@ export async function POST(request) {
         }
       }
 
-      // 2. Buscar el siguiente turno disponible (excluyendo el que acabamos de saltar)
+      // 2. Buscar el siguiente turno disponible (excluyendo el actual Y los previamente saltados)
+      // Construir lista de IDs a excluir
+      const idsToExclude = [
+        ...(currentTurnId ? [parseInt(currentTurnId, 10)] : []),
+        ...(skippedTurnIds || []).map(id => parseInt(id, 10))
+      ].filter(id => !isNaN(id));
+
       const nextTurn = await tx.turnRequest.findFirst({
         where: {
           status: "Pending",
           holdingBy: null,
-          ...(currentTurnId ? { id: { not: parseInt(currentTurnId, 10) } } : {}),
+          ...(idsToExclude.length > 0 ? { id: { notIn: idsToExclude } } : {}),
         },
         orderBy: [
           { tipoAtencion: "desc" }, // Special primero
@@ -110,8 +129,8 @@ export async function POST(request) {
 
     return Response.json({
       success: true,
-      skippedTurn: result.skippedTurn,
-      nextTurn: result.nextTurn,
+      skippedTurn: transformTurn(result.skippedTurn),
+      nextTurn: transformTurn(result.nextTurn),
       cycleCompleted: result.cycleCompleted,
       message: result.cycleCompleted
         ? "No hay más pacientes, volviendo al anterior"

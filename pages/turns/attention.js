@@ -534,17 +534,26 @@ export default function Attention() {
       const response = await fetch("/api/queue/skipHolding", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, currentTurnId: turnId }),
+        body: JSON.stringify({
+          userId,
+          currentTurnId: turnId,
+          skippedTurnIds: Array.from(skippedTurns) // Enviar lista de turnos previamente saltados
+        }),
       });
 
       if (response.ok) {
         const data = await response.json();
 
         if (data.success && data.nextTurn) {
+          // Agregar el turno actual a la lista de saltados (para excluirlo en futuros skips)
+          setSkippedTurns(prev => new Set(prev).add(turnId));
+
           // Actualizar el turno en holding con el nuevo
           setHeldTurn(data.nextTurn);
 
           if (data.cycleCompleted) {
+            // Ciclo completado - limpiar la lista de saltados para permitir volver a empezar
+            setSkippedTurns(new Set());
             toast({
               title: "Ciclo completado",
               description: "No hay más pacientes, volviendo al anterior",
@@ -562,6 +571,8 @@ export default function Attention() {
             });
           }
         } else {
+          // No hay más turnos disponibles - limpiar saltados para permitir reintentar
+          setSkippedTurns(new Set());
           toast({
             title: "Sin más pacientes",
             description: "No hay más pacientes disponibles para saltar",
@@ -689,12 +700,9 @@ export default function Attention() {
           setHeldTurn(null);
         }
 
-        // Si este turno estaba saltado, quitarlo de la lista de saltados
-        setSkippedTurns(prev => {
-          const newSet = new Set(prev);
-          newSet.delete(turnId);
-          return newSet;
-        });
+        // Limpiar TODA la lista de saltados ya que el flebotomista está atendiendo
+        // Esto permite que al terminar, pueda ver nuevamente todos los pacientes
+        setSkippedTurns(new Set());
 
         // Actualizar las listas después del éxito
         const updatedTurns = await fetch("/api/attention/list");
