@@ -1,8 +1,12 @@
 import { NextResponse } from "next/server";
 import jwt from "jsonwebtoken";
 import prisma from "../../../../../lib/prisma.js";
+import { cleanupCubicles } from "@/lib/cubicleCleanup";
 
 const JWT_SECRET = process.env.NEXTAUTH_SECRET || process.env.JWT_SECRET;
+
+// Timeout de inactividad: 20 minutos
+const INACTIVITY_TIMEOUT_MS = 20 * 60 * 1000;
 
 if (!JWT_SECRET) {
   throw new Error('CRITICAL: NEXTAUTH_SECRET or JWT_SECRET environment variable must be configured');
@@ -74,22 +78,28 @@ export async function POST(request) {
       );
     }
 
+    // LIMPIEZA: Liberar cubículos de sesiones expiradas o inactivas antes de verificar
+    await cleanupCubicles();
+
     // PREVENCIÓN DE RACE CONDITION usando transacción con isolation level SERIALIZABLE
     // Esto garantiza que solo una transacción pueda leer y modificar el cubículo a la vez
     const cubicleIdInt = parseInt(cubicleId);
     const sessionIdInt = session.id;
     const userIdInt = decodedToken.userId;
+    const inactiveThreshold = new Date(Date.now() - INACTIVITY_TIMEOUT_MS);
 
     try {
       const result = await prisma.$transaction(async (tx) => {
         // Usar SELECT FOR UPDATE para bloquear las filas relevantes
         // Esto evita que otra transacción lea hasta que esta termine
+        // NUEVO: También validar que la sesión tenga actividad reciente (<20 min)
         const occupiedSessions = await tx.$queryRaw`
           SELECT s.id, u.name as "userName"
           FROM "Session" s
           INNER JOIN "User" u ON s."userId" = u.id
           WHERE s."selectedCubicleId" = ${cubicleIdInt}
             AND s."expiresAt" > NOW()
+            AND s."lastActivity" > ${inactiveThreshold}
             AND s."userId" != ${userIdInt}
             AND u.role != 'Admin'
           FOR UPDATE

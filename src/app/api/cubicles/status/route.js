@@ -1,11 +1,18 @@
 import { NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
+import { cleanupCubicles } from "@/lib/cubicleCleanup";
 
 const prisma = new PrismaClient();
+
+// Timeout de inactividad: 20 minutos
+const INACTIVITY_TIMEOUT_MS = 20 * 60 * 1000;
 
 // GET - Obtener estado de cubículos (ocupados/disponibles)
 export async function GET(request) {
   try {
+    // LIMPIEZA: Liberar cubículos de sesiones expiradas o inactivas (>20 min)
+    await cleanupCubicles();
+
     // Obtener todos los cubículos activos
     const cubicles = await prisma.cubicle.findMany({
       where: { isActive: true },
@@ -21,10 +28,12 @@ export async function GET(request) {
 
     // Obtener usuarios con sesiones activas que tengan un cubículo seleccionado
     const now = new Date();
+    const inactiveThreshold = new Date(Date.now() - INACTIVITY_TIMEOUT_MS);
 
     const activeSessions = await prisma.session.findMany({
       where: {
         expiresAt: { gt: now },
+        lastActivity: { gt: inactiveThreshold },  // Solo sesiones con actividad reciente (<20 min)
         selectedCubicleId: { not: null }  // Solo sesiones con cubículo seleccionado
       },
       select: {
