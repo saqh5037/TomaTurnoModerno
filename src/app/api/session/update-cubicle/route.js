@@ -74,55 +74,61 @@ export async function POST(request) {
       );
     }
 
-    // VALIDACIÓN DE RACE CONDITION: Verificar que el cubículo no está ocupado por otro usuario
-    const existingOccupation = await prisma.session.findFirst({
-      where: {
-        selectedCubicleId: parseInt(cubicleId),
-        expiresAt: { gt: new Date() },
-        userId: { not: decodedToken.userId }, // Excluir al usuario actual
-        user: { role: { not: 'Admin' } } // Solo contar flebotomistas (no admins)
-      },
-      include: {
-        user: { select: { name: true } }
-      }
-    });
+    // PREVENCIÓN DE RACE CONDITION usando transacción con isolation level SERIALIZABLE
+    // Esto garantiza que solo una transacción pueda leer y modificar el cubículo a la vez
+    const cubicleIdInt = parseInt(cubicleId);
+    const sessionIdInt = session.id;
+    const userIdInt = decodedToken.userId;
 
-    if (existingOccupation) {
-      return NextResponse.json({
-        success: false,
-        error: `El cubículo ya fue tomado por ${existingOccupation.user.name}`,
-        code: "CUBICLE_ALREADY_TAKEN"
-      }, { status: 409 }); // 409 Conflict
-    }
-
-    // Usar transacción para garantizar atomicidad y evitar race conditions
     try {
-      await prisma.$transaction(async (tx) => {
-        // Double-check dentro de la transacción
-        const stillOccupied = await tx.session.findFirst({
-          where: {
-            selectedCubicleId: parseInt(cubicleId),
-            expiresAt: { gt: new Date() },
-            userId: { not: decodedToken.userId },
-            user: { role: { not: 'Admin' } }
-          }
-        });
+      const result = await prisma.$transaction(async (tx) => {
+        // Usar SELECT FOR UPDATE para bloquear las filas relevantes
+        // Esto evita que otra transacción lea hasta que esta termine
+        const occupiedSessions = await tx.$queryRaw`
+          SELECT s.id, u.name as "userName"
+          FROM "Session" s
+          INNER JOIN "User" u ON s."userId" = u.id
+          WHERE s."selectedCubicleId" = ${cubicleIdInt}
+            AND s."expiresAt" > NOW()
+            AND s."userId" != ${userIdInt}
+            AND u.role != 'Admin'
+          FOR UPDATE
+        `;
 
-        if (stillOccupied) {
-          throw new Error("CUBICLE_TAKEN");
+        if (occupiedSessions && occupiedSessions.length > 0) {
+          // El cubículo está ocupado por otro usuario
+          return {
+            success: false,
+            occupiedBy: occupiedSessions[0].userName
+          };
         }
 
-        // Actualizar el cubículo seleccionado en la sesión
+        // El cubículo está disponible, asignarlo
         await tx.session.update({
-          where: { id: session.id },
+          where: { id: sessionIdInt },
           data: {
-            selectedCubicleId: parseInt(cubicleId),
+            selectedCubicleId: cubicleIdInt,
             lastActivity: new Date()
           }
         });
+
+        return { success: true };
+      }, {
+        isolationLevel: 'Serializable', // Máximo nivel de aislamiento
+        timeout: 10000 // 10 segundos de timeout
       });
+
+      if (!result.success) {
+        return NextResponse.json({
+          success: false,
+          error: `El cubículo ya fue tomado por ${result.occupiedBy}`,
+          code: "CUBICLE_ALREADY_TAKEN"
+        }, { status: 409 });
+      }
     } catch (txError) {
-      if (txError.message === "CUBICLE_TAKEN") {
+      // Manejar errores de serialización (cuando dos transacciones compiten)
+      if (txError.code === 'P2034' || txError.message?.includes('could not serialize')) {
+        // Error de serialización - el cubículo fue tomado por otro
         return NextResponse.json({
           success: false,
           error: "El cubículo fue tomado por otro usuario",

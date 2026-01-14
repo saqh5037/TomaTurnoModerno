@@ -47,18 +47,42 @@ export async function POST(req) {
       );
     }
 
-    // Calcular deferredAt: debe ser DESPUÉS del último paciente pendiente DEL MISMO TIPO
-    // para que se vaya al final de su grupo (Special o General)
-    const maxTimeResult = await prisma.$queryRaw`
-      SELECT MAX(COALESCE("deferredAt", "createdAt")) as max_time
+    // Calcular deferredAt: va 5 posiciones atrás dentro de su grupo (Special o General)
+    // Si hay menos de 5 pacientes del mismo tipo, va al final del grupo
+    const POSITIONS_BACK = 5;
+
+    // Obtener los turnos pendientes del mismo tipo, ordenados por posición en cola
+    const pendingTurns = await prisma.$queryRaw`
+      SELECT id, COALESCE("deferredAt", "createdAt") as effective_time
       FROM "TurnRequest"
-      WHERE status = 'Pending' AND "tipoAtencion" = ${turn.tipoAtencion}
+      WHERE status = 'Pending'
+        AND "tipoAtencion" = ${turn.tipoAtencion}
+        AND id != ${turn.id}
+      ORDER BY COALESCE("deferredAt", "createdAt") ASC
     `;
 
-    // Si hay pacientes pendientes del mismo tipo, defer después del último
-    // Si no hay, usar el createdAt del propio paciente
-    const baseTime = maxTimeResult[0]?.max_time || turn.createdAt;
-    const deferredAt = new Date(new Date(baseTime).getTime() + 1000); // +1 segundo
+    let deferredAt;
+    let newPosition;
+
+    if (pendingTurns.length >= POSITIONS_BACK) {
+      // Hay suficientes pacientes: ir 5 posiciones atrás
+      // Índice 4 = 5ta posición desde el frente, queremos insertarnos DESPUÉS de ella
+      const targetIndex = POSITIONS_BACK - 1;
+      const targetTurn = pendingTurns[targetIndex];
+      const targetTime = new Date(targetTurn.effective_time).getTime();
+
+      // Insertar justo después del target (1ms después)
+      deferredAt = new Date(targetTime + 1);
+      newPosition = POSITIONS_BACK + 1;
+    } else {
+      // Menos de 5 pacientes: ir al final del grupo
+      const lastTurn = pendingTurns[pendingTurns.length - 1];
+      const baseTime = lastTurn?.effective_time || turn.createdAt;
+      deferredAt = new Date(new Date(baseTime).getTime() + 1000);
+      newPosition = pendingTurns.length + 1;
+    }
+
+    console.log(`[Defer] ${turn.patientName} → posición ${newPosition} (${pendingTurns.length} pendientes del tipo ${turn.tipoAtencion})`);
 
     // Actualizar el turno a estado diferido
     const now = new Date();
