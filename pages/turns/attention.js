@@ -113,7 +113,21 @@ export default function Attention() {
 
   const handleLogout = async () => {
     console.log('[Attention] handleLogout called');
-    // Liberar holdings antes del logout
+
+    // NUEVO: Verificar si tiene paciente en atención y pedir confirmación
+    if (activePatient) {
+      const confirmed = window.confirm(
+        `¿Estás seguro que deseas finalizar sesión?\n\n` +
+        `Tienes un paciente en atención: ${activePatient.patientName}\n\n` +
+        `Al cerrar sesión, el paciente quedará asignado a ti y podrás continuar cuando vuelvas a entrar.`
+      );
+      if (!confirmed) {
+        console.log('[Attention] Logout cancelado por el usuario');
+        return;
+      }
+    }
+
+    // Liberar holdings antes del logout (NO libera pacientes "In Progress")
     if (userId) {
       try {
         await fetch('/api/queue/releaseHolding', {
@@ -144,6 +158,7 @@ export default function Attention() {
   const [heldTurn, setHeldTurn] = useState(null); // Turno en holding asignado automáticamente
   const [isLoadingHolding, setIsLoadingHolding] = useState(true); // Estado de carga del holding
   const holdingAssignedRef = useRef(false); // Ref para evitar múltiples asignaciones de holding
+  const [initialFetchDone, setInitialFetchDone] = useState(false); // NUEVO: Para esperar la primera carga antes de asignar holding
 
   console.log('[Attention] State - mounted:', mounted, 'userId:', userId, 'selectedCubicle:', selectedCubicle);
   console.log('[Attention] pendingTurns:', pendingTurns.length, 'inProgressTurns:', inProgressTurns.length);
@@ -296,16 +311,25 @@ export default function Attention() {
       setInProgressTurns(data.inProgressTurns || []);
 
       // Si el usuario tiene un paciente en "In Progress", establecerlo como activePatient
-      // Esto es importante para recuperar el estado después de recargar la página
+      // Esto es importante para recuperar el estado después de recargar la página o re-login
       if (userId && data.inProgressTurns) {
         const myInProgressTurn = data.inProgressTurns.find(t => t.attendedBy === userId);
-        if (myInProgressTurn && !activePatient) {
-          console.log("[Attention] Recuperando paciente en atención:", myInProgressTurn.id, myInProgressTurn.patientName);
-          setActivePatient(myInProgressTurn);
+        if (myInProgressTurn) {
+          // Siempre recuperar si hay un paciente "In Progress" del usuario
+          if (!activePatient || activePatient.id !== myInProgressTurn.id) {
+            console.log("[Attention] Recuperando paciente en atención:", myInProgressTurn.id, myInProgressTurn.patientName);
+            setActivePatient(myInProgressTurn);
+          }
           // Marcar que ya tenemos paciente activo, no necesitamos holding
           holdingAssignedRef.current = true;
           setIsLoadingHolding(false);
         }
+      }
+
+      // NUEVO: Marcar que la carga inicial terminó (para que assignHolding pueda ejecutarse)
+      if (!initialFetchDone) {
+        console.log("[Attention] Primera carga de turnos completada");
+        setInitialFetchDone(true);
       }
     } catch (error) {
       console.error("Error al cargar los turnos:", error);
@@ -317,8 +341,12 @@ export default function Attention() {
         isClosable: true,
         position: "top",
       });
+      // NUEVO: Aún marcar como completado para no bloquear assignHolding
+      if (!initialFetchDone) {
+        setInitialFetchDone(true);
+      }
     }
-  }, [toast, userId, activePatient]);
+  }, [toast, userId, activePatient, initialFetchDone]);
 
   // Función para asignar holding automáticamente
   const assignHolding = useCallback(async (forceAssign = false) => {
@@ -381,12 +409,15 @@ export default function Attention() {
   }, [mounted, fetchTurns]);
 
   // Asignar holding automáticamente al montar (solo una vez)
+  // IMPORTANTE: Esperar a que fetchTurns complete (initialFetchDone) antes de asignar holding
+  // Esto previene race condition donde se asigna un nuevo paciente antes de recuperar el existente
   useEffect(() => {
-    if (mounted && userId && !activePatient && !holdingAssignedRef.current) {
-      // Asignar holding inicial
+    if (mounted && userId && initialFetchDone && !activePatient && !holdingAssignedRef.current) {
+      // Asignar holding inicial solo después de verificar que no hay paciente "In Progress"
+      console.log("[Attention] initialFetchDone=true, no activePatient, asignando holding...");
       assignHolding();
     }
-  }, [mounted, userId, activePatient]); // NO incluir assignHolding en dependencias
+  }, [mounted, userId, activePatient, initialFetchDone]); // NO incluir assignHolding en dependencias
 
   // Liberar holding cuando el usuario sale de la página o cierra la pestaña
   useEffect(() => {
