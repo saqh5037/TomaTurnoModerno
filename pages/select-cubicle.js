@@ -23,31 +23,32 @@ export default function SelectCubicle() {
     }
   }, []);
 
+  // Función para obtener cubículos (reutilizable)
+  const fetchCubicles = async () => {
+    try {
+      const response = await fetch('/api/cubicles/status');
+      const result = await response.json();
+      if (result.success) {
+        setCubicles(result.data);
+      } else {
+        throw new Error(result.error);
+      }
+      setLoading(false);
+    } catch (error) {
+      console.error("Error al obtener cubículos:", error);
+      toast({
+        title: "Error",
+        description: "Error al cargar los cubículos.",
+        status: "error",
+        duration: 5000,
+        isClosable: true,
+      });
+      setLoading(false);
+    }
+  };
+
   // Obtén la lista de cubículos con estado de ocupación desde la API
   useEffect(() => {
-    const fetchCubicles = async () => {
-      try {
-        const response = await fetch('/api/cubicles/status');
-        const result = await response.json();
-        if (result.success) {
-          setCubicles(result.data);
-        } else {
-          throw new Error(result.error);
-        }
-        setLoading(false);
-      } catch (error) {
-        console.error("Error al obtener cubículos:", error);
-        toast({
-          title: "Error",
-          description: "Error al cargar los cubículos.",
-          status: "error",
-          duration: 5000,
-          isClosable: true,
-        });
-        setLoading(false);
-      }
-    };
-
     fetchCubicles();
     // Refrescar cada 5 segundos
     const interval = setInterval(fetchCubicles, 5000);
@@ -116,6 +117,22 @@ export default function SelectCubicle() {
       });
 
       const result = await response.json();
+
+      // Manejar error 409 - Cubículo ya tomado por otro usuario (race condition)
+      if (response.status === 409 || result.code === "CUBICLE_ALREADY_TAKEN") {
+        // Refrescar la lista de cubículos para mostrar el estado actualizado
+        await fetchCubicles();
+        // Limpiar selección actual
+        setCubicle("");
+        toast({
+          title: "Cubículo no disponible",
+          description: result.error || "El cubículo fue tomado por otro usuario. Por favor selecciona otro.",
+          status: "warning",
+          duration: 5000,
+          isClosable: true,
+        });
+        return;
+      }
 
       if (!response.ok || !result.success) {
         throw new Error(result.error || "Error al actualizar cubículo");
