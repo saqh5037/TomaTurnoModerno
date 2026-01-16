@@ -75,6 +75,7 @@ model TurnRequest {
   samplesGenerated Json?                      // NUEVO: Array de muestras físicas generadas con barcodes y correlativos
   patientID        String?   @map("patient_id")   // CI/Expediente del paciente enviado por HIS
   workOrder        String?   @map("work_order")   // Número de orden de trabajo (OT) enviado por HIS
+  codigoAtencion   String?   @map("codigo_atencion")  // Código del departamento de laboratorio (KAB-7378)
   user             User?     @relation("UserTurnRequests", fields: [attendedBy], references: [id])
   suggestedUser    User?     @relation("SuggestedTurnRequests", fields: [suggestedFor], references: [id])
   holdingUser      User?     @relation("HoldingTurnRequests", fields: [holdingBy], references: [id])

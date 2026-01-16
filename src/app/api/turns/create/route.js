@@ -2,6 +2,7 @@ import prisma from '@/lib/prisma';
 import { z } from 'zod';
 import { calculateTotalTubes, TUBE_TYPES } from '@/lib/tubesCatalog';
 import { processStudiesComplete } from '@/lib/studiesProcessor';
+import { getMappingByLabsisCode } from '@/lib/labsisTubeMapping';
 import DOMPurify from 'isomorphic-dompurify';
 
 // Generar array de IDs de tubos válidos desde el catálogo actualizado (43 tipos INER)
@@ -9,11 +10,13 @@ const validTubeTypes = TUBE_TYPES.map(t => t.id);
 
 // Esquema de validación con Zod
 
-// Schema para TubeDetail (formato simple)
+// Schema para TubeDetail (acepta formato LABSIS con containerCode o formato INER con type)
 const TubeDetailSchema = z.object({
-  type: z.enum(validTubeTypes),
-  quantity: z.number().int().min(1).max(10),
-  sampleType: z.string().max(50).optional().nullable()  // Tipo de muestra de LABSIS (ej: Suero, SangreT, Plasma)
+  type: z.string().max(20).optional(),              // ID INER (ej: "mor", "rojo") - opcional si viene containerCode
+  containerCode: z.string().max(20).optional(),     // Código LABSIS (ej: "MOR", "ROJO") - KAB-7378
+  containerType: z.string().max(100).optional(),    // Nombre completo LABSIS (ej: "TUBO TAPA LILA") - KAB-7378
+  sampleType: z.string().max(50).optional().nullable(),  // Tipo de muestra (ej: Suero, SangreT, Plasma)
+  quantity: z.number().int().min(1).max(10)
 });
 
 // Schema para Container (información de contenedor de LABSIS)
@@ -85,7 +88,9 @@ const TurnSchema = z.object({
 
   // NUEVOS CAMPOS HIS (expediente y orden de trabajo)
   patientID: z.string().max(50).optional(),           // CI/Expediente del paciente
-  workOrder: z.string().max(50).optional()            // Número de orden de trabajo (OT)
+  workOrder: z.string().max(50).optional(),           // Número de orden de trabajo (OT) - minúscula
+  WorkOrder: z.string().max(50).optional(),           // Número de orden de trabajo (OT) - mayúscula (KAB-7378)
+  codigoAtencion: z.string().max(50).optional()       // Código departamento laboratorio (KAB-7378)
 });
 
 // API para crear turnos manuales con validación Zod y soporte UTF-8
@@ -160,11 +165,28 @@ export async function POST(req) {
     let finalTubesRequired = validatedData.tubesRequired || 0;
     let finalTubesDetails = validatedData.tubesDetails || null;
 
-    // Si se enviaron tubesDetails explícitos, usarlos (prioridad manual)
+    // Si se enviaron tubesDetails explícitos, procesarlos (prioridad manual)
     if (validatedData.tubesDetails && validatedData.tubesDetails.length > 0) {
-      finalTubesRequired = calculateTotalTubes(validatedData.tubesDetails);
-      finalTubesDetails = validatedData.tubesDetails;
-      console.log("Usando tubesDetails enviados manualmente");
+      // KAB-7378: Procesar containerCode → type si viene formato LABSIS
+      finalTubesDetails = validatedData.tubesDetails.map(tube => {
+        // Si viene containerCode pero no type, mapear usando labsisTubeMapping
+        if (tube.containerCode && !tube.type) {
+          const mapping = getMappingByLabsisCode(tube.containerCode);
+          const mappedType = mapping ? mapping.inerId : tube.containerCode.toLowerCase();
+          console.log(`[KAB-7378] Mapeando containerCode "${tube.containerCode}" → type "${mappedType}"`);
+          return {
+            type: mappedType,
+            containerCode: tube.containerCode,      // Preservar código original
+            containerType: tube.containerType,      // Preservar nombre original
+            sampleType: tube.sampleType,
+            quantity: tube.quantity
+          };
+        }
+        // Si ya viene con type, usar tal cual
+        return tube;
+      });
+      finalTubesRequired = calculateTotalTubes(finalTubesDetails);
+      console.log("Usando tubesDetails enviados manualmente (procesados)");
     }
     // Si NO se enviaron tubesDetails pero se procesaron estudios, usar los generados
     else if (processedData.tubesDetails && processedData.tubesDetails.length > 0) {
@@ -224,7 +246,10 @@ export async function POST(req) {
 
       // NUEVOS CAMPOS HIS (expediente y orden de trabajo)
       patientID: validatedData.patientID || null,
-      workOrder: validatedData.workOrder || null
+      // KAB-7378: Aceptar tanto WorkOrder (mayúscula) como workOrder (minúscula)
+      workOrder: validatedData.WorkOrder || validatedData.workOrder || null,
+      // KAB-7378: Código del departamento de laboratorio
+      codigoAtencion: validatedData.codigoAtencion || null
     };
 
     console.log("Datos a insertar en Prisma:", {
