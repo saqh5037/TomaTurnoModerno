@@ -2332,10 +2332,8 @@ export default function Attention() {
                                   boxShadow="md"
                                 />
                                 <VStack align="start" spacing={0}>
+                                  {/* KAB-7378: Solo mostrar containerType (tube.name), quitar color */}
                                   <Text fontSize="sm" fontWeight="bold" color="gray.800">
-                                    {tube.color}
-                                  </Text>
-                                  <Text fontSize="xs" color="gray.600">
                                     {tube.name}
                                   </Text>
                                   {tube.sampleType && (
