@@ -80,7 +80,8 @@ const TurnSchema = z.object({
   tubesDetails: z.array(TubeDetailSchema).optional(),  // Array de { type, quantity }
   observations: z.string().max(500).optional(),
   clinicalInfo: z.string().max(1000).optional(),
-  tipoAtencion: z.enum(['General', 'Special']).default('General'),
+  // KAB-7378: Aceptar tipoAtencion en inglés o español
+  tipoAtencion: z.enum(['General', 'Special', 'Especial', 'general', 'special', 'especial']).default('General'),
 
   // NUEVOS CAMPOS LABSIS
   labsisOrderId: z.string().max(50).optional(),       // ID de orden en LABSIS
@@ -237,7 +238,8 @@ export async function POST(req) {
       tubesDetails: finalTubesDetails,
       observations: validatedData.observations ? DOMPurify.sanitize(validatedData.observations) : null,
       clinicalInfo: validatedData.clinicalInfo ? DOMPurify.sanitize(validatedData.clinicalInfo) : null,
-      tipoAtencion: validatedData.tipoAtencion,
+      // KAB-7378: Normalizar tipoAtencion (Especial/especial → Special)
+      tipoAtencion: ['Especial', 'especial', 'special'].includes(validatedData.tipoAtencion) ? 'Special' : 'General',
       status: "Pending",
 
       // NUEVOS CAMPOS LABSIS
