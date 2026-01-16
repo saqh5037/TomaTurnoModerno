@@ -1316,8 +1316,8 @@ export default function Attention() {
             <Text fontSize={{ base: "2xl", sm: "3xl", md: "4xl" }} fontWeight="semibold" color="gray.800">
               {patient.patientName}
             </Text>
-            {/* Información de expediente y orden de trabajo */}
-            {(patient.patientID || patient.workOrder) && (
+            {/* Información de expediente, orden de trabajo y tipo de atención */}
+            {(patient.patientID || patient.workOrder || patient.tipoAtencion || patient.codigoAtencion) && (
               <HStack justify="center" spacing={4} mt={2} flexWrap="wrap">
                 {patient.patientID && (
                   <Badge colorScheme="purple" fontSize="sm" px={2} py={1}>
@@ -1327,6 +1327,23 @@ export default function Attention() {
                 {patient.workOrder && (
                   <Badge colorScheme="teal" fontSize="sm" px={2} py={1}>
                     OT: {patient.workOrder}
+                  </Badge>
+                )}
+                {/* KAB-7378: Mostrar tipo de atención */}
+                {patient.tipoAtencion && (
+                  <Badge
+                    colorScheme={patient.tipoAtencion === "Special" ? "orange" : "blue"}
+                    fontSize="sm"
+                    px={2}
+                    py={1}
+                  >
+                    {patient.tipoAtencion === "Special" ? "Especial" : "General"}
+                  </Badge>
+                )}
+                {/* KAB-7378: Mostrar código de atención */}
+                {patient.codigoAtencion && (
+                  <Badge colorScheme="cyan" fontSize="sm" px={2} py={1}>
+                    {patient.codigoAtencion}
                   </Badge>
                 )}
               </HStack>
@@ -2202,6 +2219,33 @@ export default function Attention() {
                           <Flex justify="space-between">
                             <Text fontWeight="semibold">Contacto:</Text>
                             <Text>{selectedPatientDetails.contactInfo}</Text>
+                          </Flex>
+                        </>
+                      )}
+                      {/* KAB-7378: Tipo de Atención */}
+                      {selectedPatientDetails.tipoAtencion && (
+                        <>
+                          <Divider />
+                          <Flex justify="space-between" align="center">
+                            <Text fontWeight="semibold">Tipo de Atención:</Text>
+                            <Badge
+                              colorScheme={selectedPatientDetails.tipoAtencion === "Special" ? "orange" : "blue"}
+                              fontSize="sm"
+                            >
+                              {selectedPatientDetails.tipoAtencion === "Special" ? "Especial" : "General"}
+                            </Badge>
+                          </Flex>
+                        </>
+                      )}
+                      {/* KAB-7378: Código de Atención */}
+                      {selectedPatientDetails.codigoAtencion && (
+                        <>
+                          <Divider />
+                          <Flex justify="space-between" align="center">
+                            <Text fontWeight="semibold">Código de Atención:</Text>
+                            <Badge colorScheme="cyan" fontSize="sm">
+                              {selectedPatientDetails.codigoAtencion}
+                            </Badge>
                           </Flex>
                         </>
                       )}

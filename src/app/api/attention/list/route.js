@@ -37,7 +37,8 @@ export async function GET(request) {
         observations,
         "clinicalInfo",
         patient_id as "patientID",
-        work_order as "workOrder"
+        work_order as "workOrder",
+        codigo_atencion as "codigoAtencion"
       FROM "TurnRequest"
       WHERE status = 'Pending'
         AND ("holdingBy" IS NULL OR "holdingBy" = ${userIdNum})
@@ -67,6 +68,7 @@ export async function GET(request) {
         clinicalInfo: true,
         patientID: true,  // CI/Expediente del paciente
         workOrder: true,  // Número de orden de trabajo
+        codigoAtencion: true, // KAB-7378: Código departamento laboratorio
         attendedBy: true, // Para identificar quién está atendiendo
         cubicleId: true, // Para restaurar el cubículo
         cubicle: {
@@ -104,6 +106,8 @@ export async function GET(request) {
           studies: turn.studies,
           assignedTurn: turn.assignedTurn,
           isSpecial: turn.tipoAtencion === "Special",
+          tipoAtencion: turn.tipoAtencion,  // KAB-7378: Tipo de atención literal
+          codigoAtencion: turn.codigoAtencion,  // KAB-7378: Código departamento
           isDeferred: turn.isDeferred,
           callCount: turn.callCount,
           // Campos de holding (nuevo sistema)
@@ -128,6 +132,8 @@ export async function GET(request) {
           studies: turn.studies,
           assignedTurn: turn.assignedTurn,
           isSpecial: turn.tipoAtencion === "Special",
+          tipoAtencion: turn.tipoAtencion,  // KAB-7378: Tipo de atención literal
+          codigoAtencion: turn.codigoAtencion,  // KAB-7378: Código departamento
           isCalled: turn.isCalled,
           isDeferred: turn.isDeferred,
           callCount: turn.callCount,
