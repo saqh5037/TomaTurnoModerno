@@ -1294,20 +1294,31 @@ export default function Attention() {
           </Badge>
         )}
 
-        {/* Badge Prioritario - superior derecha */}
+        {/* Badge Prioritario - superior derecha con código de atención */}
         {patient.isSpecial && (
-          <Badge
+          <VStack
             position="absolute"
             top={4}
             right={4}
-            colorScheme="orange"
-            fontSize="sm"
-            px={3}
-            py={1}
+            spacing={1}
+            align="flex-end"
           >
-            <FaWheelchair style={{ marginRight: '4px', display: 'inline' }} />
-            PRIORITARIO
-          </Badge>
+            <Badge
+              colorScheme="orange"
+              fontSize="sm"
+              px={3}
+              py={1}
+            >
+              <FaWheelchair style={{ marginRight: '4px', display: 'inline' }} />
+              PRIORITARIO
+            </Badge>
+            {/* KAB-7378: Mostrar código de atención debajo de PRIORITARIO */}
+            {patient.codigoAtencion && (
+              <Badge colorScheme="red" fontSize="xs" px={2} py={0.5}>
+                {patient.codigoAtencion}
+              </Badge>
+            )}
+          </VStack>
         )}
 
         <VStack spacing={{ base: 4, md: 6 }} align="center" h="full" justify="center">
@@ -1316,8 +1327,8 @@ export default function Attention() {
             <Text fontSize={{ base: "2xl", sm: "3xl", md: "4xl" }} fontWeight="semibold" color="gray.800">
               {patient.patientName}
             </Text>
-            {/* Información de expediente, orden de trabajo y tipo de atención */}
-            {(patient.patientID || patient.workOrder || patient.tipoAtencion || patient.codigoAtencion) && (
+            {/* Información de expediente y orden de trabajo */}
+            {(patient.patientID || patient.workOrder) && (
               <HStack justify="center" spacing={4} mt={2} flexWrap="wrap">
                 {patient.patientID && (
                   <Badge colorScheme="purple" fontSize="sm" px={2} py={1}>
@@ -1327,23 +1338,6 @@ export default function Attention() {
                 {patient.workOrder && (
                   <Badge colorScheme="teal" fontSize="sm" px={2} py={1}>
                     OT: {patient.workOrder}
-                  </Badge>
-                )}
-                {/* KAB-7378: Mostrar tipo de atención */}
-                {patient.tipoAtencion && (
-                  <Badge
-                    colorScheme={patient.tipoAtencion === "Special" ? "orange" : "blue"}
-                    fontSize="sm"
-                    px={2}
-                    py={1}
-                  >
-                    {patient.tipoAtencion === "Special" ? "Especial" : "General"}
-                  </Badge>
-                )}
-                {/* KAB-7378: Mostrar código de atención */}
-                {patient.codigoAtencion && (
-                  <Badge colorScheme="cyan" fontSize="sm" px={2} py={1}>
-                    {patient.codigoAtencion}
                   </Badge>
                 )}
               </HStack>
@@ -2222,28 +2216,25 @@ export default function Attention() {
                           </Flex>
                         </>
                       )}
-                      {/* KAB-7378: Tipo de Atención */}
-                      {selectedPatientDetails.tipoAtencion && (
+                      {/* KAB-7378: Mostrar Prioritario si es Special */}
+                      {selectedPatientDetails.isSpecial && (
                         <>
                           <Divider />
                           <Flex justify="space-between" align="center">
-                            <Text fontWeight="semibold">Tipo de Atención:</Text>
-                            <Badge
-                              colorScheme={selectedPatientDetails.tipoAtencion === "Special" ? "orange" : "blue"}
-                              fontSize="sm"
-                            >
-                              {selectedPatientDetails.tipoAtencion === "Special" ? "Especial" : "General"}
+                            <Text fontWeight="semibold">Atención:</Text>
+                            <Badge colorScheme="orange" fontSize="sm">
+                              PRIORITARIO
                             </Badge>
                           </Flex>
                         </>
                       )}
-                      {/* KAB-7378: Código de Atención */}
-                      {selectedPatientDetails.codigoAtencion && (
+                      {/* KAB-7378: Código de Atención (solo si es prioritario) */}
+                      {selectedPatientDetails.isSpecial && selectedPatientDetails.codigoAtencion && (
                         <>
                           <Divider />
                           <Flex justify="space-between" align="center">
-                            <Text fontWeight="semibold">Código de Atención:</Text>
-                            <Badge colorScheme="cyan" fontSize="sm">
+                            <Text fontWeight="semibold">Código:</Text>
+                            <Badge colorScheme="red" fontSize="sm">
                               {selectedPatientDetails.codigoAtencion}
                             </Badge>
                           </Flex>
