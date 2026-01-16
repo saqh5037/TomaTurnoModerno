@@ -425,9 +425,9 @@ const Queue = memo(function Queue() {
                 {/* Contenido Principal - DOS COLUMNAS */}
                 <Flex flex="1" overflow="hidden" p={3} gap={3}>
 
-                    {/* COLUMNA IZQUIERDA - Pacientes en Atención */}
+                    {/* COLUMNA IZQUIERDA - Pacientes en Atención (60% - más protagonismo) */}
                     <Box
-                        w="40%"
+                        w="60%"
                         bg="white"
                         borderRadius="lg"
                         border="1px solid"
@@ -471,35 +471,31 @@ const Queue = memo(function Queue() {
                                     No hay pacientes en atención
                                 </Text>
                             ) : (
-                                <VStack spacing={1} align="stretch">
-                                    {inProgressTurns.slice(0, 12).map((turn, index) => (
+                                <VStack spacing={2} align="stretch">
+                                    {inProgressTurns.slice(0, 8).map((turn, index) => (
                                         <Flex
                                             key={turn.id}
                                             align="center"
-                                            px={2}
-                                            py={1.5}
+                                            px={4}
+                                            py={3}
                                             bg="white"
-                                            borderRadius="sm"
-                                            borderLeft="3px solid"
+                                            borderRadius="md"
+                                            borderLeft="5px solid"
                                             borderLeftColor="#10B981"
-                                            fontSize="xs"
                                         >
-                                            <Text fontWeight="bold" color="#64748B" w="25px" fontSize="sm">
-                                                {index + 1}.
-                                            </Text>
                                             <Box
                                                 bg="#10B981"
                                                 color="white"
-                                                px={2}
-                                                py={1}
-                                                borderRadius="sm"
-                                                fontSize="sm"
+                                                px={4}
+                                                py={2}
+                                                borderRadius="md"
+                                                fontSize="xl"
                                                 fontWeight="bold"
-                                                mr={2}
+                                                mr={4}
                                             >
                                                 Cubículo {turn.cubicleName || '-'}
                                             </Box>
-                                            <Text color="#1E293B" flex="1" fontWeight="bold" fontSize="md" isTruncated>
+                                            <Text color="#1E293B" flex="1" fontWeight="bold" fontSize="3xl" isTruncated>
                                                 {turn.patientName}
                                             </Text>
                                             {/* OT (Orden de Trabajo) */}
@@ -523,9 +519,9 @@ const Queue = memo(function Queue() {
                         </Box>
                     </Box>
 
-                    {/* COLUMNA DERECHA - Pacientes en Espera */}
+                    {/* COLUMNA DERECHA - Pacientes en Espera (40% - más compacta, solo 6 pacientes) */}
                     <Box
-                        flex="1"
+                        w="40%"
                         bg="white"
                         borderRadius="lg"
                         border="1px solid"
@@ -562,119 +558,69 @@ const Queue = memo(function Queue() {
                             </Box>
                         </Flex>
 
-                        {/* Grid de pacientes en espera - 2 columnas */}
-                        <Box flex="1" overflowY="auto" px={2} py={2} bg="#FFF7ED">
+                        {/* Lista de pacientes en espera - Solo 6 pacientes con nombres grandes */}
+                        <Box flex="1" overflowY="auto" px={3} py={2} bg="#FFF7ED">
                             {pendingTurns.length === 0 ? (
-                                <Text textAlign="center" color="gray.500" fontSize="sm" py={4}>
+                                <Text textAlign="center" color="gray.500" fontSize="lg" py={4}>
                                     No hay pacientes en espera
                                 </Text>
                             ) : (
-                                <Flex gap={2}>
-                                    {/* Columna Izquierda - Primeros 10 pacientes */}
-                                    <VStack flex="1" spacing={1} align="stretch">
-                                        {pendingTurns.slice(0, 10).map((turn, index) => (
-                                            <Flex
-                                                key={turn.id}
-                                                align="center"
-                                                px={2}
-                                                py={1}
-                                                bg={turn.isDeferred ? "#FEF3C7" : "white"}
-                                                borderRadius="sm"
-                                                borderLeft="2px solid"
-                                                borderLeftColor={
-                                                    turn.isDeferred ? "#F59E0B" :
-                                                    turn.tipoAtencion === "Special" ? "#EF4444" : "#F59E0B"
-                                                }
-                                                fontSize="xs"
-                                            >
-                                                {/* Ícono de reloj de arena para pacientes diferidos */}
-                                                {turn.isDeferred && (
-                                                    <Box as={FaHourglass} color="#f59e0b" fontSize="md" mr={1} />
-                                                )}
-                                                {/* Ícono de silla de ruedas para pacientes especiales */}
-                                                {turn.tipoAtencion === "Special" && (
-                                                    <Box as={FaWheelchair} color="#EF4444" fontSize="md" mr={1} />
-                                                )}
-                                                <Text color="#1E293B" flex="1" fontWeight="medium" fontSize="sm" isTruncated>
-                                                    {turn.patientName}
-                                                </Text>
-                                                {/* OT (Orden de Trabajo) */}
-                                                {turn.workOrder && (
-                                                    <Box
-                                                        bg="teal.100"
-                                                        color="teal.700"
-                                                        px={1.5}
-                                                        py={0.5}
-                                                        borderRadius="sm"
-                                                        fontSize="xs"
-                                                        fontWeight="bold"
-                                                    >
-                                                        {turn.workOrder}
-                                                    </Box>
-                                                )}
-                                            </Flex>
-                                        ))}
-                                    </VStack>
-
-                                    {/* Columna Derecha - Siguientes 10 pacientes (11-20) */}
-                                    <VStack flex="1" spacing={1} align="stretch">
-                                        {pendingTurns.slice(10, 20).map((turn, index) => (
-                                            <Flex
-                                                key={turn.id}
-                                                align="center"
-                                                px={2}
-                                                py={1}
-                                                bg={turn.isDeferred ? "#FEF3C7" : "white"}
-                                                borderRadius="sm"
-                                                borderLeft="2px solid"
-                                                borderLeftColor={
-                                                    turn.isDeferred ? "#F59E0B" :
-                                                    turn.tipoAtencion === "Special" ? "#EF4444" : "#F59E0B"
-                                                }
-                                                fontSize="xs"
-                                            >
-                                                {/* Ícono de reloj de arena para pacientes diferidos */}
-                                                {turn.isDeferred && (
-                                                    <Box as={FaHourglass} color="#f59e0b" fontSize="md" mr={1} />
-                                                )}
-                                                {/* Ícono de silla de ruedas para pacientes especiales */}
-                                                {turn.tipoAtencion === "Special" && (
-                                                    <Box as={FaWheelchair} color="#EF4444" fontSize="md" mr={1} />
-                                                )}
-                                                <Text color="#1E293B" flex="1" fontWeight="medium" fontSize="sm" isTruncated>
-                                                    {turn.patientName}
-                                                </Text>
-                                                {/* OT */}
-                                                {turn.workOrder && (
-                                                    <Box
-                                                        bg="teal.100"
-                                                        color="teal.700"
-                                                        px={1.5}
-                                                        py={0.5}
-                                                        borderRadius="sm"
-                                                        fontSize="xs"
-                                                        fontWeight="bold"
-                                                    >
-                                                        {turn.workOrder}
-                                                    </Box>
-                                                )}
-                                            </Flex>
-                                        ))}
-                                    </VStack>
-                                </Flex>
+                                <VStack spacing={3} align="stretch">
+                                    {pendingTurns.slice(0, 6).map((turn, index) => (
+                                        <Flex
+                                            key={turn.id}
+                                            align="center"
+                                            px={4}
+                                            py={3}
+                                            bg={turn.isDeferred ? "#FEF3C7" : "white"}
+                                            borderRadius="md"
+                                            borderLeft="5px solid"
+                                            borderLeftColor={
+                                                turn.isDeferred ? "#F59E0B" :
+                                                turn.tipoAtencion === "Special" ? "#EF4444" : "#F59E0B"
+                                            }
+                                        >
+                                            {/* Ícono de reloj de arena para pacientes diferidos */}
+                                            {turn.isDeferred && (
+                                                <Box as={FaHourglass} color="#f59e0b" fontSize="2xl" mr={3} />
+                                            )}
+                                            {/* Ícono de silla de ruedas para pacientes especiales */}
+                                            {turn.tipoAtencion === "Special" && (
+                                                <Box as={FaWheelchair} color="#EF4444" fontSize="2xl" mr={3} />
+                                            )}
+                                            <Text color="#1E293B" flex="1" fontWeight="semibold" fontSize="2xl" isTruncated>
+                                                {turn.patientName}
+                                            </Text>
+                                            {/* OT (Orden de Trabajo) */}
+                                            {turn.workOrder && (
+                                                <Box
+                                                    bg="teal.100"
+                                                    color="teal.700"
+                                                    px={2}
+                                                    py={1}
+                                                    borderRadius="sm"
+                                                    fontSize="sm"
+                                                    fontWeight="bold"
+                                                >
+                                                    {turn.workOrder}
+                                                </Box>
+                                            )}
+                                        </Flex>
+                                    ))}
+                                </VStack>
                             )}
 
                             {/* Indicador de más pacientes */}
-                            {pendingTurns.length > 20 && (
+                            {pendingTurns.length > 6 && (
                                 <Box
-                                    mt={2}
-                                    p={2}
+                                    mt={3}
+                                    p={3}
                                     bg="orange.100"
-                                    borderRadius="sm"
+                                    borderRadius="md"
                                     textAlign="center"
                                 >
-                                    <Text fontSize="xs" fontWeight="bold" color="orange.700">
-                                        +{pendingTurns.length - 20} pacientes más en espera
+                                    <Text fontSize="lg" fontWeight="bold" color="orange.700">
+                                        +{pendingTurns.length - 6} pacientes más en espera
                                     </Text>
                                 </Box>
                             )}
@@ -735,8 +681,8 @@ const Queue = memo(function Queue() {
                             </Text>
                         </Box>
 
-                        {/* Contador adicional mejorado */}
-                        {pendingTurns.length > 20 && (
+                        {/* Contador adicional mejorado - Se muestra cuando hay más de 6 pacientes */}
+                        {pendingTurns.length > 6 && (
                             <Box
                                 bg="#FEF3C7"
                                 color="#D97706"
@@ -747,15 +693,15 @@ const Queue = memo(function Queue() {
                                 borderColor="#F59E0B"
                                 boxShadow="sm"
                             >
-                                <Text fontSize="sm" fontWeight="extrabold">
-                                    +{pendingTurns.length - 20} en espera
+                                <Text fontSize="md" fontWeight="extrabold">
+                                    +{pendingTurns.length - 6} en espera
                                 </Text>
                             </Box>
                         )}
                     </Flex>
                 </Box>
 
-                {/* Modal de Llamado - Se mantiene igual pero con animación simple */}
+                {/* Modal de Llamado - 90% de la pantalla con nombre gigante */}
                 {callingPatient && (
                     <Box
                         position="fixed"
@@ -763,51 +709,63 @@ const Queue = memo(function Queue() {
                         left="0"
                         right="0"
                         bottom="0"
-                        bg="rgba(0, 0, 0, 0.85)"
+                        bg="rgba(0, 0, 0, 0.90)"
                         display="flex"
                         alignItems="center"
                         justifyContent="center"
                         zIndex="9999"
                     >
                         <Box
-                            p={8}
-                            borderRadius="xl"
+                            p={12}
+                            borderRadius="2xl"
                             bg="white"
-                            boxShadow="2xl"
+                            boxShadow="dark-lg"
                             textAlign="center"
-                            w="60%"
-                            maxW="600px"
+                            w="90%"
+                            h="90%"
+                            display="flex"
+                            flexDirection="column"
+                            alignItems="center"
+                            justifyContent="center"
                         >
                             <Box
-                                w={20}
-                                h={20}
+                                w={32}
+                                h={32}
                                 borderRadius="full"
                                 bgGradient="linear(135deg, #4F7DF3 0%, #6B73FF 100%)"
                                 display="flex"
                                 alignItems="center"
                                 justifyContent="center"
-                                mx="auto"
-                                mb={6}
+                                mb={8}
                             >
-                                <Box as={FaMicrophone} color="white" fontSize="3xl" />
+                                <Box as={FaMicrophone} color="white" fontSize="6xl" />
                             </Box>
 
-                            <Text fontSize="2xl" fontWeight="bold" color="gray.700" mb={3}>
+                            <Text fontSize="4xl" fontWeight="bold" color="gray.600" mb={4}>
                                 LLAMANDO A
                             </Text>
-                            <Text fontSize="4xl" fontWeight="extrabold" color="#4F7DF3" mb={6}>
+                            <Text
+                                fontSize={{ base: "5xl", md: "7xl", lg: "9xl" }}
+                                fontWeight="extrabold"
+                                color="#4F7DF3"
+                                mb={10}
+                                textAlign="center"
+                                wordBreak="break-word"
+                                lineHeight="1.1"
+                                maxW="95%"
+                            >
                                 {callingPatient.patientName}
                             </Text>
                             <Box
                                 bg="#E0F7FF"
                                 color="#0369A1"
-                                px={6}
-                                py={3}
-                                borderRadius="lg"
+                                px={10}
+                                py={5}
+                                borderRadius="xl"
                                 display="inline-block"
-                                fontSize="2xl"
+                                fontSize={{ base: "2xl", md: "4xl", lg: "5xl" }}
                                 fontWeight="bold"
-                                border="2px solid"
+                                border="3px solid"
                                 borderColor="#0EA5E9"
                             >
                                 CUBÍCULO {callingPatient.cubicleName || '-'}
