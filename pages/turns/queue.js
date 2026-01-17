@@ -30,6 +30,30 @@ const theme = extendTheme({
     },
 });
 
+// Función para calcular el tamaño de fuente dinámico basado en la longitud del nombre
+const getNameFontSize = (name) => {
+    if (!name) return { base: "4xl", md: "6xl", lg: "100px" };
+    const length = name.length;
+
+    // Ajustar tamaño según longitud del nombre
+    if (length <= 15) {
+        // Nombres cortos: tamaño grande
+        return { base: "5xl", md: "7xl", lg: "130px" };
+    } else if (length <= 20) {
+        // Nombres medianos
+        return { base: "4xl", md: "6xl", lg: "110px" };
+    } else if (length <= 25) {
+        // Nombres largos
+        return { base: "3xl", md: "5xl", lg: "90px" };
+    } else if (length <= 30) {
+        // Nombres muy largos
+        return { base: "2xl", md: "4xl", lg: "75px" };
+    } else {
+        // Nombres extremadamente largos
+        return { base: "xl", md: "3xl", lg: "60px" };
+    }
+};
+
 const Queue = memo(function Queue() {
     const [pendingTurns, setPendingTurns] = useState([]);
     const [inProgressTurns, setInProgressTurns] = useState([]);
@@ -843,7 +867,7 @@ const Queue = memo(function Queue() {
                                 LLAMANDO A
                             </Text>
                             <Text
-                                fontSize={{ base: "6xl", md: "8xl", lg: "150px" }}
+                                fontSize={getNameFontSize(callingPatient.patientName)}
                                 fontWeight="extrabold"
                                 color="#4F7DF3"
                                 mb={10}
