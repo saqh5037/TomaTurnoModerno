@@ -1,6 +1,6 @@
 {
   "name": "toma-turno",
-  "version": "2.8.19",
+  "version": "2.8.25",
   "private": true,
   "description": "Sistema de gestión de turnos médicos para INER con integración LABSIS",
   "author": "Samuel Quiroz <saqh5037@gmail.com>",

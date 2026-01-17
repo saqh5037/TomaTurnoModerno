@@ -129,6 +129,7 @@ function AdminControlPanel() {
   const [statusFilter, setStatusFilter] = useState('');
   const [phlebotomistFilter, setPhlebotomistFilter] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+  const [dateFilter, setDateFilter] = useState(''); // Fecha para filtrar (YYYY-MM-DD)
 
   // Modal de acción
   const { isOpen, onOpen, onClose } = useDisclosure();
@@ -172,10 +173,13 @@ function AdminControlPanel() {
       const token = getToken();
       const params = new URLSearchParams();
 
-      // Si el filtro es "Attended" o "Cancelled", NO usar activeOnly para ver turnos del día
+      // Si el filtro es "Attended" o "Cancelled", NO usar activeOnly para ver turnos
       if (statusFilter === 'Attended' || statusFilter === 'Cancelled') {
         params.append('status', statusFilter);
-        // No agregar activeOnly - permite ver finalizados/cancelados del día
+        // Agregar fecha si está seleccionada
+        if (dateFilter) {
+          params.append('date', dateFilter);
+        }
       } else {
         // Por defecto mostrar solo turnos activos (sin filtro de fecha)
         params.append('activeOnly', 'true');
@@ -198,7 +202,7 @@ function AdminControlPanel() {
     } finally {
       setLoading(false);
     }
-  }, [statusFilter, phlebotomistFilter, searchTerm]);
+  }, [statusFilter, phlebotomistFilter, searchTerm, dateFilter]);
 
   // Cargar datos iniciales
   useEffect(() => {
@@ -689,7 +693,19 @@ function AdminControlPanel() {
                   <FormLabel fontSize="sm">Estado</FormLabel>
                   <Select
                     value={statusFilter}
-                    onChange={(e) => setStatusFilter(e.target.value)}
+                    onChange={(e) => {
+                      const newStatus = e.target.value;
+                      setStatusFilter(newStatus);
+                      // Si selecciona Finalizados o Cancelados, establecer fecha de hoy por defecto
+                      if (newStatus === 'Attended' || newStatus === 'Cancelled') {
+                        if (!dateFilter) {
+                          setDateFilter(new Date().toISOString().split('T')[0]);
+                        }
+                      } else {
+                        // Limpiar fecha si cambia a otro filtro
+                        setDateFilter('');
+                      }
+                    }}
                     placeholder="Todos"
                     size="sm"
                   >
@@ -726,6 +742,20 @@ function AdminControlPanel() {
                   />
                 </FormControl>
 
+                {/* Filtro de fecha - Solo visible para Finalizados/Cancelados */}
+                {(statusFilter === 'Attended' || statusFilter === 'Cancelled') && (
+                  <FormControl maxW="180px">
+                    <FormLabel fontSize="sm">Fecha</FormLabel>
+                    <Input
+                      type="date"
+                      value={dateFilter}
+                      onChange={(e) => setDateFilter(e.target.value)}
+                      size="sm"
+                      max={new Date().toISOString().split('T')[0]}
+                    />
+                  </FormControl>
+                )}
+
                 <Button
                   size="sm"
                   variant="ghost"
@@ -733,6 +763,7 @@ function AdminControlPanel() {
                     setStatusFilter('');
                     setPhlebotomistFilter('');
                     setSearchTerm('');
+                    setDateFilter('');
                   }}
                   mt={6}
                 >

@@ -53,6 +53,7 @@ export async function GET(request) {
     const priority = searchParams.get('priority'); // Special o General
     const showHolding = searchParams.get('showHolding'); // 'true' para mostrar solo holdings
     const activeOnly = searchParams.get('activeOnly'); // 'true' para mostrar solo turnos activos sin filtro de fecha
+    const dateFilter = searchParams.get('date'); // Fecha específica (YYYY-MM-DD)
 
     // Inicio del día actual
     const today = new Date();
@@ -66,6 +67,13 @@ export async function GET(request) {
     if (activeOnly === 'true') {
       // Solo turnos activos (Pending o In Progress) sin filtro de fecha
       where.status = { in: ['Pending', 'In Progress'] };
+    } else if (dateFilter) {
+      // Filtro por fecha específica
+      const filterDate = new Date(dateFilter);
+      filterDate.setHours(0, 0, 0, 0);
+      const nextDay = new Date(filterDate);
+      nextDay.setDate(nextDay.getDate() + 1);
+      where.createdAt = { gte: filterDate, lt: nextDay };
     } else {
       // Filtro por fecha de hoy (comportamiento original)
       where.createdAt = { gte: today };
