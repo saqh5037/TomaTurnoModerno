@@ -163,30 +163,36 @@ const Queue = memo(function Queue() {
                 const voices = window.speechSynthesis.getVoices();
 
                 if (voices.length > 0) {
-                    const femaleNames = ['Paulina', 'Mónica', 'Monica', 'Esperanza', 'Angelica', 'Maria', 'Carmen',
-                        'Helena', 'Sabina', 'Paloma', 'Lucia', 'Sofia', 'Valentina', 'Isabella'];
+                    // Voces mexicanas preferidas (evitar voces de España)
+                    const mexicanVoiceNames = ['Paulina', 'Juan', 'Monica', 'Carlos', 'Angelica', 'Maria'];
 
-                    const isFemaleVoice = (voice) => {
+                    const isMexicanVoice = (voice) => {
                         const voiceName = voice.name.toLowerCase();
-                        return femaleNames.some(name => voiceName.includes(name.toLowerCase()));
+                        return mexicanVoiceNames.some(name => voiceName.includes(name.toLowerCase()));
                     };
 
+                    // Priorizar voces mexicanas, evitar españolas (es-ES)
                     const selectedVoice =
-                        voices.find(voice => voice.lang === 'es-MX' && isFemaleVoice(voice)) ||
+                        voices.find(voice => voice.lang === 'es-MX' && isMexicanVoice(voice)) ||
                         voices.find(voice => voice.lang === 'es-MX') ||
+                        voices.find(voice => voice.lang === 'es-419') ||  // Español Latinoamérica
+                        voices.find(voice => voice.lang.startsWith('es') && !voice.lang.includes('ES')) ||  // Evitar es-ES
                         voices.find(voice => voice.lang.startsWith('es')) ||
                         voices[0];
 
                     utterance.voice = selectedVoice;
                     utterance.lang = selectedVoice?.lang || "es-MX";
+
+                    // Log para debug de voz seleccionada
+                    console.log('[Voz] Seleccionada:', selectedVoice?.name, selectedVoice?.lang);
                 } else {
                     utterance.lang = "es-MX";
                 }
 
-                // Configurar voz más lenta y clara para que se escuche completo
-                utterance.rate = 0.85;  // Más lento para mayor claridad
-                utterance.pitch = 1.15; // Tono ligeramente más alto (femenino)
-                utterance.volume = 1.0;  // Volumen al máximo
+                // Configurar voz más natural y mexicana
+                utterance.rate = 0.9;   // Velocidad más natural (0.85 → 0.9)
+                utterance.pitch = 1.0;  // Tono neutro (más mexicano, menos agudo)
+                utterance.volume = 1.0; // Volumen al máximo
 
                 // Configurar eventos para saber cuándo termina realmente el audio
                 let speechCompleted = false;
@@ -472,7 +478,7 @@ const Queue = memo(function Queue() {
                                 </Text>
                             ) : (
                                 <VStack spacing={2} align="stretch">
-                                    {inProgressTurns.slice(0, 8).map((turn, index) => (
+                                    {inProgressTurns.slice(0, 6).map((turn, index) => (
                                         <Flex
                                             key={turn.id}
                                             align="center"
@@ -489,13 +495,13 @@ const Queue = memo(function Queue() {
                                                 px={4}
                                                 py={2}
                                                 borderRadius="md"
-                                                fontSize="xl"
+                                                fontSize="2xl"
                                                 fontWeight="bold"
                                                 mr={4}
                                             >
                                                 Cubículo {turn.cubicleName || '-'}
                                             </Box>
-                                            <Text color="#1E293B" flex="1" fontWeight="bold" fontSize="3xl" isTruncated>
+                                            <Text color="#1E293B" flex="1" fontWeight="bold" fontSize="4xl" isTruncated>
                                                 {turn.patientName}
                                             </Text>
                                             {/* OT (Orden de Trabajo) */}
@@ -582,13 +588,13 @@ const Queue = memo(function Queue() {
                                         >
                                             {/* Ícono de reloj de arena para pacientes diferidos */}
                                             {turn.isDeferred && (
-                                                <Box as={FaHourglass} color="#f59e0b" fontSize="2xl" mr={3} />
+                                                <Box as={FaHourglass} color="#f59e0b" fontSize="3xl" mr={3} />
                                             )}
                                             {/* Ícono de silla de ruedas para pacientes especiales */}
                                             {turn.tipoAtencion === "Special" && (
-                                                <Box as={FaWheelchair} color="#EF4444" fontSize="2xl" mr={3} />
+                                                <Box as={FaWheelchair} color="#EF4444" fontSize="3xl" mr={3} />
                                             )}
-                                            <Text color="#1E293B" flex="1" fontWeight="semibold" fontSize="2xl" isTruncated>
+                                            <Text color="#1E293B" flex="1" fontWeight="semibold" fontSize="3xl" isTruncated>
                                                 {turn.patientName}
                                             </Text>
                                             {/* OT (Orden de Trabajo) */}
@@ -741,11 +747,11 @@ const Queue = memo(function Queue() {
                                 <Box as={FaMicrophone} color="white" fontSize="6xl" />
                             </Box>
 
-                            <Text fontSize="4xl" fontWeight="bold" color="gray.600" mb={4}>
+                            <Text fontSize="5xl" fontWeight="bold" color="gray.600" mb={4}>
                                 LLAMANDO A
                             </Text>
                             <Text
-                                fontSize={{ base: "5xl", md: "7xl", lg: "9xl" }}
+                                fontSize={{ base: "6xl", md: "8xl", lg: "150px" }}
                                 fontWeight="extrabold"
                                 color="#4F7DF3"
                                 mb={10}
@@ -759,11 +765,11 @@ const Queue = memo(function Queue() {
                             <Box
                                 bg="#E0F7FF"
                                 color="#0369A1"
-                                px={10}
-                                py={5}
+                                px={12}
+                                py={6}
                                 borderRadius="xl"
                                 display="inline-block"
-                                fontSize={{ base: "2xl", md: "4xl", lg: "5xl" }}
+                                fontSize={{ base: "3xl", md: "5xl", lg: "6xl" }}
                                 fontWeight="bold"
                                 border="3px solid"
                                 borderColor="#0EA5E9"
