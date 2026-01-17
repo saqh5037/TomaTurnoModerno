@@ -39,6 +39,7 @@ const Queue = memo(function Queue() {
     const [currentTime, setCurrentTime] = useState(null);
     const [mounted, setMounted] = useState(false);
     const [currentPhraseIndex, setCurrentPhraseIndex] = useState(0);
+    const [audioEnabled, setAudioEnabled] = useState(false);
 
     // Frases motivacionales que rotan
     const phrases = [
@@ -54,18 +55,36 @@ const Queue = memo(function Queue() {
         "🌱 Prevenir es la mejor medicina"
     ];
 
+    // Función para habilitar audio (requiere interacción del usuario)
+    const enableAudio = useCallback(async () => {
+        try {
+            // Reproducir audio silencioso para desbloquear
+            const audio = new Audio("/airport-sound.mp3");
+            audio.volume = 0.01;
+            await audio.play();
+            audio.pause();
+
+            // Inicializar síntesis de voz
+            if (window.speechSynthesis) {
+                const utterance = new SpeechSynthesisUtterance('');
+                utterance.volume = 0;
+                window.speechSynthesis.speak(utterance);
+                window.speechSynthesis.cancel();
+            }
+
+            setAudioEnabled(true);
+            console.log('[Queue] Audio habilitado correctamente');
+        } catch (err) {
+            console.error('[Queue] Error al habilitar audio:', err);
+            // Aún así marcar como habilitado para no bloquear la UI
+            setAudioEnabled(true);
+        }
+    }, []);
+
     // Effect para marcar el componente como montado
     useEffect(() => {
         setMounted(true);
         setCurrentTime(new Date());
-
-        // Activar audio de forma silenciosa
-        if (typeof window !== 'undefined' && window.speechSynthesis) {
-            const initUtterance = new SpeechSynthesisUtterance('');
-            initUtterance.volume = 0;
-            window.speechSynthesis.speak(initUtterance);
-            window.speechSynthesis.cancel();
-        }
     }, []);
 
     // Función para obtener datos de la cola
@@ -263,7 +282,7 @@ const Queue = memo(function Queue() {
 
     // Effect para manejo de anuncios
     useEffect(() => {
-        if (!mounted || !callingPatient || !isCalling) return;
+        if (!mounted || !callingPatient || !isCalling || !audioEnabled) return;
 
         console.log('[Queue] Effect de anuncio activado para:', callingPatient.patientName);
 
@@ -370,7 +389,7 @@ const Queue = memo(function Queue() {
                 window.speechSynthesis.cancel();
             }
         };
-    }, [mounted, callingPatient, isCalling, speakAnnouncement, updateCallStatus]);
+    }, [mounted, callingPatient, isCalling, audioEnabled, speakAnnouncement, updateCallStatus]);
 
     // Función para formatear la hora
     const formatTime = useCallback((date) => {
@@ -409,6 +428,57 @@ const Queue = memo(function Queue() {
 
     return (
         <Box h="100vh" display="flex" flexDirection="column" bg="white" position="relative">
+
+                {/* Overlay para activar audio - Requerido por políticas de navegadores */}
+                {!audioEnabled && (
+                    <Box
+                        position="fixed"
+                        top="0"
+                        left="0"
+                        right="0"
+                        bottom="0"
+                        bg="rgba(0, 0, 0, 0.95)"
+                        display="flex"
+                        alignItems="center"
+                        justifyContent="center"
+                        zIndex="10000"
+                        cursor="pointer"
+                        onClick={enableAudio}
+                    >
+                        <VStack spacing={8} textAlign="center" px={8}>
+                            <Box
+                                w={40}
+                                h={40}
+                                borderRadius="full"
+                                bg="white"
+                                display="flex"
+                                alignItems="center"
+                                justifyContent="center"
+                                boxShadow="0 0 60px rgba(79, 125, 243, 0.5)"
+                            >
+                                <Box as={FaMicrophone} color="#4F7DF3" fontSize="6xl" />
+                            </Box>
+                            <Text fontSize="5xl" fontWeight="bold" color="white">
+                                PANTALLA DE LLAMADO
+                            </Text>
+                            <Text fontSize="3xl" color="gray.300">
+                                Toque la pantalla para activar el audio
+                            </Text>
+                            <Box
+                                mt={4}
+                                px={12}
+                                py={6}
+                                bg="#4F7DF3"
+                                borderRadius="2xl"
+                                boxShadow="0 4px 20px rgba(79, 125, 243, 0.4)"
+                            >
+                                <Text fontSize="2xl" fontWeight="bold" color="white">
+                                    TOCAR PARA INICIAR
+                                </Text>
+                            </Box>
+                        </VStack>
+                    </Box>
+                )}
 
                 {/* Header Superior - Ultra compacto */}
                 <Box
