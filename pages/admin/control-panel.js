@@ -34,6 +34,7 @@ import {
   ModalCloseButton,
   FormControl,
   FormLabel,
+  FormHelperText,
   Textarea,
   Alert,
   AlertIcon,
@@ -141,6 +142,11 @@ function AdminControlPanel() {
   const [reassignType, setReassignType] = useState(null); // 'cubicle' o 'phlebotomist'
   const [reassignValue, setReassignValue] = useState('');
 
+  // Modal de Finalizar Todos
+  const { isOpen: isFinishAllOpen, onOpen: onFinishAllOpen, onClose: onFinishAllClose } = useDisclosure();
+  const [finishAllReason, setFinishAllReason] = useState('');
+  const [finishAllLoading, setFinishAllLoading] = useState(false);
+
   // Obtener token
   const getToken = () => localStorage.getItem('token');
 
@@ -165,9 +171,17 @@ function AdminControlPanel() {
     try {
       const token = getToken();
       const params = new URLSearchParams();
-      // Por defecto mostrar solo turnos activos (sin filtro de fecha)
-      params.append('activeOnly', 'true');
-      if (statusFilter) params.append('status', statusFilter);
+
+      // Si el filtro es "Attended" o "Cancelled", NO usar activeOnly para ver turnos del día
+      if (statusFilter === 'Attended' || statusFilter === 'Cancelled') {
+        params.append('status', statusFilter);
+        // No agregar activeOnly - permite ver finalizados/cancelados del día
+      } else {
+        // Por defecto mostrar solo turnos activos (sin filtro de fecha)
+        params.append('activeOnly', 'true');
+        if (statusFilter) params.append('status', statusFilter);
+      }
+
       if (phlebotomistFilter) params.append('phlebotomistId', phlebotomistFilter);
       if (searchTerm) params.append('search', searchTerm);
 
@@ -209,7 +223,7 @@ function AdminControlPanel() {
     if (!selectedTurn || !actionType) return;
 
     // Validar razón para acciones que la requieren
-    if (['force-complete', 'cancel-turn', 'return-to-queue'].includes(actionType)) {
+    if (['force-complete', 'cancel-turn', 'return-to-queue', 'reactivate-turn'].includes(actionType)) {
       if (!actionReason || actionReason.trim().length < 5) {
         toast({
           title: 'Razón requerida',
@@ -343,6 +357,63 @@ function AdminControlPanel() {
     onOpen();
   };
 
+  // Ejecutar Finalizar Todos
+  const executeFinishAll = async () => {
+    if (!finishAllReason || finishAllReason.trim().length < 5) {
+      toast({
+        title: 'Razón requerida',
+        description: 'Ingresa una razón de al menos 5 caracteres',
+        status: 'warning',
+        duration: 3000
+      });
+      return;
+    }
+
+    setFinishAllLoading(true);
+    try {
+      const token = getToken();
+      const response = await fetch('/api/admin/finish-all', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ reason: finishAllReason.trim() })
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        toast({
+          title: 'Turnos finalizados',
+          description: data.message,
+          status: 'success',
+          duration: 5000
+        });
+        onFinishAllClose();
+        setFinishAllReason('');
+        loadDashboard();
+        loadTurns();
+      } else {
+        toast({
+          title: 'Error',
+          description: data.error,
+          status: 'error',
+          duration: 5000
+        });
+      }
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Error al finalizar turnos',
+        status: 'error',
+        duration: 5000
+      });
+    } finally {
+      setFinishAllLoading(false);
+    }
+  };
+
   // Abrir modal de reasignación
   const openReassignModal = (turn, type) => {
     setSelectedTurn(turn);
@@ -358,7 +429,8 @@ function AdminControlPanel() {
     'cancel-turn': 'Cancelar Turno',
     'return-to-queue': 'Regresar a Cola',
     'change-priority': 'Cambiar Prioridad',
-    'defer-turn': 'Diferir Turno'
+    'defer-turn': 'Diferir Turno',
+    'reactivate-turn': 'Reactivar Turno'
   };
 
   // Formatear tiempo
@@ -390,7 +462,7 @@ function AdminControlPanel() {
                 <Text color="gray.500">Gestión de turnos en tiempo real</Text>
               </Box>
             </HStack>
-            <HStack>
+            <HStack spacing={3}>
               <HStack>
                 <Text fontSize="sm" color="gray.500">Auto-refresh</Text>
                 <Switch
@@ -405,6 +477,16 @@ function AdminControlPanel() {
                 isLoading={loading}
                 aria-label="Refrescar"
               />
+              <Button
+                leftIcon={<FiSquare />}
+                colorScheme="orange"
+                variant="outline"
+                size="sm"
+                onClick={onFinishAllOpen}
+                isDisabled={!dashboard?.realtime?.totalActive && dashboard?.realtime?.totalActive !== 0}
+              >
+                Finalizar Todos
+              </Button>
             </HStack>
           </Flex>
 
@@ -831,6 +913,20 @@ function AdminControlPanel() {
                                   />
                                 </Tooltip>
                               )}
+
+                              {/* Reactivar (solo Attended) */}
+                              {turn.status === 'Attended' && (
+                                <Tooltip label="Reactivar Turno">
+                                  <IconButton
+                                    icon={<FiPlay />}
+                                    size="sm"
+                                    colorScheme="teal"
+                                    variant="solid"
+                                    onClick={() => openActionModal(turn, 'reactivate-turn')}
+                                    aria-label="Reactivar Turno"
+                                  />
+                                </Tooltip>
+                              )}
                             </HStack>
                           </Td>
                         </Tr>
@@ -871,7 +967,7 @@ function AdminControlPanel() {
                     </Badge>
                   </Box>
 
-                  {['force-complete', 'cancel-turn', 'return-to-queue'].includes(actionType) && (
+                  {['force-complete', 'cancel-turn', 'return-to-queue', 'reactivate-turn'].includes(actionType) && (
                     <FormControl isRequired>
                       <FormLabel>Razón</FormLabel>
                       <Textarea
@@ -897,6 +993,15 @@ function AdminControlPanel() {
                       <AlertIcon />
                       <Text fontSize="sm">
                         El turno será marcado como cancelado y no podrá ser atendido.
+                      </Text>
+                    </Alert>
+                  )}
+
+                  {actionType === 'reactivate-turn' && (
+                    <Alert status="info" borderRadius="md">
+                      <AlertIcon />
+                      <Text fontSize="sm">
+                        El turno volverá a la cola de espera (estado Pending) y podrá ser atendido nuevamente.
                       </Text>
                     </Alert>
                   )}
@@ -967,6 +1072,74 @@ function AdminControlPanel() {
                 isDisabled={!reassignValue}
               >
                 Reasignar
+              </Button>
+            </ModalFooter>
+          </ModalContent>
+        </Modal>
+
+        {/* Modal de Finalizar Todos */}
+        <Modal isOpen={isFinishAllOpen} onClose={onFinishAllClose} size="lg">
+          <ModalOverlay />
+          <ModalContent>
+            <ModalHeader>Finalizar Todos los Turnos Activos</ModalHeader>
+            <ModalCloseButton />
+            <ModalBody>
+              <VStack align="stretch" spacing={4}>
+                <Alert status="warning" borderRadius="md">
+                  <AlertIcon />
+                  <Box>
+                    <AlertTitle>Atención</AlertTitle>
+                    <AlertDescription fontSize="sm">
+                      Esta acción finalizará TODOS los turnos activos (en espera y en atención).
+                      Esta acción NO se puede deshacer directamente.
+                    </AlertDescription>
+                  </Box>
+                </Alert>
+
+                {dashboard && (
+                  <Box p={4} bg="gray.50" borderRadius="md">
+                    <Text fontWeight="bold" mb={2}>Turnos a finalizar:</Text>
+                    <VStack align="start" spacing={1}>
+                      <Text fontSize="sm">
+                        • En Espera: {dashboard.realtime?.pendingCount ?? dashboard.summary?.pending ?? 0}
+                      </Text>
+                      <Text fontSize="sm">
+                        • En Holding: {dashboard.realtime?.holdingCount ?? dashboard.summary?.holding ?? 0}
+                      </Text>
+                      <Text fontSize="sm">
+                        • En Atención: {(dashboard.realtime?.inCallingCount ?? 0) + (dashboard.realtime?.inProgressCount ?? dashboard.summary?.inProgress ?? 0)}
+                      </Text>
+                      <Divider my={1} />
+                      <Text fontWeight="bold">
+                        Total: {dashboard.realtime?.totalActive ?? 0} turnos
+                      </Text>
+                    </VStack>
+                  </Box>
+                )}
+
+                <FormControl isRequired>
+                  <FormLabel>Razón de la finalización masiva</FormLabel>
+                  <Textarea
+                    value={finishAllReason}
+                    onChange={(e) => setFinishAllReason(e.target.value)}
+                    placeholder="Ej: Fin de jornada laboral, Cierre por emergencia, Mantenimiento del sistema..."
+                    rows={3}
+                  />
+                  <FormHelperText>Mínimo 5 caracteres</FormHelperText>
+                </FormControl>
+              </VStack>
+            </ModalBody>
+            <ModalFooter>
+              <Button variant="ghost" mr={3} onClick={onFinishAllClose}>
+                Cancelar
+              </Button>
+              <Button
+                colorScheme="orange"
+                onClick={executeFinishAll}
+                isLoading={finishAllLoading}
+                isDisabled={!finishAllReason || finishAllReason.trim().length < 5 || (dashboard?.realtime?.totalActive ?? 0) === 0}
+              >
+                Finalizar {dashboard?.realtime?.totalActive ?? 0} Turnos
               </Button>
             </ModalFooter>
           </ModalContent>
