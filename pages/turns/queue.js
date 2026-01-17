@@ -519,6 +519,10 @@ const Queue = memo(function Queue() {
                                             >
                                                 Cubículo {turn.cubicleName || '-'}
                                             </Box>
+                                            {/* Ícono de silla de ruedas para pacientes prioritarios */}
+                                            {turn.tipoAtencion === "Special" && (
+                                                <Box as={FaWheelchair} color="#EF4444" fontSize="3xl" mr={3} />
+                                            )}
                                             <Text color="#1E293B" flex="1" fontWeight="bold" fontSize="4xl" isTruncated>
                                                 {turn.patientName}
                                             </Text>

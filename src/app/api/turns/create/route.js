@@ -238,8 +238,8 @@ export async function POST(req) {
       tubesDetails: finalTubesDetails,
       observations: validatedData.observations ? DOMPurify.sanitize(validatedData.observations) : null,
       clinicalInfo: validatedData.clinicalInfo ? DOMPurify.sanitize(validatedData.clinicalInfo) : null,
-      // KAB-7378: Normalizar tipoAtencion (Especial/especial → Special)
-      tipoAtencion: ['Especial', 'especial', 'special'].includes(validatedData.tipoAtencion) ? 'Special' : 'General',
+      // KAB-7378: Normalizar tipoAtencion (Especial/especial/Special → Special)
+      tipoAtencion: ['Especial', 'especial', 'Special', 'special'].includes(validatedData.tipoAtencion) ? 'Special' : 'General',
       status: "Pending",
 
       // NUEVOS CAMPOS LABSIS
