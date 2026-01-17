@@ -82,16 +82,26 @@ const Queue = memo(function Queue() {
 
             // Detectar pacientes siendo llamados
             if (data.inCallingTurns && data.inCallingTurns.length > 0) {
-                if (!isCalling) {
-                    setCallingPatient(data.inCallingTurns[0]);
+                const newCallingPatient = data.inCallingTurns[0];
+
+                // Si no hay llamado activo, o si hay un paciente DIFERENTE siendo llamado
+                if (!isCalling || (callingPatient && callingPatient.id !== newCallingPatient.id)) {
+                    console.log('[Queue] Nuevo paciente detectado para llamar:', newCallingPatient.patientName);
+                    setCallingPatient(newCallingPatient);
                     setIsCalling(true);
+                }
+            } else {
+                // Si no hay pacientes en llamado pero el estado dice que sí, resetear
+                if (isCalling && !callingPatient) {
+                    console.log('[Queue] Reseteando estado de llamado huérfano');
+                    setIsCalling(false);
                 }
             }
         } catch (err) {
             console.error("Error al cargar los turnos:", err);
             setError("Error al cargar los turnos. Por favor, intente de nuevo.");
         }
-    }, [isCalling]);
+    }, [isCalling, callingPatient]);
 
     // Función para actualizar estado de llamado
     const updateCallStatus = useCallback(async () => {
@@ -255,11 +265,14 @@ const Queue = memo(function Queue() {
     useEffect(() => {
         if (!mounted || !callingPatient || !isCalling) return;
 
+        console.log('[Queue] Effect de anuncio activado para:', callingPatient.patientName);
+
         let isActive = true;
         let audio = null;
 
         const playAnnouncement = async () => {
             try {
+                console.log('[Queue] Iniciando reproducción de audio...');
                 // Crear audio con compatibilidad mejorada
                 audio = new Audio("/airport-sound.mp3");
                 audio.volume = 0.7;
@@ -333,10 +346,15 @@ const Queue = memo(function Queue() {
                 }
             } catch (error) {
                 console.error("Error en el proceso de llamado:", error);
-                // NO actualizar el estado en caso de error
-                // if (isActive) {
-                //     updateCallStatus();
-                // }
+                // En caso de error, intentar cerrar el modal después de un tiempo
+                if (isActive) {
+                    console.log('[Queue] Error detectado, cerrando modal en 3 segundos...');
+                    setTimeout(() => {
+                        if (isActive) {
+                            updateCallStatus();
+                        }
+                    }, 3000);
+                }
             }
         };
 
