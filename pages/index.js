@@ -19,7 +19,8 @@ import {
   FaBook,
   FaHome,
   FaStethoscope,
-  FaCog
+  FaCog,
+  FaClipboardList
 } from 'react-icons/fa';
 import { fadeInUp, slideInFromLeft, GlassCard, ModernContainer } from '../components/theme/ModernTheme';
 import { useRouter } from 'next/router';
@@ -448,6 +449,64 @@ const HomePage = memo(function HomePage() {
                 </VStack>
               </VStack>
             </GlassCard>
+
+            {/* Organización de Documentos - Admin y Supervisor */}
+            {(isAdmin || isSupervisor) && (
+              <GlassCard
+                p={8}
+                minW="280px"
+                maxW="340px"
+                flex="1"
+                cursor="pointer"
+                onClick={() => handleNavigation('/supervisor/document-prep')}
+                _hover={{
+                  transform: 'translateY(-10px)',
+                  boxShadow: '2xl',
+                  background: "rgba(255, 255, 255, 0.4)"
+                }}
+                transition="all 0.3s ease"
+                animation={`${fadeInUp} 1.7s ease-out`}
+                position="relative"
+                overflow="hidden"
+                border="2px solid rgba(16, 185, 129, 0.2)"
+              >
+                <Box
+                  position="absolute"
+                  top={0}
+                  left={0}
+                  right={0}
+                  height="5px"
+                  background="linear-gradient(135deg, #10b981 0%, #059669 100%)"
+                  borderTopRadius="2xl"
+                />
+
+                <VStack spacing={6} align="center">
+                  <Box
+                    w={16}
+                    h={16}
+                    borderRadius="2xl"
+                    background="linear-gradient(135deg, #10b981 0%, #059669 100%)"
+                    display="flex"
+                    alignItems="center"
+                    justifyContent="center"
+                    color="white"
+                    fontSize="3xl"
+                    boxShadow="xl"
+                  >
+                    <FaClipboardList />
+                  </Box>
+
+                  <VStack spacing={3} textAlign="center">
+                    <Text fontWeight="bold" fontSize="xl" color="secondary.800">
+                      Organización
+                    </Text>
+                    <Text fontSize="md" color="secondary.600">
+                      Preparar etiquetas y papeletas
+                    </Text>
+                  </VStack>
+                </VStack>
+              </GlassCard>
+            )}
 
             {/* Panel de Control - Solo Admin */}
             {isAdmin && (
