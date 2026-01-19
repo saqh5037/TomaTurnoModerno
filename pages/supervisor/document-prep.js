@@ -34,7 +34,6 @@ import {
   FiUsers,
   FiAlertCircle
 } from 'react-icons/fi';
-import { useAuth } from '../../contexts/AuthContext';
 import { useRouter } from 'next/router';
 import ProtectedRoute from '../../components/ProtectedRoute';
 
@@ -159,7 +158,6 @@ const TurnTable = ({ title, turns, callingTurn, colorScheme, tipoAtencion }) => 
 
 const DocumentPrep = () => {
   const router = useRouter();
-  const { getToken } = useAuth();
   const [loading, setLoading] = useState(true);
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [data, setData] = useState({
@@ -178,7 +176,7 @@ const DocumentPrep = () => {
   // Cargar datos
   const loadData = useCallback(async () => {
     try {
-      const token = getToken();
+      const token = localStorage.getItem('token');
       const response = await fetch('/api/supervisor/document-prep', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -191,7 +189,7 @@ const DocumentPrep = () => {
     } finally {
       setLoading(false);
     }
-  }, [getToken]);
+  }, []);
 
   // Cargar datos iniciales
   useEffect(() => {
