@@ -243,20 +243,27 @@ export default function Attention() {
     // Obtener usuario del token
     const token = localStorage.getItem("token");
     console.log('[Attention] useEffect - Token exists:', !!token);
+    let decodedRole = null;
     if (token) {
       try {
         console.log('[Attention] useEffect - Decoding token...');
         const payload = JSON.parse(atob(token.split(".")[1]));
         setUserId(payload.userId);
         setUserRole(payload.role);
+        decodedRole = payload.role;
       } catch (error) {
         console.error("Error al decodificar token:", error);
       }
     }
 
+    // Verificar si es supervisor o admin (para NO cargar cubículo automáticamente)
+    const isSupervisorOrAdminRole = decodedRole &&
+      ['supervisor', 'admin', 'administrador'].includes(decodedRole.toLowerCase());
+
     // Obtener cubículo seleccionado y sincronizar con backend
+    // Para supervisores/admins: NO cargar cubículo automáticamente, dejar que seleccionen manualmente
     const savedCubicle = localStorage.getItem("selectedCubicle");
-    if (savedCubicle && token) {
+    if (savedCubicle && token && !isSupervisorOrAdminRole) {
       setSelectedCubicle(parseInt(savedCubicle)); // Convert to number for Select
 
       // Sincronizar con backend
