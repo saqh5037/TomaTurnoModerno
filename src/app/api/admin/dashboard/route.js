@@ -162,7 +162,8 @@ export async function GET(request) {
 
     const cubiclesData = await prisma.cubicle.findMany({
       where: { isActive: true },
-      select: { id: true, name: true, type: true }
+      select: { id: true, name: true, type: true },
+      orderBy: { name: 'asc' }
     });
 
     // Obtener turnos en progreso para cada flebotomista

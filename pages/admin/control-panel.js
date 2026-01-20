@@ -40,6 +40,7 @@ import {
   AlertIcon,
   AlertTitle,
   AlertDescription,
+  CloseButton,
   Tooltip,
   Switch,
   Spinner,
@@ -147,6 +148,9 @@ function AdminControlPanel() {
   const { isOpen: isFinishAllOpen, onOpen: onFinishAllOpen, onClose: onFinishAllClose } = useDisclosure();
   const [finishAllReason, setFinishAllReason] = useState('');
   const [finishAllLoading, setFinishAllLoading] = useState(false);
+
+  // Estado para ocultar alertas temporalmente
+  const [hideAlerts, setHideAlerts] = useState(false);
 
   // Obtener token
   const getToken = () => localStorage.getItem('token');
@@ -495,8 +499,8 @@ function AdminControlPanel() {
           </Flex>
 
           {/* Alertas */}
-          {dashboard?.alerts?.length > 0 && (
-            <Alert status="warning" mb={6} borderRadius="md">
+          {!hideAlerts && dashboard?.alerts?.length > 0 && (
+            <Alert status="warning" mb={6} borderRadius="md" position="relative">
               <AlertIcon />
               <Box flex="1">
                 <AlertTitle>Alertas activas ({dashboard.alertsCount})</AlertTitle>
@@ -511,6 +515,12 @@ function AdminControlPanel() {
                   )}
                 </AlertDescription>
               </Box>
+              <CloseButton
+                position="absolute"
+                right={2}
+                top={2}
+                onClick={() => setHideAlerts(true)}
+              />
             </Alert>
           )}
 
