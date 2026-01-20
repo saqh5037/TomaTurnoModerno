@@ -76,7 +76,8 @@ export async function GET(request) {
         workOrder: true,
         tubesRequired: true,
         studies: true,
-        studies_json: true
+        studies_json: true,
+        isDeferred: true
       }
     });
 
@@ -96,7 +97,8 @@ export async function GET(request) {
         workOrder: true,
         tubesRequired: true,
         studies: true,
-        studies_json: true
+        studies_json: true,
+        isDeferred: true
       }
     });
 
@@ -142,7 +144,8 @@ export async function GET(request) {
           workOrder: t.workOrder,
           tubesRequired: t.tubesRequired || 0,
           studiesCount: countStudies(t),
-          isNext: idx < 3
+          isNext: idx < 3,
+          isDeferred: t.isDeferred || false
         })),
         generalTurns: generalTurns.map((t, idx) => ({
           id: t.id,
@@ -151,7 +154,8 @@ export async function GET(request) {
           workOrder: t.workOrder,
           tubesRequired: t.tubesRequired || 0,
           studiesCount: countStudies(t),
-          isNext: idx < 3
+          isNext: idx < 3,
+          isDeferred: t.isDeferred || false
         }))
       }
     });

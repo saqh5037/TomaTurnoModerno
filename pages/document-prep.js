@@ -112,9 +112,14 @@ const TurnTable = ({ title, turns, callingTurn, colorScheme, tipoAtencion }) => 
                 _hover={{ bg: idx < 3 ? 'yellow.100' : 'gray.100' }}
               >
                 <Td textAlign="center">
-                  {idx < 3 ? (
+                  {turn.isDeferred ? (
                     <HStack spacing={0} justify="center">
                       <Text fontSize="sm">⏳</Text>
+                      <Text fontSize="sm" fontWeight="bold" color="orange.600">{idx + 1}</Text>
+                    </HStack>
+                  ) : idx < 3 ? (
+                    <HStack spacing={0} justify="center">
+                      <Text fontSize="sm">📌</Text>
                       <Text fontSize="sm" fontWeight="bold">{idx + 1}</Text>
                     </HStack>
                   ) : (
@@ -320,8 +325,12 @@ const DocumentPrep = () => {
                   <Text fontSize="sm" color="gray.600">Paciente siendo llamado</Text>
                 </HStack>
                 <HStack>
-                  <Text fontSize="lg">⏳</Text>
+                  <Text fontSize="lg">📌</Text>
                   <Text fontSize="sm" color="gray.600">Próximos 3 en cola</Text>
+                </HStack>
+                <HStack>
+                  <Text fontSize="lg">⏳</Text>
+                  <Text fontSize="sm" color="gray.600">Paciente diferido</Text>
                 </HStack>
                 <HStack>
                   <Box w={4} h={4} bg="yellow.50" borderRadius="sm" border="1px solid" borderColor="yellow.200" />
