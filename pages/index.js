@@ -119,6 +119,7 @@ const HomePage = memo(function HomePage() {
   const isAdmin = userRole === 'admin' || userRole === 'Admin' || userRole === 'Administrador';
   const isFlebotomista = userRole === 'Flebotomista' || userRole === 'flebotomista';
   const isSupervisor = userRole === 'supervisor';
+  const isRecepcion = userRole === 'recepcion' || userRole === 'Recepcion' || userRole === 'Recepción';
 
   return (
     <ModernContainer>
@@ -451,7 +452,7 @@ const HomePage = memo(function HomePage() {
             </GlassCard>
 
             {/* Organización de Documentos - Todos los roles */}
-            {(isAdmin || isSupervisor || isFlebotomista) && (
+            {(isAdmin || isSupervisor || isFlebotomista || isRecepcion) && (
               <GlassCard
                 p={8}
                 minW="280px"
