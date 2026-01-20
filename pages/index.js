@@ -450,15 +450,15 @@ const HomePage = memo(function HomePage() {
               </VStack>
             </GlassCard>
 
-            {/* Organización de Documentos - Admin y Supervisor */}
-            {(isAdmin || isSupervisor) && (
+            {/* Organización de Documentos - Todos los roles */}
+            {(isAdmin || isSupervisor || isFlebotomista) && (
               <GlassCard
                 p={8}
                 minW="280px"
                 maxW="340px"
                 flex="1"
                 cursor="pointer"
-                onClick={() => handleNavigation('/supervisor/document-prep')}
+                onClick={() => handleNavigation('/document-prep')}
                 _hover={{
                   transform: 'translateY(-10px)',
                   boxShadow: '2xl',

@@ -177,7 +177,7 @@ const DocumentPrep = () => {
   const loadData = useCallback(async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('/api/supervisor/document-prep', {
+      const response = await fetch('/api/document-prep', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const result = await response.json();
