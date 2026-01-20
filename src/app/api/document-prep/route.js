@@ -28,9 +28,9 @@ export async function GET(request) {
       );
     }
 
-    // Verificar rol (solo admin y supervisor)
+    // Verificar rol (todos los roles del sistema)
     const userRole = decodedToken.role?.toLowerCase();
-    if (!['admin', 'administrador', 'supervisor'].includes(userRole)) {
+    if (!['admin', 'administrador', 'supervisor', 'flebotomista', 'recepcion', 'recepción'].includes(userRole)) {
       return NextResponse.json(
         { success: false, error: "Acceso denegado" },
         { status: 403 }
