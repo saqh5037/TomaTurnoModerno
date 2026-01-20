@@ -184,8 +184,7 @@ const HomePage = memo(function HomePage() {
                 color="secondary.600"
                 fontWeight="medium"
               >
-                TomaTurno - INER | {isAdmin ? '👨‍💼 Administrador' : isSupervisor ? '👨‍💼 Supervisor' : '👩‍⚕️ Flebotomista'}
-                {user?.name && ` - ${user.name}`}
+                TomaTurno - INER | {isAdmin ? '👨‍💼 Administrador' : isSupervisor ? '👨‍💼 Supervisor' : isRecepcion ? '🧑‍💼 Recepción' : '👩‍⚕️ Flebotomista'} - {user?.name}
               </Text>
             </Box>
             <VStack spacing={2} align="stretch">
