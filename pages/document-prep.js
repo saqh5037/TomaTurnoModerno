@@ -35,7 +35,7 @@ import {
   FiAlertCircle
 } from 'react-icons/fi';
 import { useRouter } from 'next/router';
-import ProtectedRoute from '../../components/ProtectedRoute';
+import ProtectedRoute from '../components/ProtectedRoute';
 
 // Componente de tarjeta de estadística
 const StatCard = ({ label, value, color, icon }) => (
