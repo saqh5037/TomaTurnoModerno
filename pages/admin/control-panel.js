@@ -449,7 +449,7 @@ function AdminControlPanel() {
   return (
     <ProtectedRoute requiredRole="admin">
       <Box minH="100vh" bg="gray.50">
-        <Container maxW="container.xl" py={6}>
+        <Box px={{ base: 4, md: 6, lg: 8 }} py={6}>
           {/* Header */}
           <Flex justify="space-between" align="center" mb={6}>
             <HStack spacing={4}>
@@ -979,7 +979,7 @@ function AdminControlPanel() {
           <Text fontSize="xs" color="gray.400" mt={4} textAlign="center">
             Última actualización: {dashboard?.timestamp ? new Date(dashboard.timestamp).toLocaleTimeString() : '-'}
           </Text>
-        </Container>
+        </Box>
 
         {/* Modal de Acción */}
         <Modal isOpen={isOpen} onClose={onClose}>

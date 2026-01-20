@@ -210,7 +210,7 @@ const DocumentPrep = () => {
   return (
     <ProtectedRoute>
       <Box minH="100vh" bg="gray.100">
-        <Container maxW="container.xl" py={4}>
+        <Box px={{ base: 4, md: 6, lg: 8 }} py={4}>
           {/* Header */}
           <Card bg="white" shadow="sm" mb={4}>
             <CardBody py={3}>
@@ -334,7 +334,7 @@ const DocumentPrep = () => {
               </HStack>
             </CardBody>
           </Card>
-        </Container>
+        </Box>
       </Box>
     </ProtectedRoute>
   );
