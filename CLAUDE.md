@@ -2,9 +2,22 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-**Last Updated**: November 27, 2025
-**Latest Release**: v2.7.0
+**Last Updated**: January 20, 2026
+**Latest Release**: v2.8.31
 **Status**: Production Ready - Active deployment at INER Medical Institute
+
+## 🔖 Versión del Sistema
+
+**IMPORTANTE**: Actualizar el archivo `lib/version.js` en cada release:
+
+```javascript
+// lib/version.js
+export const APP_VERSION = 'v2.8.31';  // ← ACTUALIZAR EN CADA RELEASE
+export const APP_NAME = 'TomaTurno';
+export const RELEASE_DATE = '2026-01-20';
+```
+
+La versión se muestra en la pantalla de login (parte inferior).
 
 ## 🚀 Essential Commands
 

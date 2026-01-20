@@ -18,6 +18,7 @@ import { useRouter } from 'next/router';
 import { useAuth } from '../contexts/AuthContext';
 import { FaUser, FaLock, FaEye, FaEyeSlash, FaSignInAlt, FaHospital } from 'react-icons/fa';
 import { fadeInUp, slideInFromLeft, GlassCard, ModernContainer } from '../components/theme/ModernTheme';
+import { APP_VERSION } from '../lib/version';
 
 const LoginPage = memo(function LoginPage() {
   const [username, setUsername] = useState('');
@@ -295,6 +296,9 @@ const LoginPage = memo(function LoginPage() {
         >
           <Text>
             INER - Laboratorio Central | © {new Date().getFullYear()} DT Diagnósticos by Labsis
+          </Text>
+          <Text fontSize="xs" color="gray.400" mt={1}>
+            {APP_VERSION}
           </Text>
         </Box>
       </ModernContainer>
