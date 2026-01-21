@@ -247,11 +247,16 @@ export async function GET(request) {
       };
     });
 
-    // Obtener lista de flebotomistas activos para filtros
+    // Obtener lista de flebotomistas con sesión activa (logged in) para filtros
     const phlebotomists = await prisma.user.findMany({
       where: {
         role: { in: ['flebotomista', 'Flebotomista'] },
-        isActive: true
+        isActive: true,
+        sessions: {
+          some: {
+            expiresAt: { gt: now }  // Solo flebotomistas con sesión no expirada
+          }
+        }
       },
       select: { id: true, name: true }
     });
