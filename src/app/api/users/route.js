@@ -147,12 +147,12 @@ export async function GET(request) {
       blocked: users.filter(u => u.status === 'BLOCKED').length,
       locked: enrichedUsers.filter(u => u.isLocked && u.status !== 'BLOCKED').length,
       byRole: {
-        admin: users.filter(u => u.role === 'Administrador').length,
-        supervisor: users.filter(u => u.role === 'supervisor').length,
+        admin: users.filter(u => u.role === 'admin' || u.role === 'Administrador').length,
+        supervisor: users.filter(u => u.role === 'supervisor' || u.role === 'Supervisor').length,
         flebotomista: users.filter(u => u.role === 'flebotomista' || u.role === 'Flebotomista').length,
-        recepcion: users.filter(u => u.role === 'recepcion').length,
-        laboratorio: users.filter(u => u.role === 'laboratorio').length,
-        otros: users.filter(u => !['admin', 'supervisor', 'flebotomista', 'Flebotomista', 'recepcion', 'laboratorio'].includes(u.role)).length
+        recepcion: users.filter(u => u.role === 'recepcion' || u.role === 'Recepcion').length,
+        laboratorio: users.filter(u => u.role === 'laboratorio' || u.role === 'Laboratorio').length,
+        otros: users.filter(u => !['admin', 'Administrador', 'supervisor', 'Supervisor', 'flebotomista', 'Flebotomista', 'recepcion', 'Recepcion', 'laboratorio', 'Laboratorio'].includes(u.role)).length
       },
       withActiveSessions: enrichedUsers.filter(u => u.activeSessions > 0).length,
       needPasswordChange: enrichedUsers.filter(u => u.passwordNeedsChange).length
