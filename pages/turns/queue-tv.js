@@ -116,6 +116,7 @@ const QueueTV = memo(function QueueTV() {
     const [currentTime, setCurrentTime] = useState(null);
     const [mounted, setMounted] = useState(false);
     const [scrollPositions, setScrollPositions] = useState({ inProgress: 0, pending: 0 });
+    const [retryCount, setRetryCount] = useState(0);
 
     // Effect para marcar el componente como montado
     useEffect(() => {
@@ -123,15 +124,40 @@ const QueueTV = memo(function QueueTV() {
         setCurrentTime(new Date());
     }, []);
 
-    // Función para obtener datos de la cola
+    // Auto-refresh como fallback después de 15 intentos fallidos consecutivos
+    useEffect(() => {
+        if (retryCount >= 15) {
+            console.log('[queue-tv] Demasiados intentos fallidos, recargando página automáticamente...');
+            window.location.reload();
+        }
+    }, [retryCount]);
+
+    // Función para obtener datos de la cola con auto-recuperación
     const fetchQueueData = useCallback(async () => {
         try {
-            const response = await fetch("/api/queue/list");
+            // Agregar timeout de 10 segundos para evitar que fetch se cuelgue
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+            const response = await fetch("/api/queue/list", {
+                signal: controller.signal
+            });
+            clearTimeout(timeoutId);
+
             if (!response.ok) throw new Error("Error al obtener los turnos");
             const data = await response.json();
 
             const sortedPendingTurns = (data.pendingTurns || []).sort((a, b) => a.assignedTurn - b.assignedTurn);
             const sortedInProgressTurns = (data.inProgressTurns || []).sort((a, b) => a.assignedTurn - b.assignedTurn);
+
+            // Limpiar error cuando la conexión se recupera
+            if (error) {
+                console.log('[queue-tv] Conexión recuperada, limpiando error');
+                setError(null);
+            }
+            if (retryCount > 0) {
+                setRetryCount(0);
+            }
 
             setPendingTurns(sortedPendingTurns);
             setInProgressTurns(sortedInProgressTurns);
@@ -141,10 +167,16 @@ const QueueTV = memo(function QueueTV() {
                 setIsCalling(true);
             }
         } catch (err) {
-            console.error("Error al cargar los turnos:", err);
-            setError("Error al cargar los turnos. Por favor, intente de nuevo.");
+            console.error("[queue-tv] Error al cargar los turnos:", err);
+            setRetryCount(prev => prev + 1);
+
+            // Solo mostrar error después de 3 intentos fallidos consecutivos
+            if (retryCount >= 2) {
+                setError("Error de conexión. Reintentando automáticamente...");
+            }
+            // El polling continuará reintentando automáticamente
         }
-    }, [isCalling]);
+    }, [isCalling, error, retryCount]);
 
     // Función para actualizar estado de llamado
     const updateCallStatus = useCallback(async () => {
@@ -350,10 +382,15 @@ const QueueTV = memo(function QueueTV() {
             <Box
                     height="100vh"
                     display="flex"
+                    flexDirection="column"
                     alignItems="center"
                     justifyContent="center"
+                    gap={4}
                 >
                     <Text fontSize="3xl" fontWeight="bold" color="red.700">{error}</Text>
+                    <Text fontSize="xl" color="gray.500">
+                        Intento {retryCount} de reconexión...
+                    </Text>
                 </Box>
         );
     }
