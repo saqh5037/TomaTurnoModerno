@@ -880,7 +880,7 @@ function AdminControlPanel() {
                           </Td>
                           <Td>{formatTime(turn.waitTime)}</Td>
                           <Td>{formatTime(turn.attentionTime)}</Td>
-                          <Td>
+                          <Td onClick={(e) => e.stopPropagation()}>
                             <HStack spacing={2} flexWrap="wrap">
                               {/* Liberar Holding */}
                               {turn.visualStatus === 'Holding' && (
