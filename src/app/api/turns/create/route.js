@@ -292,7 +292,7 @@ export async function POST(req) {
     if (workOrderValue) {
       const existingByOT = await prisma.turnRequest.findFirst({
         where: {
-          work_order: workOrderValue,
+          workOrder: workOrderValue,
           createdAt: { gte: todayStart, lte: todayEnd }
         }
       });
