@@ -435,13 +435,34 @@ export default function Attention() {
   // IMPORTANTE: Esperar a que fetchTurns complete (initialFetchDone) antes de asignar holding
   // Esto previene race condition donde se asigna un nuevo paciente antes de recuperar el existente
   // FIX: Requiere cubículo seleccionado para evitar que admins/supervisores bloqueen pacientes en holding
+  // NOTA: Llama al API directamente para evitar stale closure de assignHolding (que no está en deps)
   useEffect(() => {
     if (mounted && userId && initialFetchDone && selectedCubicle && !activePatient && !holdingAssignedRef.current) {
-      // Asignar holding inicial solo después de verificar que no hay paciente "In Progress" Y hay cubículo
       console.log("[Attention] initialFetchDone=true, no activePatient, cubículo seleccionado, asignando holding...");
-      assignHolding();
+      holdingAssignedRef.current = true;
+      setIsLoadingHolding(true);
+      fetch("/api/queue/assignHolding", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId }),
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success && data.turn) {
+            setHeldTurn(data.turn);
+            console.log("[Attention] Turno asignado en holding:", data.turn.id, data.turn.patientName);
+          } else {
+            console.log("[Attention] No hay turnos disponibles para holding");
+            holdingAssignedRef.current = false;
+          }
+        })
+        .catch(err => {
+          console.error("Error al asignar holding:", err);
+          holdingAssignedRef.current = false;
+        })
+        .finally(() => setIsLoadingHolding(false));
     }
-  }, [mounted, userId, activePatient, initialFetchDone, selectedCubicle]); // NO incluir assignHolding en dependencias
+  }, [mounted, userId, activePatient, initialFetchDone, selectedCubicle]);
 
   // Liberar holding cuando el usuario sale de la página o cierra la pestaña
   useEffect(() => {
