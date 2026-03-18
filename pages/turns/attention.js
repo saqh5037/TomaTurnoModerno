@@ -335,8 +335,7 @@ export default function Attention() {
           console.log("[Attention] Paciente activo ya no está en atención (acción externa detectada), limpiando...", activePatient.id, activePatient.patientName);
           setActivePatient(null);
           holdingAssignedRef.current = false; // Permitir asignar nuevo holding
-          // Asignar siguiente paciente automáticamente
-          assignHolding(true);
+          // El useEffect de assignHolding se disparará automáticamente al limpiar activePatient
         }
       }
 
@@ -370,7 +369,7 @@ export default function Attention() {
         setInitialFetchDone(true);
       }
     }
-  }, [toast, userId, activePatient, heldTurn, initialFetchDone, assignHolding]);
+  }, [toast, userId, activePatient, heldTurn, initialFetchDone]);
 
   // Función para asignar holding automáticamente
   const assignHolding = useCallback(async (forceAssign = false) => {

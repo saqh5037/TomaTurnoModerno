@@ -260,6 +260,33 @@ export async function POST(req) {
       studies_json: `[${sanitizedStudies.length} estudios estructurados]`
     });
 
+    // Prevención de duplicados: verificar si ya existe un turno activo para este paciente hoy
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const existingTurn = await prisma.turnRequest.findFirst({
+      where: {
+        patientName: dataToInsert.patientName,
+        status: { in: ['Pending', 'In Progress'] },
+        createdAt: { gte: today, lt: tomorrow }
+      }
+    });
+
+    if (existingTurn) {
+      console.warn(`[Duplicado] Turno ${existingTurn.id} ya existe para ${dataToInsert.patientName} (status: ${existingTurn.status})`);
+      return new Response(
+        JSON.stringify({
+          error: "Turno duplicado",
+          message: `Ya existe un turno activo para ${dataToInsert.patientName} (turno #${existingTurn.assignedTurn}). Si necesita crear otro, primero complete o cancele el existente.`,
+          existingTurnId: existingTurn.id,
+          existingAssignedTurn: existingTurn.assignedTurn
+        }),
+        { status: 409, headers: { "Content-Type": "application/json; charset=utf-8" } }
+      );
+    }
+
     // Creación del turno en Prisma
     const newTurn = await prisma.turnRequest.create({
       data: dataToInsert,
