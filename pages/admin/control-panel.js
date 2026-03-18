@@ -618,7 +618,7 @@ function AdminControlPanel() {
                 <CardHeader pb={2}>
                   <HStack justify="space-between">
                     <Text fontWeight="bold" fontSize="sm" color="gray.600">
-                      Flebotomistas en Servicio
+                      Personal en Servicio
                     </Text>
                     <Badge colorScheme="green">{dashboard.phlebotomistsCount || 0}</Badge>
                   </HStack>

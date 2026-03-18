@@ -196,9 +196,9 @@ export async function GET(request) {
       }
     });
 
-    // Construir lista de flebotomistas activos
+    // Construir lista de personal activo (flebotomistas + admins/supervisores con cubículo)
     const phlebotomists = activeSessions
-      .filter(s => s.user && ['flebotomista', 'Flebotomista'].includes(s.user.role))
+      .filter(s => s.user && s.selectedCubicleId)
       .map(session => {
         const cubicle = cubiclesData.find(c => c.id === session.selectedCubicleId);
         const currentTurn = turnsInProgress.find(t => t.attendedBy === session.user.id);
