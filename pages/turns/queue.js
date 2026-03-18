@@ -245,7 +245,7 @@ const Queue = memo(function Queue() {
                 // Configurar voz más natural y mexicana
                 utterance.rate = 0.9;   // Velocidad más natural (0.85 → 0.9)
                 utterance.pitch = 1.0;  // Tono neutro (más mexicano, menos agudo)
-                utterance.volume = 1.0; // Volumen al máximo
+                utterance.volume = 0.85; // Ligeramente menor que campana para contraste auditivo
 
                 // Configurar eventos para saber cuándo termina realmente el audio
                 let speechCompleted = false;
@@ -318,7 +318,7 @@ const Queue = memo(function Queue() {
                 console.log('[Queue] Iniciando reproducción de audio...');
                 // Crear audio con compatibilidad mejorada
                 audio = new Audio("/airport-sound.mp3");
-                audio.volume = 0.7;
+                audio.volume = 1.0; // Volumen máximo para campana (espacio con acústica difícil)
                 audio.preload = "auto";
 
                 // Detectar navegador y aplicar configuraciones específicas
@@ -329,17 +329,26 @@ const Queue = memo(function Queue() {
                     audio.autoplay = false;
                 }
 
-                // Intentar reproducir con manejo de errores mejorado
-                const playPromise = audio.play();
-
-                if (playPromise !== undefined) {
-                    await playPromise.catch(err => {
-                        console.warn("Audio no soportado o bloqueado:", err);
-                        // Fallback: mostrar notificación visual si el audio falla
-                        if (err.name === 'NotAllowedError') {
-                            console.log("Reproducción bloqueada. Requiere interacción del usuario.");
-                        }
-                    });
+                // Reproducir campana 3 veces para captar atención en espacio grande
+                for (let bellCount = 0; bellCount < 3 && isActive; bellCount++) {
+                    audio.currentTime = 0;
+                    const playPromise = audio.play();
+                    if (playPromise !== undefined) {
+                        await playPromise.catch(err => {
+                            console.warn("Audio no soportado o bloqueado:", err);
+                            if (err.name === 'NotAllowedError') {
+                                console.log("Reproducción bloqueada. Requiere interacción del usuario.");
+                            }
+                        });
+                    }
+                    // Esperar a que termine cada campana antes de la siguiente
+                    if (bellCount < 2 && isActive) {
+                        await new Promise(resolve => {
+                            audio.onended = resolve;
+                            // Timeout de seguridad por si onended no se dispara
+                            setTimeout(resolve, 3500);
+                        });
+                    }
                 }
 
                 if (!isActive) return;
@@ -347,11 +356,11 @@ const Queue = memo(function Queue() {
                 // GARANTIZAR CIERRE DEL MODAL
                 let modalClosed = false;
                 // Aumentar timeout para permitir ciclo completo:
-                // - Música inicial: ~3 segundos
+                // - Campanas (3x): ~9 segundos
                 // - Primer llamado: ~4-5 segundos
                 // - "Repito" + Segundo llamado: ~4-5 segundos
                 // - Buffer adicional: ~2 segundos
-                const MODAL_TIMEOUT = 18000; // 18 segundos para ciclo completo
+                const MODAL_TIMEOUT = 25000; // 25 segundos para ciclo completo con 3 campanas
 
                 // Timer de seguridad absoluto
                 const safetyTimer = setTimeout(() => {
