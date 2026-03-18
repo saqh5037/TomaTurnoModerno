@@ -54,6 +54,9 @@ export async function GET(request) {
     const showHolding = searchParams.get('showHolding'); // 'true' para mostrar solo holdings
     const activeOnly = searchParams.get('activeOnly'); // 'true' para mostrar solo turnos activos sin filtro de fecha
     const dateFilter = searchParams.get('date'); // Fecha específica (YYYY-MM-DD)
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = parseInt(searchParams.get('limit') || '100');
+    const skip = (page - 1) * limit;
 
     // Inicio del día actual
     const today = new Date();
@@ -62,6 +65,7 @@ export async function GET(request) {
 
     // Construir condiciones de filtro
     const where = {};
+    const andConditions = [];
 
     // Por defecto filtra por fecha de hoy, pero si activeOnly=true muestra todos los activos
     if (activeOnly === 'true') {
@@ -73,7 +77,13 @@ export async function GET(request) {
       filterDate.setHours(0, 0, 0, 0);
       const nextDay = new Date(filterDate);
       nextDay.setDate(nextDay.getDate() + 1);
-      where.createdAt = { gte: filterDate, lt: nextDay };
+
+      // Para turnos finalizados, filtrar por finishedAt (fecha de atención, no de creación)
+      if (status === 'Attended') {
+        where.finishedAt = { gte: filterDate, lt: nextDay };
+      } else {
+        where.createdAt = { gte: filterDate, lt: nextDay };
+      }
     } else {
       // Filtro por fecha de hoy (comportamiento original)
       where.createdAt = { gte: today };
@@ -99,13 +109,12 @@ export async function GET(request) {
       }
     }
 
-    // Filtro por flebotomista (attendedBy o holdingBy)
+    // Filtro por flebotomista (attendedBy o holdingBy) — usar andConditions para no sobrescribir
     if (phlebotomistId) {
       const pId = parseInt(phlebotomistId);
-      where.OR = [
-        { attendedBy: pId },
-        { holdingBy: pId }
-      ];
+      andConditions.push({
+        OR: [{ attendedBy: pId }, { holdingBy: pId }]
+      });
     }
 
     // Filtro por cubículo
@@ -118,20 +127,32 @@ export async function GET(request) {
       where.tipoAtencion = priority;
     }
 
-    // Búsqueda por nombre o número de turno
+    // Búsqueda por nombre o número de turno — usar andConditions para no sobrescribir
     if (search) {
       const searchNum = parseInt(search);
       if (!isNaN(searchNum)) {
-        where.OR = [
-          { patientName: { contains: search, mode: 'insensitive' } },
-          { assignedTurn: searchNum }
-        ];
+        andConditions.push({
+          OR: [
+            { patientName: { contains: search, mode: 'insensitive' } },
+            { assignedTurn: searchNum }
+          ]
+        });
       } else {
-        where.patientName = { contains: search, mode: 'insensitive' };
+        andConditions.push({
+          patientName: { contains: search, mode: 'insensitive' }
+        });
       }
     }
 
-    // Obtener turnos con relaciones
+    // Combinar todas las condiciones AND
+    if (andConditions.length > 0) {
+      where.AND = andConditions;
+    }
+
+    // Obtener total para paginación
+    const totalCount = await prisma.turnRequest.count({ where });
+
+    // Obtener turnos con relaciones y paginación
     const turnsRaw = await prisma.turnRequest.findMany({
       where,
       include: {
@@ -144,7 +165,9 @@ export async function GET(request) {
         holdingUser: {
           select: { id: true, name: true }
         }
-      }
+      },
+      skip,
+      take: limit
     });
 
     // Ordenar consistente con /api/queue/list:
@@ -272,7 +295,10 @@ export async function GET(request) {
       success: true,
       data: {
         turns: enrichedTurns,
-        total: enrichedTurns.length,
+        total: totalCount,
+        page,
+        limit,
+        totalPages: Math.ceil(totalCount / limit),
         filters: {
           phlebotomists,
           cubicles

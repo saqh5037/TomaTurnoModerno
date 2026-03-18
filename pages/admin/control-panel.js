@@ -131,6 +131,9 @@ function AdminControlPanel() {
   const [phlebotomistFilter, setPhlebotomistFilter] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [dateFilter, setDateFilter] = useState(''); // Fecha para filtrar (YYYY-MM-DD)
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
 
   // Modal de acción
   const { isOpen, onOpen, onClose } = useDisclosure();
@@ -192,6 +195,8 @@ function AdminControlPanel() {
 
       if (phlebotomistFilter) params.append('phlebotomistId', phlebotomistFilter);
       if (searchTerm) params.append('search', searchTerm);
+      params.append('page', currentPage.toString());
+      params.append('limit', '100');
 
       const response = await fetch(`/api/admin/turns?${params.toString()}`, {
         headers: { 'Authorization': `Bearer ${token}` }
@@ -200,13 +205,15 @@ function AdminControlPanel() {
       if (data.success) {
         setTurns(data.data.turns);
         setFilters(data.data.filters);
+        setTotalPages(data.data.totalPages || 1);
+        setTotalCount(data.data.total || 0);
       }
     } catch (error) {
       console.error('Error cargando turnos:', error);
     } finally {
       setLoading(false);
     }
-  }, [statusFilter, phlebotomistFilter, searchTerm, dateFilter]);
+  }, [statusFilter, phlebotomistFilter, searchTerm, dateFilter, currentPage]);
 
   // Cargar datos iniciales
   useEffect(() => {
@@ -706,6 +713,7 @@ function AdminControlPanel() {
                     onChange={(e) => {
                       const newStatus = e.target.value;
                       setStatusFilter(newStatus);
+                      setCurrentPage(1);
                       // Si selecciona Finalizados o Cancelados, establecer fecha de hoy por defecto
                       if (newStatus === 'Attended' || newStatus === 'Cancelled') {
                         if (!dateFilter) {
@@ -774,6 +782,7 @@ function AdminControlPanel() {
                     setPhlebotomistFilter('');
                     setSearchTerm('');
                     setDateFilter('');
+                    setCurrentPage(1);
                   }}
                   mt={6}
                 >
@@ -986,8 +995,31 @@ function AdminControlPanel() {
             </CardBody>
           </Card>
 
+          {/* Paginación */}
+          {totalPages > 1 && (
+            <Flex justify="center" align="center" mt={4} gap={2}>
+              <Button
+                size="sm"
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                isDisabled={currentPage <= 1}
+              >
+                Anterior
+              </Button>
+              <Text fontSize="sm" color="gray.600">
+                Página {currentPage} de {totalPages} ({totalCount} turnos)
+              </Text>
+              <Button
+                size="sm"
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                isDisabled={currentPage >= totalPages}
+              >
+                Siguiente
+              </Button>
+            </Flex>
+          )}
+
           <Text fontSize="xs" color="gray.400" mt={4} textAlign="center">
-            Última actualización: {dashboard?.timestamp ? new Date(dashboard.timestamp).toLocaleTimeString() : '-'}
+            {totalCount > 0 && `${totalCount} turnos encontrados · `}Última actualización: {dashboard?.timestamp ? new Date(dashboard.timestamp).toLocaleTimeString() : '-'}
           </Text>
         </Box>
 
