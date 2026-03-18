@@ -418,13 +418,14 @@ export default function Attention() {
   // Asignar holding automáticamente al montar (solo una vez)
   // IMPORTANTE: Esperar a que fetchTurns complete (initialFetchDone) antes de asignar holding
   // Esto previene race condition donde se asigna un nuevo paciente antes de recuperar el existente
+  // FIX: Requiere cubículo seleccionado para evitar que admins/supervisores bloqueen pacientes en holding
   useEffect(() => {
-    if (mounted && userId && initialFetchDone && !activePatient && !holdingAssignedRef.current) {
-      // Asignar holding inicial solo después de verificar que no hay paciente "In Progress"
-      console.log("[Attention] initialFetchDone=true, no activePatient, asignando holding...");
+    if (mounted && userId && initialFetchDone && selectedCubicle && !activePatient && !holdingAssignedRef.current) {
+      // Asignar holding inicial solo después de verificar que no hay paciente "In Progress" Y hay cubículo
+      console.log("[Attention] initialFetchDone=true, no activePatient, cubículo seleccionado, asignando holding...");
       assignHolding();
     }
-  }, [mounted, userId, activePatient, initialFetchDone]); // NO incluir assignHolding en dependencias
+  }, [mounted, userId, activePatient, initialFetchDone, selectedCubicle]); // NO incluir assignHolding en dependencias
 
   // Liberar holding cuando el usuario sale de la página o cierra la pestaña
   useEffect(() => {
@@ -446,9 +447,13 @@ export default function Attention() {
         setHeldTurn(null);
         console.log("[Attention] Holding liberado via visibilitychange (hidden)");
       } else if (document.visibilityState === 'visible') {
-        // Cuando vuelve a ser visible, reasignar holding
-        console.log("[Attention] Pestaña visible, reasignando holding...");
-        assignHolding(true); // Forzar reasignación
+        // Cuando vuelve a ser visible, reasignar holding (solo si hay cubículo seleccionado)
+        if (selectedCubicle) {
+          console.log("[Attention] Pestaña visible, cubículo seleccionado, reasignando holding...");
+          assignHolding(true); // Forzar reasignación
+        } else {
+          console.log("[Attention] Pestaña visible pero sin cubículo, NO reasignando holding");
+        }
       }
     };
 
@@ -460,7 +465,7 @@ export default function Attention() {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       // NO liberar aquí - solo en beforeunload/visibilitychange
     };
-  }, [userId]); // NO incluir releaseHolding ni assignHolding para evitar re-ejecuciones
+  }, [userId, selectedCubicle]); // NO incluir releaseHolding ni assignHolding para evitar re-ejecuciones
 
   const formatTime = (date) => {
     if (!date || !mounted) return "--:--";
@@ -1898,19 +1903,40 @@ export default function Attention() {
           >
             {/* Panel Principal */}
             <VStack spacing={{ base: 3, md: 4 }} align="stretch">
-              {/* Paciente Actual / Próximo */}
-              <CurrentPatientCard
-                patient={displayPatient}
-                onCall={handleCallPatient}
-                onComplete={handleCompleteAttention}
-                onRepeat={handleRepeatCall}
-                onDefer={handleDeferTurn}
-                isProcessing={processingTurns.has(displayPatient?.id)}
-                selectedCubicle={selectedCubicle}
-                isActive={!!activePatient && displayPatient?.id === activePatient?.id}
-                isSupervisor={isSupervisorOrAdmin()}
-                isLoading={showLoadingHolding}
-              />
+              {/* Paciente Actual / Próximo - Requiere cubículo seleccionado */}
+              {!selectedCubicle ? (
+                <GlassCard
+                  p={{ base: 4, md: 6, lg: 8 }}
+                  minH={{ base: "250px", md: "400px", lg: "500px" }}
+                  display="flex"
+                  flexDirection="column"
+                  alignItems="center"
+                  justifyContent="center"
+                  border="2px dashed"
+                  borderColor="orange.300"
+                >
+                  <FaHospital size={48} color="#ED8936" />
+                  <Text fontSize={{ base: "xl", md: "2xl" }} color="gray.600" fontWeight="bold" mt={4}>
+                    Selecciona un cubículo
+                  </Text>
+                  <Text fontSize={{ base: "sm", md: "md" }} color="gray.400" mt={2} textAlign="center">
+                    Debes seleccionar un cubículo en el menú superior antes de atender pacientes
+                  </Text>
+                </GlassCard>
+              ) : (
+                <CurrentPatientCard
+                  patient={displayPatient}
+                  onCall={handleCallPatient}
+                  onComplete={handleCompleteAttention}
+                  onRepeat={handleRepeatCall}
+                  onDefer={handleDeferTurn}
+                  isProcessing={processingTurns.has(displayPatient?.id)}
+                  selectedCubicle={selectedCubicle}
+                  isActive={!!activePatient && displayPatient?.id === activePatient?.id}
+                  isSupervisor={isSupervisorOrAdmin()}
+                  isLoading={showLoadingHolding}
+                />
+              )}
 
               {/* Indicador de turnos saltados */}
               {skippedTurns.size > 0 && (
