@@ -54,6 +54,8 @@ export async function GET(request) {
     const showHolding = searchParams.get('showHolding'); // 'true' para mostrar solo holdings
     const activeOnly = searchParams.get('activeOnly'); // 'true' para mostrar solo turnos activos sin filtro de fecha
     const dateFilter = searchParams.get('date'); // Fecha específica (YYYY-MM-DD)
+    const dateFrom = searchParams.get('dateFrom'); // Rango desde (YYYY-MM-DD)
+    const dateTo = searchParams.get('dateTo'); // Rango hasta (YYYY-MM-DD)
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '100');
     const skip = (page - 1) * limit;
@@ -71,19 +73,30 @@ export async function GET(request) {
     if (activeOnly === 'true') {
       // Solo turnos activos (Pending o In Progress) sin filtro de fecha
       where.status = { in: ['Pending', 'In Progress'] };
+    } else if (dateFrom || dateTo) {
+      // Rango de fechas
+      const dateField = status === 'Attended' ? 'finishedAt' : 'createdAt';
+      const rangeFilter = {};
+      if (dateFrom) {
+        const from = new Date(dateFrom);
+        from.setHours(0, 0, 0, 0);
+        rangeFilter.gte = from;
+      }
+      if (dateTo) {
+        const to = new Date(dateTo);
+        to.setHours(23, 59, 59, 999);
+        rangeFilter.lte = to;
+      }
+      where[dateField] = rangeFilter;
     } else if (dateFilter) {
-      // Filtro por fecha específica
+      // Filtro por fecha específica (compatibilidad)
       const filterDate = new Date(dateFilter);
       filterDate.setHours(0, 0, 0, 0);
       const nextDay = new Date(filterDate);
       nextDay.setDate(nextDay.getDate() + 1);
 
-      // Para turnos finalizados, filtrar por finishedAt (fecha de atención, no de creación)
-      if (status === 'Attended') {
-        where.finishedAt = { gte: filterDate, lt: nextDay };
-      } else {
-        where.createdAt = { gte: filterDate, lt: nextDay };
-      }
+      const dateField = status === 'Attended' ? 'finishedAt' : 'createdAt';
+      where[dateField] = { gte: filterDate, lt: nextDay };
     } else {
       // Filtro por fecha de hoy (comportamiento original)
       where.createdAt = { gte: today };

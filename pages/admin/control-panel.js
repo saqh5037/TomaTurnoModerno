@@ -130,10 +130,15 @@ function AdminControlPanel() {
   const [statusFilter, setStatusFilter] = useState('');
   const [phlebotomistFilter, setPhlebotomistFilter] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
-  const [dateFilter, setDateFilter] = useState(''); // Fecha para filtrar (YYYY-MM-DD)
+  const [dateFrom, setDateFrom] = useState(''); // Rango desde
+  const [dateTo, setDateTo] = useState(''); // Rango hasta
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
+
+  // Modal de detalle de turno
+  const { isOpen: isDetailOpen, onOpen: onDetailOpen, onClose: onDetailClose } = useDisclosure();
+  const [detailTurn, setDetailTurn] = useState(null);
 
   // Modal de acción
   const { isOpen, onOpen, onClose } = useDisclosure();
@@ -183,10 +188,8 @@ function AdminControlPanel() {
       // Si el filtro es "Attended" o "Cancelled", NO usar activeOnly para ver turnos
       if (statusFilter === 'Attended' || statusFilter === 'Cancelled') {
         params.append('status', statusFilter);
-        // Agregar fecha si está seleccionada
-        if (dateFilter) {
-          params.append('date', dateFilter);
-        }
+        if (dateFrom) params.append('dateFrom', dateFrom);
+        if (dateTo) params.append('dateTo', dateTo);
       } else {
         // Por defecto mostrar solo turnos activos (sin filtro de fecha)
         params.append('activeOnly', 'true');
@@ -213,7 +216,7 @@ function AdminControlPanel() {
     } finally {
       setLoading(false);
     }
-  }, [statusFilter, phlebotomistFilter, searchTerm, dateFilter, currentPage]);
+  }, [statusFilter, phlebotomistFilter, searchTerm, dateFrom, dateTo, currentPage]);
 
   // Cargar datos iniciales
   useEffect(() => {
@@ -716,12 +719,12 @@ function AdminControlPanel() {
                       setCurrentPage(1);
                       // Si selecciona Finalizados o Cancelados, establecer fecha de hoy por defecto
                       if (newStatus === 'Attended' || newStatus === 'Cancelled') {
-                        if (!dateFilter) {
-                          setDateFilter(new Date().toISOString().split('T')[0]);
-                        }
+                        const today = new Date().toISOString().split('T')[0];
+                        if (!dateFrom) setDateFrom(today);
+                        if (!dateTo) setDateTo(today);
                       } else {
-                        // Limpiar fecha si cambia a otro filtro
-                        setDateFilter('');
+                        setDateFrom('');
+                        setDateTo('');
                       }
                     }}
                     placeholder="Todos"
@@ -760,18 +763,31 @@ function AdminControlPanel() {
                   />
                 </FormControl>
 
-                {/* Filtro de fecha - Solo visible para Finalizados/Cancelados */}
+                {/* Filtro de rango de fechas - Solo visible para Finalizados/Cancelados */}
                 {(statusFilter === 'Attended' || statusFilter === 'Cancelled') && (
-                  <FormControl maxW="180px">
-                    <FormLabel fontSize="sm">Fecha</FormLabel>
-                    <Input
-                      type="date"
-                      value={dateFilter}
-                      onChange={(e) => setDateFilter(e.target.value)}
-                      size="sm"
-                      max={new Date().toISOString().split('T')[0]}
-                    />
-                  </FormControl>
+                  <>
+                    <FormControl maxW="160px">
+                      <FormLabel fontSize="sm">Desde</FormLabel>
+                      <Input
+                        type="date"
+                        value={dateFrom}
+                        onChange={(e) => { setDateFrom(e.target.value); setCurrentPage(1); }}
+                        size="sm"
+                        max={dateTo || new Date().toISOString().split('T')[0]}
+                      />
+                    </FormControl>
+                    <FormControl maxW="160px">
+                      <FormLabel fontSize="sm">Hasta</FormLabel>
+                      <Input
+                        type="date"
+                        value={dateTo}
+                        onChange={(e) => { setDateTo(e.target.value); setCurrentPage(1); }}
+                        size="sm"
+                        min={dateFrom}
+                        max={new Date().toISOString().split('T')[0]}
+                      />
+                    </FormControl>
+                  </>
                 )}
 
                 <Button
@@ -781,7 +797,8 @@ function AdminControlPanel() {
                     setStatusFilter('');
                     setPhlebotomistFilter('');
                     setSearchTerm('');
-                    setDateFilter('');
+                    setDateFrom('');
+                    setDateTo('');
                     setCurrentPage(1);
                   }}
                   mt={6}
@@ -820,7 +837,8 @@ function AdminControlPanel() {
                         <Tr
                           key={turn.id}
                           bg={turn.hasAlert ? 'red.50' : 'white'}
-                          _hover={{ bg: turn.hasAlert ? 'red.100' : 'gray.50' }}
+                          _hover={{ bg: turn.hasAlert ? 'red.100' : 'gray.50', cursor: 'pointer' }}
+                          onClick={() => { setDetailTurn(turn); onDetailOpen(); }}
                         >
                           <Td fontWeight="bold">{turn.assignedTurn}</Td>
                           <Td>
@@ -1214,6 +1232,156 @@ function AdminControlPanel() {
               >
                 Finalizar {dashboard?.realtime?.totalActive ?? 0} Turnos
               </Button>
+            </ModalFooter>
+          </ModalContent>
+        </Modal>
+        {/* Modal de Detalle del Turno */}
+        <Modal isOpen={isDetailOpen} onClose={onDetailClose} size="lg">
+          <ModalOverlay />
+          <ModalContent>
+            <ModalHeader>
+              Detalle del Turno #{detailTurn?.assignedTurn}
+            </ModalHeader>
+            <ModalCloseButton />
+            <ModalBody pb={6}>
+              {detailTurn && (
+                <VStack align="stretch" spacing={4}>
+                  {/* Info del paciente */}
+                  <Card variant="outline">
+                    <CardBody py={3}>
+                      <SimpleGrid columns={2} spacing={3}>
+                        <Box>
+                          <Text fontSize="xs" color="gray.500">Paciente</Text>
+                          <Text fontWeight="bold">{detailTurn.patientName}</Text>
+                        </Box>
+                        <Box>
+                          <Text fontSize="xs" color="gray.500">Estado</Text>
+                          <Badge colorScheme={STATUS_COLORS[detailTurn.visualStatus]}>
+                            {STATUS_LABELS[detailTurn.visualStatus]}
+                          </Badge>
+                        </Box>
+                        <Box>
+                          <Text fontSize="xs" color="gray.500">Prioridad</Text>
+                          <Badge colorScheme={detailTurn.isSpecial ? 'purple' : 'gray'}>
+                            {detailTurn.tipoAtencion}
+                          </Badge>
+                        </Box>
+                        <Box>
+                          <Text fontSize="xs" color="gray.500">Cubículo</Text>
+                          <Text>{detailTurn.cubicle?.name || '-'}</Text>
+                        </Box>
+                      </SimpleGrid>
+                    </CardBody>
+                  </Card>
+
+                  {/* Timeline */}
+                  <Card variant="outline">
+                    <CardHeader py={2}>
+                      <Text fontWeight="bold" fontSize="sm">Línea de Tiempo</Text>
+                    </CardHeader>
+                    <CardBody py={2}>
+                      <VStack align="stretch" spacing={2}>
+                        <HStack justify="space-between">
+                          <HStack>
+                            <Icon as={FiClock} color="blue.500" />
+                            <Text fontSize="sm">Turno creado</Text>
+                          </HStack>
+                          <Text fontSize="sm" color="gray.600">
+                            {detailTurn.createdAt ? new Date(detailTurn.createdAt).toLocaleString('es-MX') : '-'}
+                          </Text>
+                        </HStack>
+
+                        {detailTurn.holdingAt && (
+                          <HStack justify="space-between">
+                            <HStack>
+                              <Icon as={FiPause} color="orange.500" />
+                              <Text fontSize="sm">En holding</Text>
+                            </HStack>
+                            <Text fontSize="sm" color="gray.600">
+                              {new Date(detailTurn.holdingAt).toLocaleString('es-MX')}
+                            </Text>
+                          </HStack>
+                        )}
+
+                        {detailTurn.calledAt && (
+                          <HStack justify="space-between">
+                            <HStack>
+                              <Icon as={FiPhoneCall} color="green.500" />
+                              <Text fontSize="sm">Llamado</Text>
+                            </HStack>
+                            <Text fontSize="sm" color="gray.600">
+                              {new Date(detailTurn.calledAt).toLocaleString('es-MX')}
+                            </Text>
+                          </HStack>
+                        )}
+
+                        {detailTurn.attendedAt && (
+                          <HStack justify="space-between">
+                            <HStack>
+                              <Icon as={FiPlay} color="teal.500" />
+                              <Text fontSize="sm">En atención</Text>
+                            </HStack>
+                            <Text fontSize="sm" color="gray.600">
+                              {new Date(detailTurn.attendedAt).toLocaleString('es-MX')}
+                            </Text>
+                          </HStack>
+                        )}
+
+                        {detailTurn.finishedAt && (
+                          <HStack justify="space-between">
+                            <HStack>
+                              <Icon as={FiCheckCircle} color="green.600" />
+                              <Text fontSize="sm">Finalizado</Text>
+                            </HStack>
+                            <Text fontSize="sm" color="gray.600">
+                              {new Date(detailTurn.finishedAt).toLocaleString('es-MX')}
+                            </Text>
+                          </HStack>
+                        )}
+
+                        {detailTurn.deferredAt && (
+                          <HStack justify="space-between">
+                            <HStack>
+                              <Icon as={FiArrowLeft} color="purple.500" />
+                              <Text fontSize="sm">Diferido</Text>
+                            </HStack>
+                            <Text fontSize="sm" color="gray.600">
+                              {new Date(detailTurn.deferredAt).toLocaleString('es-MX')}
+                            </Text>
+                          </HStack>
+                        )}
+                      </VStack>
+                    </CardBody>
+                  </Card>
+
+                  {/* Quién atendió */}
+                  <Card variant="outline">
+                    <CardBody py={3}>
+                      <SimpleGrid columns={2} spacing={3}>
+                        <Box>
+                          <Text fontSize="xs" color="gray.500">Atendido por</Text>
+                          <Text>{detailTurn.attendedBy?.name || '-'}</Text>
+                        </Box>
+                        <Box>
+                          <Text fontSize="xs" color="gray.500">Holding por</Text>
+                          <Text>{detailTurn.holdingBy?.name || '-'}</Text>
+                        </Box>
+                        <Box>
+                          <Text fontSize="xs" color="gray.500">T. Espera</Text>
+                          <Text>{detailTurn.waitTime != null ? `${detailTurn.waitTime} min` : '-'}</Text>
+                        </Box>
+                        <Box>
+                          <Text fontSize="xs" color="gray.500">T. Atención</Text>
+                          <Text>{detailTurn.attentionTime != null ? `${detailTurn.attentionTime} min` : '-'}</Text>
+                        </Box>
+                      </SimpleGrid>
+                    </CardBody>
+                  </Card>
+                </VStack>
+              )}
+            </ModalBody>
+            <ModalFooter>
+              <Button onClick={onDetailClose}>Cerrar</Button>
             </ModalFooter>
           </ModalContent>
         </Modal>
