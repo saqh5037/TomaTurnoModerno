@@ -70,36 +70,32 @@ export async function GET(request) {
     const andConditions = [];
 
     // Por defecto filtra por fecha de hoy, pero si activeOnly=true muestra todos los activos
+    // IMPORTANTE: Usar strings ISO con T00:00:00Z/T23:59:59Z para evitar problemas de timezone del servidor
     if (activeOnly === 'true') {
       // Solo turnos activos (Pending o In Progress) sin filtro de fecha
       where.status = { in: ['Pending', 'In Progress'] };
     } else if (dateFrom || dateTo) {
-      // Rango de fechas
+      // Rango de fechas (timezone-safe)
       const dateField = status === 'Attended' ? 'finishedAt' : 'createdAt';
       const rangeFilter = {};
       if (dateFrom) {
-        const from = new Date(dateFrom);
-        from.setHours(0, 0, 0, 0);
-        rangeFilter.gte = from;
+        rangeFilter.gte = new Date(`${dateFrom}T00:00:00.000Z`);
       }
       if (dateTo) {
-        const to = new Date(dateTo);
-        to.setHours(23, 59, 59, 999);
-        rangeFilter.lte = to;
+        rangeFilter.lte = new Date(`${dateTo}T23:59:59.999Z`);
       }
       where[dateField] = rangeFilter;
     } else if (dateFilter) {
-      // Filtro por fecha específica (compatibilidad)
-      const filterDate = new Date(dateFilter);
-      filterDate.setHours(0, 0, 0, 0);
-      const nextDay = new Date(filterDate);
-      nextDay.setDate(nextDay.getDate() + 1);
-
+      // Filtro por fecha específica (timezone-safe)
       const dateField = status === 'Attended' ? 'finishedAt' : 'createdAt';
-      where[dateField] = { gte: filterDate, lt: nextDay };
+      where[dateField] = {
+        gte: new Date(`${dateFilter}T00:00:00.000Z`),
+        lte: new Date(`${dateFilter}T23:59:59.999Z`)
+      };
     } else {
-      // Filtro por fecha de hoy (comportamiento original)
-      where.createdAt = { gte: today };
+      // Filtro por fecha de hoy (timezone-safe)
+      const todayStr = now.toISOString().split('T')[0];
+      where.createdAt = { gte: new Date(`${todayStr}T00:00:00.000Z`) };
     }
 
     // Filtro por estado (sobrescribe el filtro de activeOnly si se especifica)
