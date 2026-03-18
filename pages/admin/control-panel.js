@@ -1261,6 +1261,18 @@ function AdminControlPanel() {
                           </Badge>
                         </Box>
                         <Box>
+                          <Text fontSize="xs" color="gray.500">Expediente</Text>
+                          <Text>{detailTurn.patientID || '-'}</Text>
+                        </Box>
+                        <Box>
+                          <Text fontSize="xs" color="gray.500">Orden de Trabajo</Text>
+                          <Text fontWeight="medium">{detailTurn.workOrder || '-'}</Text>
+                        </Box>
+                        <Box>
+                          <Text fontSize="xs" color="gray.500">Edad / Género</Text>
+                          <Text>{detailTurn.age || '-'} años / {detailTurn.gender === 'F' ? 'Femenino' : detailTurn.gender === 'M' ? 'Masculino' : '-'}</Text>
+                        </Box>
+                        <Box>
                           <Text fontSize="xs" color="gray.500">Prioridad</Text>
                           <Badge colorScheme={detailTurn.isSpecial ? 'purple' : 'gray'}>
                             {detailTurn.tipoAtencion}
@@ -1270,9 +1282,31 @@ function AdminControlPanel() {
                           <Text fontSize="xs" color="gray.500">Cubículo</Text>
                           <Text>{detailTurn.cubicle?.name || '-'}</Text>
                         </Box>
+                        <Box>
+                          <Text fontSize="xs" color="gray.500">Veces llamado</Text>
+                          <Text>{detailTurn.callCount || 0}</Text>
+                        </Box>
                       </SimpleGrid>
                     </CardBody>
                   </Card>
+
+                  {/* Estudios */}
+                  {detailTurn.studies && detailTurn.studies.length > 0 && (
+                    <Card variant="outline">
+                      <CardHeader py={2}>
+                        <Text fontWeight="bold" fontSize="sm">Estudios ({detailTurn.studies.length}) · {detailTurn.tubesRequired || 0} tubos</Text>
+                      </CardHeader>
+                      <CardBody py={2}>
+                        <VStack align="stretch" spacing={1}>
+                          {detailTurn.studies.map((study, i) => (
+                            <Text key={i} fontSize="sm" color="gray.700">
+                              • {typeof study === 'string' ? study : study.name}
+                            </Text>
+                          ))}
+                        </VStack>
+                      </CardBody>
+                    </Card>
+                  )}
 
                   {/* Timeline */}
                   <Card variant="outline">

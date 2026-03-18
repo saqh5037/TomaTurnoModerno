@@ -275,7 +275,12 @@ export async function GET(request) {
         attentionTime,
         holdingTime,
         hasAlert,
-        alertType
+        alertType,
+        // Campos adicionales para detalle
+        studies: turn.studies_json || [],
+        observations: turn.observations,
+        contactInfo: turn.contactInfo,
+        tubesRequired: turn.tubesRequired
       };
     });
 
