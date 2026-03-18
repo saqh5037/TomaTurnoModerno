@@ -330,6 +330,23 @@ export default function Attention() {
           // Marcar que ya tenemos paciente activo, no necesitamos holding
           holdingAssignedRef.current = true;
           setIsLoadingHolding(false);
+        } else if (activePatient) {
+          // Paciente ya no está en "In Progress" — un admin lo completó, devolvió a cola, o liberó
+          console.log("[Attention] Paciente activo ya no está en atención (acción externa detectada), limpiando...", activePatient.id, activePatient.patientName);
+          setActivePatient(null);
+          holdingAssignedRef.current = false; // Permitir asignar nuevo holding
+          // Asignar siguiente paciente automáticamente
+          assignHolding(true);
+        }
+      }
+
+      // Verificar si el turno en holding sigue existiendo (admin pudo liberarlo)
+      if (heldTurn && data.pendingTurns) {
+        const myHeldTurn = data.pendingTurns.find(t => t.id === heldTurn.id);
+        if (!myHeldTurn) {
+          console.log("[Attention] Turno en holding ya no existe o fue liberado externamente:", heldTurn.id);
+          setHeldTurn(null);
+          holdingAssignedRef.current = false;
         }
       }
 
@@ -353,7 +370,7 @@ export default function Attention() {
         setInitialFetchDone(true);
       }
     }
-  }, [toast, userId, activePatient, initialFetchDone]);
+  }, [toast, userId, activePatient, heldTurn, initialFetchDone, assignHolding]);
 
   // Función para asignar holding automáticamente
   const assignHolding = useCallback(async (forceAssign = false) => {
