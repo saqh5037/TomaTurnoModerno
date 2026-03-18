@@ -476,20 +476,32 @@ export default function Attention() {
     };
 
     const handleVisibilityChange = () => {
-      // Liberar holding cuando el usuario cambia de pestaña o minimiza
       if (document.visibilityState === 'hidden') {
-        const data = JSON.stringify({ userId });
-        navigator.sendBeacon("/api/queue/releaseHolding", data);
-        holdingAssignedRef.current = false; // Permitir reasignación al volver
-        setHeldTurn(null);
-        console.log("[Attention] Holding liberado via visibilitychange (hidden)");
+        // NO liberar holding al cambiar de pestaña — el timeout de 5 min ya protege contra abandonos
+        // Solo liberar en beforeunload (cierre real de página/pestaña)
+        console.log("[Attention] Pestaña oculta, manteniendo holding (se libera por timeout o al cerrar)");
       } else if (document.visibilityState === 'visible') {
-        // Cuando vuelve a ser visible, reasignar holding (solo si hay cubículo seleccionado)
-        if (selectedCubicle) {
-          console.log("[Attention] Pestaña visible, cubículo seleccionado, reasignando holding...");
-          assignHolding(true); // Forzar reasignación
-        } else {
-          console.log("[Attention] Pestaña visible pero sin cubículo, NO reasignando holding");
+        // Cuando vuelve a ser visible, verificar si necesitamos reasignar holding
+        if (selectedCubicle && !holdingAssignedRef.current) {
+          console.log("[Attention] Pestaña visible, reasignando holding...");
+          holdingAssignedRef.current = true;
+          setIsLoadingHolding(true);
+          fetch("/api/queue/assignHolding", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ userId }),
+          })
+            .then(res => res.json())
+            .then(data => {
+              if (data.success && data.turn) {
+                setHeldTurn(data.turn);
+                console.log("[Attention] Holding reasignado:", data.turn.id);
+              } else {
+                holdingAssignedRef.current = false;
+              }
+            })
+            .catch(() => { holdingAssignedRef.current = false; })
+            .finally(() => setIsLoadingHolding(false));
         }
       }
     };
