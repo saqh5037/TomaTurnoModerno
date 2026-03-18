@@ -689,13 +689,23 @@ function AdminControlPanel() {
                                     c.status === 'disponible' ? 'yellow.300' : 'gray.300'}
                       >
                         <Text fontSize="xs" fontWeight="bold">{c.name}</Text>
-                        <Text fontSize="xs" color="gray.600" noOfLines={1}>
-                          {c.phlebotomistName || '-'}
-                        </Text>
+                        {c.phlebotomistName && (
+                          <Text fontSize="xs" color="gray.700" fontWeight="medium" noOfLines={1}>
+                            {c.phlebotomistName}
+                          </Text>
+                        )}
+                        {c.currentPatient && (
+                          <Text fontSize="xs" color="gray.500" noOfLines={1}>
+                            {c.currentPatient}
+                          </Text>
+                        )}
                         {c.currentTurnNumber && (
                           <Badge size="sm" colorScheme={c.status === 'atendiendo' ? 'green' : 'blue'}>
                             #{c.currentTurnNumber}
                           </Badge>
+                        )}
+                        {!c.phlebotomistName && (
+                          <Text fontSize="xs" color="gray.400">-</Text>
                         )}
                       </Box>
                     ))}
