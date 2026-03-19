@@ -329,8 +329,8 @@ const Queue = memo(function Queue() {
                     audio.autoplay = false;
                 }
 
-                // Reproducir campana 3 veces para captar atención en espacio grande
-                for (let bellCount = 0; bellCount < 3 && isActive; bellCount++) {
+                // Reproducir campana 2 veces para captar atención en espacio grande
+                for (let bellCount = 0; bellCount < 2 && isActive; bellCount++) {
                     audio.currentTime = 0;
                     const playPromise = audio.play();
                     if (playPromise !== undefined) {
@@ -342,7 +342,7 @@ const Queue = memo(function Queue() {
                         });
                     }
                     // Esperar a que termine cada campana antes de la siguiente
-                    if (bellCount < 2 && isActive) {
+                    if (bellCount < 1 && isActive) {
                         await new Promise(resolve => {
                             audio.onended = resolve;
                             // Timeout de seguridad por si onended no se dispara
@@ -355,12 +355,12 @@ const Queue = memo(function Queue() {
 
                 // GARANTIZAR CIERRE DEL MODAL
                 let modalClosed = false;
-                // Aumentar timeout para permitir ciclo completo:
-                // - Campanas (3x): ~9 segundos
+                // Timeout para ciclo completo:
+                // - Campanas (2x): ~6 segundos
                 // - Primer llamado: ~4-5 segundos
                 // - "Repito" + Segundo llamado: ~4-5 segundos
                 // - Buffer adicional: ~2 segundos
-                const MODAL_TIMEOUT = 25000; // 25 segundos para ciclo completo con 3 campanas
+                const MODAL_TIMEOUT = 20000; // 20 segundos para ciclo completo
 
                 // Timer de seguridad absoluto
                 const safetyTimer = setTimeout(() => {

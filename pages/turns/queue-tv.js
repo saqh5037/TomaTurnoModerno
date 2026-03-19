@@ -312,11 +312,11 @@ const QueueTV = memo(function QueueTV() {
                 audio = new Audio("/airport-sound.mp3");
                 audio.volume = 1.0; // Volumen máximo para campana
 
-                // Reproducir campana 3 veces para captar atención en espacio grande
-                for (let bellCount = 0; bellCount < 3 && isActive; bellCount++) {
+                // Reproducir campana 2 veces para captar atención
+                for (let bellCount = 0; bellCount < 2 && isActive; bellCount++) {
                     audio.currentTime = 0;
                     await audio.play();
-                    if (bellCount < 2 && isActive) {
+                    if (bellCount < 1 && isActive) {
                         await new Promise(resolve => {
                             audio.onended = resolve;
                             setTimeout(resolve, 3500); // Seguridad
