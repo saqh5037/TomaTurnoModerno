@@ -290,7 +290,7 @@ export async function GET(request) {
     });
 
     // Obtener razones de cancelación para turnos cancelados
-    const cancelledTurnIds = enrichedTurns.filter(t => t.status === 'Cancelled').map(t => String(t.id));
+    const cancelledTurnIds = enrichedTurns.filter(t => t.status === 'Cancelled').map(t => t.id);
     if (cancelledTurnIds.length > 0) {
       const cancelLogs = await prisma.auditLog.findMany({
         where: {
@@ -308,7 +308,7 @@ export async function GET(request) {
       }
       for (const turn of enrichedTurns) {
         if (turn.status === 'Cancelled') {
-          turn.cancellationReason = reasonMap[String(turn.id)] || null;
+          turn.cancellationReason = reasonMap[turn.id] || null;
         }
       }
     }
