@@ -330,6 +330,22 @@ export default function Attention() {
           // Marcar que ya tenemos paciente activo, no necesitamos holding
           holdingAssignedRef.current = true;
           setIsLoadingHolding(false);
+        } else if (activePatient) {
+          // Paciente ya no está en "In Progress" — un admin lo completó, devolvió a cola, o liberó
+          console.log("[Attention] Paciente activo ya no está en atención (acción externa detectada), limpiando...", activePatient.id, activePatient.patientName);
+          setActivePatient(null);
+          holdingAssignedRef.current = false; // Permitir asignar nuevo holding
+          // El useEffect de assignHolding se disparará automáticamente al limpiar activePatient
+        }
+      }
+
+      // Verificar si el turno en holding sigue existiendo (admin pudo liberarlo)
+      if (heldTurn && data.pendingTurns) {
+        const myHeldTurn = data.pendingTurns.find(t => t.id === heldTurn.id);
+        if (!myHeldTurn) {
+          console.log("[Attention] Turno en holding ya no existe o fue liberado externamente:", heldTurn.id);
+          setHeldTurn(null);
+          holdingAssignedRef.current = false;
         }
       }
 
@@ -353,7 +369,7 @@ export default function Attention() {
         setInitialFetchDone(true);
       }
     }
-  }, [toast, userId, activePatient, initialFetchDone]);
+  }, [toast, userId, activePatient, heldTurn, initialFetchDone]);
 
   // Función para asignar holding automáticamente
   const assignHolding = useCallback(async (forceAssign = false) => {
@@ -418,13 +434,35 @@ export default function Attention() {
   // Asignar holding automáticamente al montar (solo una vez)
   // IMPORTANTE: Esperar a que fetchTurns complete (initialFetchDone) antes de asignar holding
   // Esto previene race condition donde se asigna un nuevo paciente antes de recuperar el existente
+  // FIX: Requiere cubículo seleccionado para evitar que admins/supervisores bloqueen pacientes en holding
+  // NOTA: Llama al API directamente para evitar stale closure de assignHolding (que no está en deps)
   useEffect(() => {
-    if (mounted && userId && initialFetchDone && !activePatient && !holdingAssignedRef.current) {
-      // Asignar holding inicial solo después de verificar que no hay paciente "In Progress"
-      console.log("[Attention] initialFetchDone=true, no activePatient, asignando holding...");
-      assignHolding();
+    if (mounted && userId && initialFetchDone && selectedCubicle && !activePatient && !holdingAssignedRef.current) {
+      console.log("[Attention] initialFetchDone=true, no activePatient, cubículo seleccionado, asignando holding...");
+      holdingAssignedRef.current = true;
+      setIsLoadingHolding(true);
+      fetch("/api/queue/assignHolding", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId }),
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success && data.turn) {
+            setHeldTurn(data.turn);
+            console.log("[Attention] Turno asignado en holding:", data.turn.id, data.turn.patientName);
+          } else {
+            console.log("[Attention] No hay turnos disponibles para holding");
+            holdingAssignedRef.current = false;
+          }
+        })
+        .catch(err => {
+          console.error("Error al asignar holding:", err);
+          holdingAssignedRef.current = false;
+        })
+        .finally(() => setIsLoadingHolding(false));
     }
-  }, [mounted, userId, activePatient, initialFetchDone]); // NO incluir assignHolding en dependencias
+  }, [mounted, userId, activePatient, initialFetchDone, selectedCubicle]);
 
   // Liberar holding cuando el usuario sale de la página o cierra la pestaña
   useEffect(() => {
@@ -438,17 +476,33 @@ export default function Attention() {
     };
 
     const handleVisibilityChange = () => {
-      // Liberar holding cuando el usuario cambia de pestaña o minimiza
       if (document.visibilityState === 'hidden') {
-        const data = JSON.stringify({ userId });
-        navigator.sendBeacon("/api/queue/releaseHolding", data);
-        holdingAssignedRef.current = false; // Permitir reasignación al volver
-        setHeldTurn(null);
-        console.log("[Attention] Holding liberado via visibilitychange (hidden)");
+        // NO liberar holding al cambiar de pestaña — el timeout de 5 min ya protege contra abandonos
+        // Solo liberar en beforeunload (cierre real de página/pestaña)
+        console.log("[Attention] Pestaña oculta, manteniendo holding (se libera por timeout o al cerrar)");
       } else if (document.visibilityState === 'visible') {
-        // Cuando vuelve a ser visible, reasignar holding
-        console.log("[Attention] Pestaña visible, reasignando holding...");
-        assignHolding(true); // Forzar reasignación
+        // Cuando vuelve a ser visible, verificar si necesitamos reasignar holding
+        if (selectedCubicle && !holdingAssignedRef.current) {
+          console.log("[Attention] Pestaña visible, reasignando holding...");
+          holdingAssignedRef.current = true;
+          setIsLoadingHolding(true);
+          fetch("/api/queue/assignHolding", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ userId }),
+          })
+            .then(res => res.json())
+            .then(data => {
+              if (data.success && data.turn) {
+                setHeldTurn(data.turn);
+                console.log("[Attention] Holding reasignado:", data.turn.id);
+              } else {
+                holdingAssignedRef.current = false;
+              }
+            })
+            .catch(() => { holdingAssignedRef.current = false; })
+            .finally(() => setIsLoadingHolding(false));
+        }
       }
     };
 
@@ -460,7 +514,7 @@ export default function Attention() {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       // NO liberar aquí - solo en beforeunload/visibilitychange
     };
-  }, [userId]); // NO incluir releaseHolding ni assignHolding para evitar re-ejecuciones
+  }, [userId, selectedCubicle]); // NO incluir releaseHolding ni assignHolding para evitar re-ejecuciones
 
   const formatTime = (date) => {
     if (!date || !mounted) return "--:--";
@@ -1898,19 +1952,40 @@ export default function Attention() {
           >
             {/* Panel Principal */}
             <VStack spacing={{ base: 3, md: 4 }} align="stretch">
-              {/* Paciente Actual / Próximo */}
-              <CurrentPatientCard
-                patient={displayPatient}
-                onCall={handleCallPatient}
-                onComplete={handleCompleteAttention}
-                onRepeat={handleRepeatCall}
-                onDefer={handleDeferTurn}
-                isProcessing={processingTurns.has(displayPatient?.id)}
-                selectedCubicle={selectedCubicle}
-                isActive={!!activePatient && displayPatient?.id === activePatient?.id}
-                isSupervisor={isSupervisorOrAdmin()}
-                isLoading={showLoadingHolding}
-              />
+              {/* Paciente Actual / Próximo - Requiere cubículo seleccionado */}
+              {!selectedCubicle ? (
+                <GlassCard
+                  p={{ base: 4, md: 6, lg: 8 }}
+                  minH={{ base: "250px", md: "400px", lg: "500px" }}
+                  display="flex"
+                  flexDirection="column"
+                  alignItems="center"
+                  justifyContent="center"
+                  border="2px dashed"
+                  borderColor="orange.300"
+                >
+                  <FaHospital size={48} color="#ED8936" />
+                  <Text fontSize={{ base: "xl", md: "2xl" }} color="gray.600" fontWeight="bold" mt={4}>
+                    Selecciona un cubículo
+                  </Text>
+                  <Text fontSize={{ base: "sm", md: "md" }} color="gray.400" mt={2} textAlign="center">
+                    Debes seleccionar un cubículo en el menú superior antes de atender pacientes
+                  </Text>
+                </GlassCard>
+              ) : (
+                <CurrentPatientCard
+                  patient={displayPatient}
+                  onCall={handleCallPatient}
+                  onComplete={handleCompleteAttention}
+                  onRepeat={handleRepeatCall}
+                  onDefer={handleDeferTurn}
+                  isProcessing={processingTurns.has(displayPatient?.id)}
+                  selectedCubicle={selectedCubicle}
+                  isActive={!!activePatient && displayPatient?.id === activePatient?.id}
+                  isSupervisor={isSupervisorOrAdmin()}
+                  isLoading={showLoadingHolding}
+                />
+              )}
 
               {/* Indicador de turnos saltados */}
               {skippedTurns.size > 0 && (

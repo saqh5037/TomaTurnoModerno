@@ -259,7 +259,7 @@ const QueueTV = memo(function QueueTV() {
                 utterance.lang = "es-MX";
                 utterance.rate = 0.9;
                 utterance.pitch = 1.15;
-                utterance.volume = 1.0;
+                utterance.volume = 0.85; // Ligeramente menor que campana para contraste auditivo
 
                 utterance.onend = () => {
                     resolve();
@@ -310,10 +310,28 @@ const QueueTV = memo(function QueueTV() {
         const playAnnouncement = async () => {
             try {
                 audio = new Audio("/airport-sound.mp3");
-                await audio.play();
-                
+                audio.volume = 1.0; // Volumen máximo para campana
+
+                // Reproducir campana 3 veces para captar atención en espacio grande
+                for (let bellCount = 0; bellCount < 3 && isActive; bellCount++) {
+                    audio.currentTime = 0;
+                    await audio.play();
+                    if (bellCount < 2 && isActive) {
+                        await new Promise(resolve => {
+                            audio.onended = resolve;
+                            setTimeout(resolve, 3500); // Seguridad
+                        });
+                    }
+                }
+
+                // Esperar a que termine la última campana antes del TTS
+                await new Promise(resolve => {
+                    audio.onended = resolve;
+                    setTimeout(resolve, 3500);
+                });
+
                 if (!isActive) return;
-                
+
                 for (let i = 0; i < 2 && isActive; i++) {
                     await speakAnnouncement(callingPatient);
                     if (i < 1 && isActive) {

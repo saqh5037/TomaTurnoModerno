@@ -54,6 +54,11 @@ export async function GET(request) {
     const showHolding = searchParams.get('showHolding'); // 'true' para mostrar solo holdings
     const activeOnly = searchParams.get('activeOnly'); // 'true' para mostrar solo turnos activos sin filtro de fecha
     const dateFilter = searchParams.get('date'); // Fecha específica (YYYY-MM-DD)
+    const dateFrom = searchParams.get('dateFrom'); // Rango desde (YYYY-MM-DD)
+    const dateTo = searchParams.get('dateTo'); // Rango hasta (YYYY-MM-DD)
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = parseInt(searchParams.get('limit') || '100');
+    const skip = (page - 1) * limit;
 
     // Inicio del día actual
     const today = new Date();
@@ -62,21 +67,35 @@ export async function GET(request) {
 
     // Construir condiciones de filtro
     const where = {};
+    const andConditions = [];
 
     // Por defecto filtra por fecha de hoy, pero si activeOnly=true muestra todos los activos
+    // IMPORTANTE: Usar strings ISO con T00:00:00Z/T23:59:59Z para evitar problemas de timezone del servidor
     if (activeOnly === 'true') {
       // Solo turnos activos (Pending o In Progress) sin filtro de fecha
       where.status = { in: ['Pending', 'In Progress'] };
+    } else if (dateFrom || dateTo) {
+      // Rango de fechas (timezone-safe)
+      const dateField = status === 'Attended' ? 'finishedAt' : 'createdAt';
+      const rangeFilter = {};
+      if (dateFrom) {
+        rangeFilter.gte = new Date(`${dateFrom}T00:00:00.000Z`);
+      }
+      if (dateTo) {
+        rangeFilter.lte = new Date(`${dateTo}T23:59:59.999Z`);
+      }
+      where[dateField] = rangeFilter;
     } else if (dateFilter) {
-      // Filtro por fecha específica
-      const filterDate = new Date(dateFilter);
-      filterDate.setHours(0, 0, 0, 0);
-      const nextDay = new Date(filterDate);
-      nextDay.setDate(nextDay.getDate() + 1);
-      where.createdAt = { gte: filterDate, lt: nextDay };
+      // Filtro por fecha específica (timezone-safe)
+      const dateField = status === 'Attended' ? 'finishedAt' : 'createdAt';
+      where[dateField] = {
+        gte: new Date(`${dateFilter}T00:00:00.000Z`),
+        lte: new Date(`${dateFilter}T23:59:59.999Z`)
+      };
     } else {
-      // Filtro por fecha de hoy (comportamiento original)
-      where.createdAt = { gte: today };
+      // Filtro por fecha de hoy (timezone-safe)
+      const todayStr = now.toISOString().split('T')[0];
+      where.createdAt = { gte: new Date(`${todayStr}T00:00:00.000Z`) };
     }
 
     // Filtro por estado (sobrescribe el filtro de activeOnly si se especifica)
@@ -99,13 +118,12 @@ export async function GET(request) {
       }
     }
 
-    // Filtro por flebotomista (attendedBy o holdingBy)
+    // Filtro por flebotomista (attendedBy o holdingBy) — usar andConditions para no sobrescribir
     if (phlebotomistId) {
       const pId = parseInt(phlebotomistId);
-      where.OR = [
-        { attendedBy: pId },
-        { holdingBy: pId }
-      ];
+      andConditions.push({
+        OR: [{ attendedBy: pId }, { holdingBy: pId }]
+      });
     }
 
     // Filtro por cubículo
@@ -118,20 +136,32 @@ export async function GET(request) {
       where.tipoAtencion = priority;
     }
 
-    // Búsqueda por nombre o número de turno
+    // Búsqueda por nombre o número de turno — usar andConditions para no sobrescribir
     if (search) {
       const searchNum = parseInt(search);
       if (!isNaN(searchNum)) {
-        where.OR = [
-          { patientName: { contains: search, mode: 'insensitive' } },
-          { assignedTurn: searchNum }
-        ];
+        andConditions.push({
+          OR: [
+            { patientName: { contains: search, mode: 'insensitive' } },
+            { assignedTurn: searchNum }
+          ]
+        });
       } else {
-        where.patientName = { contains: search, mode: 'insensitive' };
+        andConditions.push({
+          patientName: { contains: search, mode: 'insensitive' }
+        });
       }
     }
 
-    // Obtener turnos con relaciones
+    // Combinar todas las condiciones AND
+    if (andConditions.length > 0) {
+      where.AND = andConditions;
+    }
+
+    // Obtener total para paginación
+    const totalCount = await prisma.turnRequest.count({ where });
+
+    // Obtener turnos con relaciones y paginación
     const turnsRaw = await prisma.turnRequest.findMany({
       where,
       include: {
@@ -144,7 +174,9 @@ export async function GET(request) {
         holdingUser: {
           select: { id: true, name: true }
         }
-      }
+      },
+      skip,
+      take: limit
     });
 
     // Ordenar consistente con /api/queue/list:
@@ -243,7 +275,12 @@ export async function GET(request) {
         attentionTime,
         holdingTime,
         hasAlert,
-        alertType
+        alertType,
+        // Campos adicionales para detalle
+        studies: turn.studies_json || [],
+        observations: turn.observations,
+        contactInfo: turn.contactInfo,
+        tubesRequired: turn.tubesRequired
       };
     });
 
@@ -272,7 +309,10 @@ export async function GET(request) {
       success: true,
       data: {
         turns: enrichedTurns,
-        total: enrichedTurns.length,
+        total: totalCount,
+        page,
+        limit,
+        totalPages: Math.ceil(totalCount / limit),
         filters: {
           phlebotomists,
           cubicles

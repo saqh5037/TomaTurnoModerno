@@ -130,7 +130,15 @@ function AdminControlPanel() {
   const [statusFilter, setStatusFilter] = useState('');
   const [phlebotomistFilter, setPhlebotomistFilter] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
-  const [dateFilter, setDateFilter] = useState(''); // Fecha para filtrar (YYYY-MM-DD)
+  const [dateFrom, setDateFrom] = useState(''); // Rango desde
+  const [dateTo, setDateTo] = useState(''); // Rango hasta
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+
+  // Modal de detalle de turno
+  const { isOpen: isDetailOpen, onOpen: onDetailOpen, onClose: onDetailClose } = useDisclosure();
+  const [detailTurn, setDetailTurn] = useState(null);
 
   // Modal de acción
   const { isOpen, onOpen, onClose } = useDisclosure();
@@ -180,10 +188,8 @@ function AdminControlPanel() {
       // Si el filtro es "Attended" o "Cancelled", NO usar activeOnly para ver turnos
       if (statusFilter === 'Attended' || statusFilter === 'Cancelled') {
         params.append('status', statusFilter);
-        // Agregar fecha si está seleccionada
-        if (dateFilter) {
-          params.append('date', dateFilter);
-        }
+        if (dateFrom) params.append('dateFrom', dateFrom);
+        if (dateTo) params.append('dateTo', dateTo);
       } else {
         // Por defecto mostrar solo turnos activos (sin filtro de fecha)
         params.append('activeOnly', 'true');
@@ -192,6 +198,8 @@ function AdminControlPanel() {
 
       if (phlebotomistFilter) params.append('phlebotomistId', phlebotomistFilter);
       if (searchTerm) params.append('search', searchTerm);
+      params.append('page', currentPage.toString());
+      params.append('limit', '100');
 
       const response = await fetch(`/api/admin/turns?${params.toString()}`, {
         headers: { 'Authorization': `Bearer ${token}` }
@@ -200,13 +208,15 @@ function AdminControlPanel() {
       if (data.success) {
         setTurns(data.data.turns);
         setFilters(data.data.filters);
+        setTotalPages(data.data.totalPages || 1);
+        setTotalCount(data.data.total || 0);
       }
     } catch (error) {
       console.error('Error cargando turnos:', error);
     } finally {
       setLoading(false);
     }
-  }, [statusFilter, phlebotomistFilter, searchTerm, dateFilter]);
+  }, [statusFilter, phlebotomistFilter, searchTerm, dateFrom, dateTo, currentPage]);
 
   // Cargar datos iniciales
   useEffect(() => {
@@ -608,7 +618,7 @@ function AdminControlPanel() {
                 <CardHeader pb={2}>
                   <HStack justify="space-between">
                     <Text fontWeight="bold" fontSize="sm" color="gray.600">
-                      Flebotomistas en Servicio
+                      Personal en Servicio
                     </Text>
                     <Badge colorScheme="green">{dashboard.phlebotomistsCount || 0}</Badge>
                   </HStack>
@@ -679,13 +689,23 @@ function AdminControlPanel() {
                                     c.status === 'disponible' ? 'yellow.300' : 'gray.300'}
                       >
                         <Text fontSize="xs" fontWeight="bold">{c.name}</Text>
-                        <Text fontSize="xs" color="gray.600" noOfLines={1}>
-                          {c.phlebotomistName || '-'}
-                        </Text>
+                        {c.phlebotomistName && (
+                          <Text fontSize="xs" color="gray.700" fontWeight="medium" noOfLines={1}>
+                            {c.phlebotomistName}
+                          </Text>
+                        )}
+                        {c.currentPatient && (
+                          <Text fontSize="xs" color="gray.500" noOfLines={1}>
+                            {c.currentPatient}
+                          </Text>
+                        )}
                         {c.currentTurnNumber && (
                           <Badge size="sm" colorScheme={c.status === 'atendiendo' ? 'green' : 'blue'}>
                             #{c.currentTurnNumber}
                           </Badge>
+                        )}
+                        {!c.phlebotomistName && (
+                          <Text fontSize="xs" color="gray.400">-</Text>
                         )}
                       </Box>
                     ))}
@@ -706,14 +726,15 @@ function AdminControlPanel() {
                     onChange={(e) => {
                       const newStatus = e.target.value;
                       setStatusFilter(newStatus);
+                      setCurrentPage(1);
                       // Si selecciona Finalizados o Cancelados, establecer fecha de hoy por defecto
                       if (newStatus === 'Attended' || newStatus === 'Cancelled') {
-                        if (!dateFilter) {
-                          setDateFilter(new Date().toISOString().split('T')[0]);
-                        }
+                        const today = new Date().toISOString().split('T')[0];
+                        if (!dateFrom) setDateFrom(today);
+                        if (!dateTo) setDateTo(today);
                       } else {
-                        // Limpiar fecha si cambia a otro filtro
-                        setDateFilter('');
+                        setDateFrom('');
+                        setDateTo('');
                       }
                     }}
                     placeholder="Todos"
@@ -752,18 +773,31 @@ function AdminControlPanel() {
                   />
                 </FormControl>
 
-                {/* Filtro de fecha - Solo visible para Finalizados/Cancelados */}
+                {/* Filtro de rango de fechas - Solo visible para Finalizados/Cancelados */}
                 {(statusFilter === 'Attended' || statusFilter === 'Cancelled') && (
-                  <FormControl maxW="180px">
-                    <FormLabel fontSize="sm">Fecha</FormLabel>
-                    <Input
-                      type="date"
-                      value={dateFilter}
-                      onChange={(e) => setDateFilter(e.target.value)}
-                      size="sm"
-                      max={new Date().toISOString().split('T')[0]}
-                    />
-                  </FormControl>
+                  <>
+                    <FormControl maxW="160px">
+                      <FormLabel fontSize="sm">Desde</FormLabel>
+                      <Input
+                        type="date"
+                        value={dateFrom}
+                        onChange={(e) => { setDateFrom(e.target.value); setCurrentPage(1); }}
+                        size="sm"
+                        max={dateTo || new Date().toISOString().split('T')[0]}
+                      />
+                    </FormControl>
+                    <FormControl maxW="160px">
+                      <FormLabel fontSize="sm">Hasta</FormLabel>
+                      <Input
+                        type="date"
+                        value={dateTo}
+                        onChange={(e) => { setDateTo(e.target.value); setCurrentPage(1); }}
+                        size="sm"
+                        min={dateFrom}
+                        max={new Date().toISOString().split('T')[0]}
+                      />
+                    </FormControl>
+                  </>
                 )}
 
                 <Button
@@ -773,7 +807,9 @@ function AdminControlPanel() {
                     setStatusFilter('');
                     setPhlebotomistFilter('');
                     setSearchTerm('');
-                    setDateFilter('');
+                    setDateFrom('');
+                    setDateTo('');
+                    setCurrentPage(1);
                   }}
                   mt={6}
                 >
@@ -811,7 +847,8 @@ function AdminControlPanel() {
                         <Tr
                           key={turn.id}
                           bg={turn.hasAlert ? 'red.50' : 'white'}
-                          _hover={{ bg: turn.hasAlert ? 'red.100' : 'gray.50' }}
+                          _hover={{ bg: turn.hasAlert ? 'red.100' : 'gray.50', cursor: 'pointer' }}
+                          onClick={() => { setDetailTurn(turn); onDetailOpen(); }}
                         >
                           <Td fontWeight="bold">{turn.assignedTurn}</Td>
                           <Td>
@@ -843,7 +880,7 @@ function AdminControlPanel() {
                           </Td>
                           <Td>{formatTime(turn.waitTime)}</Td>
                           <Td>{formatTime(turn.attentionTime)}</Td>
-                          <Td>
+                          <Td onClick={(e) => e.stopPropagation()}>
                             <HStack spacing={2} flexWrap="wrap">
                               {/* Liberar Holding */}
                               {turn.visualStatus === 'Holding' && (
@@ -986,8 +1023,31 @@ function AdminControlPanel() {
             </CardBody>
           </Card>
 
+          {/* Paginación */}
+          {totalPages > 1 && (
+            <Flex justify="center" align="center" mt={4} gap={2}>
+              <Button
+                size="sm"
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                isDisabled={currentPage <= 1}
+              >
+                Anterior
+              </Button>
+              <Text fontSize="sm" color="gray.600">
+                Página {currentPage} de {totalPages} ({totalCount} turnos)
+              </Text>
+              <Button
+                size="sm"
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                isDisabled={currentPage >= totalPages}
+              >
+                Siguiente
+              </Button>
+            </Flex>
+          )}
+
           <Text fontSize="xs" color="gray.400" mt={4} textAlign="center">
-            Última actualización: {dashboard?.timestamp ? new Date(dashboard.timestamp).toLocaleTimeString() : '-'}
+            {totalCount > 0 && `${totalCount} turnos encontrados · `}Última actualización: {dashboard?.timestamp ? new Date(dashboard.timestamp).toLocaleTimeString() : '-'}
           </Text>
         </Box>
 
@@ -1182,6 +1242,190 @@ function AdminControlPanel() {
               >
                 Finalizar {dashboard?.realtime?.totalActive ?? 0} Turnos
               </Button>
+            </ModalFooter>
+          </ModalContent>
+        </Modal>
+        {/* Modal de Detalle del Turno */}
+        <Modal isOpen={isDetailOpen} onClose={onDetailClose} size="lg">
+          <ModalOverlay />
+          <ModalContent>
+            <ModalHeader>
+              Detalle del Turno #{detailTurn?.assignedTurn}
+            </ModalHeader>
+            <ModalCloseButton />
+            <ModalBody pb={6}>
+              {detailTurn && (
+                <VStack align="stretch" spacing={4}>
+                  {/* Info del paciente */}
+                  <Card variant="outline">
+                    <CardBody py={3}>
+                      <SimpleGrid columns={2} spacing={3}>
+                        <Box>
+                          <Text fontSize="xs" color="gray.500">Paciente</Text>
+                          <Text fontWeight="bold">{detailTurn.patientName}</Text>
+                        </Box>
+                        <Box>
+                          <Text fontSize="xs" color="gray.500">Estado</Text>
+                          <Badge colorScheme={STATUS_COLORS[detailTurn.visualStatus]}>
+                            {STATUS_LABELS[detailTurn.visualStatus]}
+                          </Badge>
+                        </Box>
+                        <Box>
+                          <Text fontSize="xs" color="gray.500">Expediente</Text>
+                          <Text>{detailTurn.patientID || '-'}</Text>
+                        </Box>
+                        <Box>
+                          <Text fontSize="xs" color="gray.500">Orden de Trabajo</Text>
+                          <Text fontWeight="medium">{detailTurn.workOrder || '-'}</Text>
+                        </Box>
+                        <Box>
+                          <Text fontSize="xs" color="gray.500">Edad / Género</Text>
+                          <Text>{detailTurn.age || '-'} años / {detailTurn.gender === 'F' ? 'Femenino' : detailTurn.gender === 'M' ? 'Masculino' : '-'}</Text>
+                        </Box>
+                        <Box>
+                          <Text fontSize="xs" color="gray.500">Prioridad</Text>
+                          <Badge colorScheme={detailTurn.isSpecial ? 'purple' : 'gray'}>
+                            {detailTurn.tipoAtencion}
+                          </Badge>
+                        </Box>
+                        <Box>
+                          <Text fontSize="xs" color="gray.500">Cubículo</Text>
+                          <Text>{detailTurn.cubicle?.name || '-'}</Text>
+                        </Box>
+                        <Box>
+                          <Text fontSize="xs" color="gray.500">Veces llamado</Text>
+                          <Text>{detailTurn.callCount || 0}</Text>
+                        </Box>
+                      </SimpleGrid>
+                    </CardBody>
+                  </Card>
+
+                  {/* Estudios */}
+                  {detailTurn.studies && detailTurn.studies.length > 0 && (
+                    <Card variant="outline">
+                      <CardHeader py={2}>
+                        <Text fontWeight="bold" fontSize="sm">Estudios ({detailTurn.studies.length}) · {detailTurn.tubesRequired || 0} tubos</Text>
+                      </CardHeader>
+                      <CardBody py={2}>
+                        <VStack align="stretch" spacing={1}>
+                          {detailTurn.studies.map((study, i) => (
+                            <Text key={i} fontSize="sm" color="gray.700">
+                              • {typeof study === 'string' ? study : study.name}
+                            </Text>
+                          ))}
+                        </VStack>
+                      </CardBody>
+                    </Card>
+                  )}
+
+                  {/* Timeline */}
+                  <Card variant="outline">
+                    <CardHeader py={2}>
+                      <Text fontWeight="bold" fontSize="sm">Línea de Tiempo</Text>
+                    </CardHeader>
+                    <CardBody py={2}>
+                      <VStack align="stretch" spacing={2}>
+                        <HStack justify="space-between">
+                          <HStack>
+                            <Icon as={FiClock} color="blue.500" />
+                            <Text fontSize="sm">Turno creado</Text>
+                          </HStack>
+                          <Text fontSize="sm" color="gray.600">
+                            {detailTurn.createdAt ? new Date(detailTurn.createdAt).toLocaleString('es-MX') : '-'}
+                          </Text>
+                        </HStack>
+
+                        {detailTurn.holdingAt && (
+                          <HStack justify="space-between">
+                            <HStack>
+                              <Icon as={FiPause} color="orange.500" />
+                              <Text fontSize="sm">En holding</Text>
+                            </HStack>
+                            <Text fontSize="sm" color="gray.600">
+                              {new Date(detailTurn.holdingAt).toLocaleString('es-MX')}
+                            </Text>
+                          </HStack>
+                        )}
+
+                        {detailTurn.calledAt && (
+                          <HStack justify="space-between">
+                            <HStack>
+                              <Icon as={FiPhoneCall} color="green.500" />
+                              <Text fontSize="sm">Llamado</Text>
+                            </HStack>
+                            <Text fontSize="sm" color="gray.600">
+                              {new Date(detailTurn.calledAt).toLocaleString('es-MX')}
+                            </Text>
+                          </HStack>
+                        )}
+
+                        {detailTurn.attendedAt && (
+                          <HStack justify="space-between">
+                            <HStack>
+                              <Icon as={FiPlay} color="teal.500" />
+                              <Text fontSize="sm">En atención</Text>
+                            </HStack>
+                            <Text fontSize="sm" color="gray.600">
+                              {new Date(detailTurn.attendedAt).toLocaleString('es-MX')}
+                            </Text>
+                          </HStack>
+                        )}
+
+                        {detailTurn.finishedAt && (
+                          <HStack justify="space-between">
+                            <HStack>
+                              <Icon as={FiCheckCircle} color="green.600" />
+                              <Text fontSize="sm">Finalizado</Text>
+                            </HStack>
+                            <Text fontSize="sm" color="gray.600">
+                              {new Date(detailTurn.finishedAt).toLocaleString('es-MX')}
+                            </Text>
+                          </HStack>
+                        )}
+
+                        {detailTurn.deferredAt && (
+                          <HStack justify="space-between">
+                            <HStack>
+                              <Icon as={FiArrowLeft} color="purple.500" />
+                              <Text fontSize="sm">Diferido</Text>
+                            </HStack>
+                            <Text fontSize="sm" color="gray.600">
+                              {new Date(detailTurn.deferredAt).toLocaleString('es-MX')}
+                            </Text>
+                          </HStack>
+                        )}
+                      </VStack>
+                    </CardBody>
+                  </Card>
+
+                  {/* Quién atendió */}
+                  <Card variant="outline">
+                    <CardBody py={3}>
+                      <SimpleGrid columns={2} spacing={3}>
+                        <Box>
+                          <Text fontSize="xs" color="gray.500">Atendido por</Text>
+                          <Text>{detailTurn.attendedBy?.name || '-'}</Text>
+                        </Box>
+                        <Box>
+                          <Text fontSize="xs" color="gray.500">Holding por</Text>
+                          <Text>{detailTurn.holdingBy?.name || '-'}</Text>
+                        </Box>
+                        <Box>
+                          <Text fontSize="xs" color="gray.500">T. Espera</Text>
+                          <Text>{detailTurn.waitTime != null ? `${detailTurn.waitTime} min` : '-'}</Text>
+                        </Box>
+                        <Box>
+                          <Text fontSize="xs" color="gray.500">T. Atención</Text>
+                          <Text>{detailTurn.attentionTime != null ? `${detailTurn.attentionTime} min` : '-'}</Text>
+                        </Box>
+                      </SimpleGrid>
+                    </CardBody>
+                  </Card>
+                </VStack>
+              )}
+            </ModalBody>
+            <ModalFooter>
+              <Button onClick={onDetailClose}>Cerrar</Button>
             </ModalFooter>
           </ModalContent>
         </Modal>

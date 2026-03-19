@@ -260,6 +260,57 @@ export async function POST(req) {
       studies_json: `[${sanitizedStudies.length} estudios estructurados]`
     });
 
+    // Prevención de duplicados (timezone-safe)
+    const todayStr = new Date().toISOString().split('T')[0];
+    const todayStart = new Date(`${todayStr}T00:00:00.000Z`);
+    const todayEnd = new Date(`${todayStr}T23:59:59.999Z`);
+
+    // Check 1: Si ya existe un turno activo (Pending/In Progress) para este paciente hoy
+    const existingActive = await prisma.turnRequest.findFirst({
+      where: {
+        patientName: dataToInsert.patientName,
+        status: { in: ['Pending', 'In Progress'] },
+        createdAt: { gte: todayStart, lte: todayEnd }
+      }
+    });
+
+    if (existingActive) {
+      console.warn(`[Duplicado] Turno activo ${existingActive.id} ya existe para ${dataToInsert.patientName}`);
+      return new Response(
+        JSON.stringify({
+          error: "Turno duplicado",
+          message: `Ya existe un turno activo para ${dataToInsert.patientName} (turno #${existingActive.assignedTurn}).`,
+          existingTurnId: existingActive.id,
+          existingAssignedTurn: existingActive.assignedTurn
+        }),
+        { status: 409, headers: { "Content-Type": "application/json; charset=utf-8" } }
+      );
+    }
+
+    // Check 2: Si existe un turno con la misma orden de trabajo hoy (cualquier status)
+    const workOrderValue = dataToInsert.workOrder;
+    if (workOrderValue) {
+      const existingByOT = await prisma.turnRequest.findFirst({
+        where: {
+          workOrder: workOrderValue,
+          createdAt: { gte: todayStart, lte: todayEnd }
+        }
+      });
+
+      if (existingByOT) {
+        console.warn(`[Duplicado OT] Turno ${existingByOT.id} con OT ${workOrderValue} ya existe (status: ${existingByOT.status})`);
+        return new Response(
+          JSON.stringify({
+            error: "Orden de trabajo duplicada",
+            message: `Ya existe un turno con la orden de trabajo ${workOrderValue} (turno #${existingByOT.assignedTurn}, ${existingByOT.status}).`,
+            existingTurnId: existingByOT.id,
+            existingAssignedTurn: existingByOT.assignedTurn
+          }),
+          { status: 409, headers: { "Content-Type": "application/json; charset=utf-8" } }
+        );
+      }
+    }
+
     // Creación del turno en Prisma
     const newTurn = await prisma.turnRequest.create({
       data: dataToInsert,
