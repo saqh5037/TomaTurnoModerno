@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useMemo, memo } from "react";
+import { useEffect, useState, useCallback, useMemo, memo, useRef } from "react";
 import { Box, Heading, Text, Grid, Flex, extendTheme, VStack, HStack, Icon, Circle } from "@chakra-ui/react";
 import { keyframes } from "@emotion/react";
 import { FaHeartbeat, FaClock, FaUserMd, FaUser, FaWheelchair, FaMicrophone, FaStar, FaQrcode } from 'react-icons/fa';
@@ -174,7 +174,11 @@ const QueueTV = memo(function QueueTV() {
             if (retryCount >= 2) {
                 setError("Error de conexión. Reintentando automáticamente...");
             }
-            // El polling continuará reintentando automáticamente
+            // Auto-recovery para modo kiosco: recargar después de 10 errores consecutivos
+            if (retryCount >= 10) {
+                console.log("[queue-tv] Demasiados errores, recargando página...");
+                window.location.reload();
+            }
         }
     }, [isCalling, error, retryCount]);
 

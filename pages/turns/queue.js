@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, memo } from "react";
+import { useEffect, useState, useCallback, memo, useRef } from "react";
 import { Box, Heading, Text, Flex, extendTheme, VStack, HStack, Grid } from "@chakra-ui/react";
 import { FaHeartbeat, FaClock, FaMicrophone, FaWheelchair, FaHourglass } from 'react-icons/fa';
 import QRCode from 'react-qr-code';
@@ -64,6 +64,7 @@ const Queue = memo(function Queue() {
     const [mounted, setMounted] = useState(false);
     const [currentPhraseIndex, setCurrentPhraseIndex] = useState(0);
     const [audioEnabled, setAudioEnabled] = useState(false);
+    const errorCountRef = useRef(0);
 
     // Frases motivacionales que rotan
     const phrases = [
@@ -122,6 +123,8 @@ const Queue = memo(function Queue() {
             // No necesitamos re-ordenar en el cliente
             setPendingTurns(data.pendingTurns || []);
             setInProgressTurns(data.inProgressTurns || []);
+            errorCountRef.current = 0; // Reset error counter on success
+            if (error) setError(null); // Clear any previous error
 
             // Detectar pacientes siendo llamados
             if (data.inCallingTurns && data.inCallingTurns.length > 0) {
@@ -142,7 +145,15 @@ const Queue = memo(function Queue() {
             }
         } catch (err) {
             console.error("Error al cargar los turnos:", err);
-            setError("Error al cargar los turnos. Por favor, intente de nuevo.");
+            // Auto-recovery para modo kiosco: contar errores consecutivos
+            errorCountRef.current = (errorCountRef.current || 0) + 1;
+            console.log(`[Queue] Error consecutivo #${errorCountRef.current}`);
+            if (errorCountRef.current >= 5) {
+                // Después de 5 errores consecutivos (~15-40s), recargar la página
+                console.log("[Queue] Demasiados errores, recargando página...");
+                window.location.reload();
+            }
+            // No mostrar error en pantalla — el polling reintentará automáticamente
         }
     }, [isCalling, callingPatient]);
 
