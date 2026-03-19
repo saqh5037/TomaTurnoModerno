@@ -289,26 +289,41 @@ export async function GET(request) {
       };
     });
 
-    // Obtener razones de cancelación para turnos cancelados
-    const cancelledTurnIds = enrichedTurns.filter(t => t.status === 'Cancelled').map(t => t.id);
-    if (cancelledTurnIds.length > 0) {
-      const cancelLogs = await prisma.auditLog.findMany({
+    // Obtener historial de acciones de AuditLog para todos los turnos visibles
+    const turnIds = enrichedTurns.map(t => t.id);
+    if (turnIds.length > 0) {
+      const auditLogs = await prisma.auditLog.findMany({
         where: {
-          action: 'ADMIN_CANCEL_TURN',
-          entityId: { in: cancelledTurnIds }
+          entityId: { in: turnIds },
+          entity: 'TurnRequest'
         },
-        select: { entityId: true, newValue: true }
+        include: {
+          user: { select: { name: true } }
+        },
+        orderBy: { createdAt: 'asc' }
       });
-      const reasonMap = {};
-      for (const log of cancelLogs) {
-        const nv = log.newValue;
-        if (nv && typeof nv === 'object' && nv.reason) {
-          reasonMap[log.entityId] = nv.reason;
-        }
+
+      // Agrupar por turnId
+      const logsMap = {};
+      for (const log of auditLogs) {
+        if (!logsMap[log.entityId]) logsMap[log.entityId] = [];
+        logsMap[log.entityId].push({
+          action: log.action,
+          performedBy: log.user?.name || 'Sistema',
+          reason: log.newValue?.reason || null,
+          createdAt: log.createdAt,
+          oldValue: log.oldValue,
+          newValue: log.newValue
+        });
       }
+
       for (const turn of enrichedTurns) {
+        turn.auditHistory = logsMap[turn.id] || [];
+        // Extraer razón de cancelación y quién canceló
         if (turn.status === 'Cancelled') {
-          turn.cancellationReason = reasonMap[turn.id] || null;
+          const cancelLog = turn.auditHistory.find(l => l.action === 'ADMIN_CANCEL_TURN');
+          turn.cancellationReason = cancelLog?.reason || null;
+          turn.cancelledBy = cancelLog?.performedBy || null;
         }
       }
     }

@@ -1594,6 +1594,43 @@ function AdminControlPanel() {
                       <CardBody py={3}>
                         <Text fontSize="xs" color="red.500" fontWeight="bold">Razón de cancelación</Text>
                         <Text fontSize="sm" color="red.700">{detailTurn.cancellationReason}</Text>
+                        {detailTurn.cancelledBy && (
+                          <Text fontSize="xs" color="red.400" mt={1}>Cancelado por: {detailTurn.cancelledBy}</Text>
+                        )}
+                      </CardBody>
+                    </Card>
+                  )}
+
+                  {/* Historial de acciones */}
+                  {detailTurn.auditHistory && detailTurn.auditHistory.length > 0 && (
+                    <Card variant="outline">
+                      <CardHeader py={2}>
+                        <Text fontWeight="bold" fontSize="sm">Historial de Acciones</Text>
+                      </CardHeader>
+                      <CardBody py={2}>
+                        <VStack align="stretch" spacing={2}>
+                          {detailTurn.auditHistory.map((log, i) => (
+                            <HStack key={i} justify="space-between" p={2} bg="gray.50" borderRadius="md">
+                              <VStack align="start" spacing={0}>
+                                <Text fontSize="xs" fontWeight="medium">
+                                  {{
+                                    'ADMIN_CANCEL_TURN': 'Turno cancelado',
+                                    'ADMIN_ASSIGN_PATIENT': 'Paciente asignado',
+                                    'ADMIN_FORCE_COMPLETE': 'Finalización forzada',
+                                    'ADMIN_RETURN_TO_QUEUE': 'Devuelto a cola',
+                                    'ADMIN_RELEASE_HOLDING': 'Holding liberado',
+                                    'ADMIN_CHANGE_PRIORITY': 'Prioridad cambiada',
+                                  }[log.action] || log.action}
+                                </Text>
+                                <Text fontSize="xs" color="gray.500">por {log.performedBy}</Text>
+                                {log.reason && <Text fontSize="xs" color="orange.600">Razón: {log.reason}</Text>}
+                              </VStack>
+                              <Text fontSize="xs" color="gray.400">
+                                {new Date(log.createdAt).toLocaleString('es-MX', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' })}
+                              </Text>
+                            </HStack>
+                          ))}
+                        </VStack>
                       </CardBody>
                     </Card>
                   )}
