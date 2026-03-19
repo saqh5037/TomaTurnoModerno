@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import jwt from "jsonwebtoken";
 import prisma from "../../../../lib/prisma.js";
-import { PRIORIDAD_ORDEN } from "../../../../lib/prioridadUtils.js";
 
 const JWT_SECRET = process.env.NEXTAUTH_SECRET || process.env.JWT_SECRET;
 
@@ -61,11 +60,11 @@ export async function GET(request) {
       }
     });
 
-    // Obtener TODOS los turnos prioritarios pendientes (saltan la fila)
+    // Obtener TODOS los turnos prioritarios pendientes
     const priorityTurns = await prisma.turnRequest.findMany({
       where: {
         status: 'Pending',
-        tipoAtencion: { in: ['MuyEspecial', 'Prioritario', 'PrioritarioRiesgo'] }
+        tipoAtencion: 'Special'
       },
       orderBy: [
         { deferredAt: { sort: 'asc', nulls: 'first' } },
@@ -78,28 +77,15 @@ export async function GET(request) {
         tubesRequired: true,
         studies: true,
         studies_json: true,
-        isDeferred: true,
-        tipoAtencion: true,
-        deferredAt: true,
-        createdAt: true
+        isDeferred: true
       }
     });
 
-    // Ordenar prioritarios: MuyEspecial primero, luego Prioritario/PrioritarioRiesgo por tiempo
-    priorityTurns.sort((a, b) => {
-      const pa = PRIORIDAD_ORDEN[a.tipoAtencion] ?? 2;
-      const pb = PRIORIDAD_ORDEN[b.tipoAtencion] ?? 2;
-      if (pa !== pb) return pa - pb;
-      const aTime = a.deferredAt || a.createdAt;
-      const bTime = b.deferredAt || b.createdAt;
-      return new Date(aTime) - new Date(bTime);
-    });
-
-    // Obtener TODOS los turnos generales pendientes (NO saltan la fila)
+    // Obtener TODOS los turnos generales pendientes
     const generalTurns = await prisma.turnRequest.findMany({
       where: {
         status: 'Pending',
-        tipoAtencion: { in: ['General', 'RiesgoCaida'] }
+        tipoAtencion: 'General'
       },
       orderBy: [
         { deferredAt: { sort: 'asc', nulls: 'first' } },
@@ -112,8 +98,7 @@ export async function GET(request) {
         tubesRequired: true,
         studies: true,
         studies_json: true,
-        isDeferred: true,
-        tipoAtencion: true
+        isDeferred: true
       }
     });
 
@@ -160,8 +145,7 @@ export async function GET(request) {
           tubesRequired: t.tubesRequired || 0,
           studiesCount: countStudies(t),
           isNext: idx < 3,
-          isDeferred: t.isDeferred || false,
-          tipoAtencion: t.tipoAtencion
+          isDeferred: t.isDeferred || false
         })),
         generalTurns: generalTurns.map((t, idx) => ({
           id: t.id,
@@ -171,8 +155,7 @@ export async function GET(request) {
           tubesRequired: t.tubesRequired || 0,
           studiesCount: countStudies(t),
           isNext: idx < 3,
-          isDeferred: t.isDeferred || false,
-          tipoAtencion: t.tipoAtencion
+          isDeferred: t.isDeferred || false
         }))
       }
     });

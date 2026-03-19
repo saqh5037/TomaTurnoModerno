@@ -54,22 +54,16 @@ const StatCard = ({ label, value, color, icon }) => (
   </Card>
 );
 
-// Tipos que saltan la fila (grupo PRIORITARIOS)
-const PRIORITY_TYPES = ['MuyEspecial', 'Prioritario', 'PrioritarioRiesgo'];
-// Tipos que NO saltan la fila (grupo GENERALES)
-const GENERAL_TYPES = ['General', 'RiesgoCaida'];
-
 // Componente de tabla de turnos
-const TurnTable = ({ title, turns, callingTurn, colorScheme, group }) => {
-  const groupTypes = group === 'priority' ? PRIORITY_TYPES : GENERAL_TYPES;
-  const isCallingThisType = callingTurn && groupTypes.includes(callingTurn.tipoAtencion);
+const TurnTable = ({ title, turns, callingTurn, colorScheme, tipoAtencion }) => {
+  const isCallingThisType = callingTurn?.tipoAtencion === tipoAtencion;
 
   return (
     <Card bg="white" shadow="sm" borderRadius="lg" overflow="hidden">
       <CardHeader bg={`${colorScheme}.50`} py={2} px={4} borderBottom="1px solid" borderColor={`${colorScheme}.100`}>
         <HStack justify="space-between">
           <Heading size="sm" color={`${colorScheme}.700`}>
-            {group === 'priority' ? '🔴' : '👥'} {title}
+            {tipoAtencion === 'Special' ? '🔴' : '👥'} {title}
           </Heading>
           <Badge colorScheme={colorScheme} fontSize="sm">{turns.length} pendientes</Badge>
         </HStack>
@@ -310,14 +304,14 @@ const DocumentPrep = () => {
                 turns={data.priorityTurns}
                 callingTurn={data.callingTurn}
                 colorScheme="red"
-                group="priority"
+                tipoAtencion="Special"
               />
               <TurnTable
                 title="GENERALES"
                 turns={data.generalTurns}
                 callingTurn={data.callingTurn}
                 colorScheme="blue"
-                group="general"
+                tipoAtencion="General"
               />
             </SimpleGrid>
           )}
