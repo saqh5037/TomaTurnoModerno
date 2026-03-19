@@ -1,4 +1,5 @@
 import prisma from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 
 /**
  * Transforma un turno agregando isSpecial derivado de tipoAtencion
@@ -65,19 +66,29 @@ export async function POST(request) {
         ...(skippedTurnIds || []).map(id => parseInt(id, 10))
       ].filter(id => !isNaN(id));
 
-      const nextTurn = await tx.turnRequest.findFirst({
-        where: {
-          status: "Pending",
-          holdingBy: null,
-          ...(idsToExclude.length > 0 ? { id: { notIn: idsToExclude } } : {}),
-        },
-        orderBy: [
-          { tipoAtencion: "desc" }, // Special primero
-          { isDeferred: "asc" }, // No diferidos primero
-          { deferredAt: "asc" },
-          { createdAt: "asc" },
-        ],
-      });
+      // Buscar siguiente turno con prioridad correcta (4 niveles)
+      let nextTurnQuery;
+      if (idsToExclude.length > 0) {
+        nextTurnQuery = await tx.$queryRaw`
+          SELECT id FROM "TurnRequest"
+          WHERE status = 'Pending' AND "holdingBy" IS NULL
+            AND id NOT IN (${Prisma.join(idsToExclude)})
+          ORDER BY
+            CASE WHEN "tipoAtencion" = 'MuyEspecial' THEN 0 WHEN "tipoAtencion" IN ('Prioritario','PrioritarioRiesgo') THEN 1 ELSE 2 END,
+            COALESCE("deferredAt", "createdAt") ASC
+          LIMIT 1
+        `;
+      } else {
+        nextTurnQuery = await tx.$queryRaw`
+          SELECT id FROM "TurnRequest"
+          WHERE status = 'Pending' AND "holdingBy" IS NULL
+          ORDER BY
+            CASE WHEN "tipoAtencion" = 'MuyEspecial' THEN 0 WHEN "tipoAtencion" IN ('Prioritario','PrioritarioRiesgo') THEN 1 ELSE 2 END,
+            COALESCE("deferredAt", "createdAt") ASC
+          LIMIT 1
+        `;
+      }
+      const nextTurn = nextTurnQuery?.[0] ? await tx.turnRequest.findUnique({ where: { id: nextTurnQuery[0].id } }) : null;
 
       if (!nextTurn) {
         // No hay más turnos disponibles — dejar sin holding

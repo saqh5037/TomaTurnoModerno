@@ -2,9 +2,50 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-**Last Updated**: January 20, 2026
-**Latest Release**: v2.8.31
-**Status**: Production Ready - Active deployment at INER Medical Institute
+## Status
+- Estado: ACTIVO
+- Última actividad: 2026-03-19
+- Branch activo: main
+- En producción: SI - INER Medical Institute
+- Próxima acción: Sprint 2 — Rediseño de prioridades (4 grupos)
+
+## Contexto para retomar
+**Última sesión:** 2026-03-18 y 2026-03-19 (sesión continua)
+**Qué se hizo:**
+- Sprint intensivo con 20+ commits, todo deployado a producción INER
+- Fix: holding requiere cubículo (admins bloqueaban pacientes)
+- Fix: campanas de llamado (de 1 a 3 a 2, volumen máximo)
+- Fix: sync activePatient cuando admin actúa
+- Fix: prevención duplicados (nombre + OT)
+- Fix: crash circular dependency en production build
+- Fix: filtros panel de control (timezone, OR clauses)
+- Feat: rango de fechas + popup detalle turno + paginación
+- Fix: holding no se libera al cambiar pestaña
+- Fix: stale closure en holding assignment
+- Fix: skip holding loop infinito cuando no hay pacientes
+- Feat: auto-recovery pantallas kiosco (TV)
+- Feat: swap automático de holding cuando llega Special
+- Fix: mostrar todo el personal en servicio (no solo flebotomistas)
+- Feat: columna OT, leyenda botones/colores, razón cancelación
+- Fix: desactivar timeout inactividad para flebotomistas (60min admins)
+- Feat: auto-enable audio para modo kiosco
+
+**Sprint 1 COMPLETO.** Items del reporte de Brenda resueltos.
+
+**Qué falta (Sprint 2 y 3):**
+- **F3: Rediseño prioridades** — 4 grupos: Muy Especial (presos→cub6), Prioritario (O2, camilla, <1año), Riesgo caída (silla, muletas→cub1,2), General. Separar prioridad por condición vs por cubículo. REQUIERE cambios en schema.
+- **F1: Estadísticas flebotomista en tiempo real** — tiempo por toma, última toma, pacientes omitidos con motivo
+- **F2: Asignación manual admin→flebotomista** — con notificación y auto-llamado al aceptar
+
+**Reporte de referencia:** `/Users/samuelquiroz/Downloads/turnador 19-03-2026.pdf`
+**Plan de sprint:** `~/.claude/plans/virtual-questing-rocket.md`
+**Bloqueadores:** Ninguno
+
+**Deploy info:**
+- Servidor INER: 192.168.2.190, SSH puerto 2278, user dynamtek
+- Directorio: /home/dynamtek/toma-turno-moderno
+- Puerto: 3000 (producción), 3005 (dev local)
+- PM2 process: toma-turno
 
 ## 🔖 Versión del Sistema
 

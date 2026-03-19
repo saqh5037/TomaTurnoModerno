@@ -17,10 +17,11 @@ export async function PUT(req) {
       );
     }
 
-    // Validar que newPriority sea válido
-    if (newPriority !== "Special" && newPriority !== "General") {
+    // Validar que newPriority sea válido (5 tipos + alias)
+    const validPriorities = ['MuyEspecial', 'Prioritario', 'PrioritarioRiesgo', 'RiesgoCaida', 'General', 'Special'];
+    if (!validPriorities.includes(newPriority)) {
       return new Response(
-        JSON.stringify({ error: "newPriority debe ser 'Special' o 'General'" }),
+        JSON.stringify({ error: `newPriority debe ser uno de: ${validPriorities.join(', ')}` }),
         { status: 400, headers: { "Content-Type": "application/json" } }
       );
     }
@@ -70,7 +71,7 @@ export async function PUT(req) {
     return new Response(
       JSON.stringify({
         success: true,
-        message: `Prioridad cambiada a ${newPriority === "Special" ? "Especial" : "General"}`,
+        message: `Prioridad cambiada a ${newPriority}`,
         turn: updatedTurn,
         previousPriority: turn.tipoAtencion,
         newPriority: newPriority

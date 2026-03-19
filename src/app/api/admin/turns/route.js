@@ -189,9 +189,10 @@ export async function GET(request) {
       const statusDiff = (statusOrder[a.status] ?? 4) - (statusOrder[b.status] ?? 4);
       if (statusDiff !== 0) return statusDiff;
 
-      // Luego por tipo de atención (Special primero)
-      if (a.tipoAtencion === 'Special' && b.tipoAtencion !== 'Special') return -1;
-      if (b.tipoAtencion === 'Special' && a.tipoAtencion !== 'Special') return 1;
+      // Luego por tipo de atención (4 niveles de prioridad)
+      const prioridadOrden = { MuyEspecial: 0, Prioritario: 1, PrioritarioRiesgo: 1, RiesgoCaida: 2, General: 2, Special: 1 };
+      const prioDiff = (prioridadOrden[a.tipoAtencion] ?? 2) - (prioridadOrden[b.tipoAtencion] ?? 2);
+      if (prioDiff !== 0) return prioDiff;
 
       // Finalmente por tiempo efectivo de cola (COALESCE(deferredAt, createdAt))
       const aTime = a.deferredAt || a.createdAt;
@@ -258,7 +259,7 @@ export async function GET(request) {
         status: turn.status,
         visualStatus,
         tipoAtencion: turn.tipoAtencion,
-        isSpecial: turn.tipoAtencion === 'Special',
+        isSpecial: ['MuyEspecial', 'Prioritario', 'PrioritarioRiesgo', 'Special'].includes(turn.tipoAtencion),
         isDeferred: turn.isDeferred,
         isCalled: turn.isCalled,
         callCount: turn.callCount,

@@ -145,6 +145,7 @@ function AdminControlPanel() {
   const [selectedTurn, setSelectedTurn] = useState(null);
   const [actionType, setActionType] = useState(null);
   const [actionReason, setActionReason] = useState('');
+  const [selectedPriority, setSelectedPriority] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
 
   // Modal de reasignación
@@ -266,7 +267,7 @@ function AdminControlPanel() {
         endpoint = '/api/queue/defer';
         body = { id: selectedTurn.id };
       } else if (actionType === 'change-priority') {
-        body.newPriority = selectedTurn.isSpecial ? 'General' : 'Special';
+        body.newPriority = selectedPriority || 'General';
       }
 
       if (actionReason) body.reason = actionReason.trim();
@@ -874,8 +875,8 @@ function AdminControlPanel() {
                             )}
                           </Td>
                           <Td>
-                            <Badge colorScheme={turn.isSpecial ? 'purple' : 'gray'}>
-                              {turn.tipoAtencion}
+                            <Badge colorScheme={{MuyEspecial:'red',Prioritario:'orange',PrioritarioRiesgo:'yellow',RiesgoCaida:'blue',Special:'orange',General:'gray'}[turn.tipoAtencion] || 'gray'}>
+                              {{MuyEspecial:'Muy Especial',Prioritario:'Prioritario',PrioritarioRiesgo:'Prio+Riesgo',RiesgoCaida:'Riesgo Caída',Special:'Prioritario',General:'General'}[turn.tipoAtencion] || turn.tipoAtencion}
                             </Badge>
                           </Td>
                           <Td>{turn.cubicle?.name || '-'}</Td>
@@ -1114,6 +1115,23 @@ function AdminControlPanel() {
                     </FormControl>
                   )}
 
+                  {actionType === 'change-priority' && (
+                    <FormControl isRequired>
+                      <FormLabel>Nueva prioridad</FormLabel>
+                      <Select
+                        value={selectedPriority}
+                        onChange={(e) => setSelectedPriority(e.target.value)}
+                        placeholder="Selecciona prioridad"
+                      >
+                        <option value="MuyEspecial">🔴 Muy Especial (Presos → Cubículo 6)</option>
+                        <option value="Prioritario">🟠 Prioritario (O2, camilla, &lt;1 año)</option>
+                        <option value="PrioritarioRiesgo">🟡 Prioritario + Riesgo (Inicio fila + Cub 1,2)</option>
+                        <option value="RiesgoCaida">🔵 Riesgo de Caída (Cub 1,2 sin saltar fila)</option>
+                        <option value="General">⚪ General (Orden de llegada)</option>
+                      </Select>
+                    </FormControl>
+                  )}
+
                   {actionType === 'release-holding' && (
                     <Alert status="info" borderRadius="md">
                       <AlertIcon />
@@ -1318,8 +1336,8 @@ function AdminControlPanel() {
                         </Box>
                         <Box>
                           <Text fontSize="xs" color="gray.500">Prioridad</Text>
-                          <Badge colorScheme={detailTurn.isSpecial ? 'purple' : 'gray'}>
-                            {detailTurn.tipoAtencion}
+                          <Badge colorScheme={{MuyEspecial:'red',Prioritario:'orange',PrioritarioRiesgo:'yellow',RiesgoCaida:'blue',Special:'orange',General:'gray'}[detailTurn.tipoAtencion] || 'gray'}>
+                            {{MuyEspecial:'Muy Especial',Prioritario:'Prioritario',PrioritarioRiesgo:'Prio+Riesgo',RiesgoCaida:'Riesgo Caída',Special:'Prioritario',General:'General'}[detailTurn.tipoAtencion] || detailTurn.tipoAtencion}
                           </Badge>
                         </Box>
                         <Box>

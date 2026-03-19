@@ -80,8 +80,15 @@ const TurnSchema = z.object({
   tubesDetails: z.array(TubeDetailSchema).optional(),  // Array de { type, quantity }
   observations: z.string().max(500).optional(),
   clinicalInfo: z.string().max(1000).optional(),
-  // KAB-7378: Aceptar tipoAtencion en inglés o español
-  tipoAtencion: z.enum(['General', 'Special', 'Especial', 'general', 'special', 'especial']).default('General'),
+  // Tipos de atención/prioridad (4 grupos + aliases para compatibilidad)
+  tipoAtencion: z.enum([
+    'General', 'general',
+    'Special', 'special', 'Especial', 'especial',           // Aliases → Prioritario
+    'Prioritario', 'prioritario',                             // Grupo 2: O2, camilla, <1 año, etc.
+    'MuyEspecial', 'muyespecial', 'MuyEspecial',             // Grupo 1: Presos → cubículo 6
+    'RiesgoCaida', 'riesgocaida', 'Riesgo', 'riesgo',       // Grupo 3: Silla ruedas, muletas, etc.
+    'PrioritarioRiesgo', 'prioritarioriesgo'                  // Grupo 2+3: Prioritario + riesgo caída → cub 1,2
+  ]).default('General'),
 
   // NUEVOS CAMPOS LABSIS
   labsisOrderId: z.string().max(50).optional(),       // ID de orden en LABSIS
@@ -238,8 +245,15 @@ export async function POST(req) {
       tubesDetails: finalTubesDetails,
       observations: validatedData.observations ? DOMPurify.sanitize(validatedData.observations) : null,
       clinicalInfo: validatedData.clinicalInfo ? DOMPurify.sanitize(validatedData.clinicalInfo) : null,
-      // KAB-7378: Normalizar tipoAtencion (Especial/especial/Special → Special)
-      tipoAtencion: ['Especial', 'especial', 'Special', 'special'].includes(validatedData.tipoAtencion) ? 'Special' : 'General',
+      // Normalizar tipoAtencion a los 5 valores canónicos
+      tipoAtencion: (() => {
+        const t = validatedData.tipoAtencion?.toLowerCase();
+        if (['muyespecial'].includes(t)) return 'MuyEspecial';
+        if (['prioritarioriesgo'].includes(t)) return 'PrioritarioRiesgo';
+        if (['prioritario', 'special', 'especial'].includes(t)) return 'Prioritario';
+        if (['riesgocaida', 'riesgo'].includes(t)) return 'RiesgoCaida';
+        return 'General';
+      })(),
       status: "Pending",
 
       // NUEVOS CAMPOS LABSIS

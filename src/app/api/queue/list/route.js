@@ -21,7 +21,7 @@ export async function GET(req) {
       FROM "TurnRequest"
       WHERE status = 'Pending'
       ORDER BY
-        CASE WHEN "tipoAtencion" = 'Special' THEN 0 ELSE 1 END,
+        CASE WHEN "tipoAtencion" = 'MuyEspecial' THEN 0 WHEN "tipoAtencion" IN ('Prioritario','PrioritarioRiesgo') THEN 1 ELSE 2 END,
         COALESCE("deferredAt", "createdAt") ASC
     `;
 
@@ -41,7 +41,7 @@ export async function GET(req) {
       LEFT JOIN "Cubicle" c ON t."cubicleId" = c.id
       WHERE t.status = 'In Progress' AND t."isCalled" = false
       ORDER BY
-        CASE WHEN t."tipoAtencion" = 'Special' THEN 0 ELSE 1 END,
+        CASE WHEN t."tipoAtencion" = 'MuyEspecial' THEN 0 WHEN t."tipoAtencion" IN ('Prioritario','PrioritarioRiesgo') THEN 1 ELSE 2 END,
         COALESCE(t."deferredAt", t."createdAt") ASC
     `;
 
@@ -61,7 +61,7 @@ export async function GET(req) {
       LEFT JOIN "Cubicle" c ON t."cubicleId" = c.id
       WHERE t.status = 'In Progress' AND t."isCalled" = true
       ORDER BY
-        CASE WHEN t."tipoAtencion" = 'Special' THEN 0 ELSE 1 END,
+        CASE WHEN t."tipoAtencion" = 'MuyEspecial' THEN 0 WHEN t."tipoAtencion" IN ('Prioritario','PrioritarioRiesgo') THEN 1 ELSE 2 END,
         COALESCE(t."deferredAt", t."createdAt") ASC
     `;
 

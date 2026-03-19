@@ -43,7 +43,7 @@ export async function GET(request) {
       WHERE status = 'Pending'
         AND ("holdingBy" IS NULL OR "holdingBy" = ${userIdNum})
       ORDER BY
-        CASE WHEN "tipoAtencion" = 'Special' THEN 0 ELSE 1 END,
+        CASE WHEN "tipoAtencion" = 'MuyEspecial' THEN 0 WHEN "tipoAtencion" IN ('Prioritario','PrioritarioRiesgo') THEN 1 ELSE 2 END,
         COALESCE("deferredAt", "createdAt") ASC
     `;
 

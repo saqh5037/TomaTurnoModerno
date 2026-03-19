@@ -653,9 +653,12 @@ const Queue = memo(function Queue() {
                                             >
                                                 Cubículo {turn.cubicleName || '-'}
                                             </Box>
-                                            {/* Ícono de silla de ruedas para pacientes prioritarios */}
-                                            {turn.tipoAtencion === "Special" && (
-                                                <Box as={FaWheelchair} color="#EF4444" fontSize="3xl" mr={3} />
+                                            {/* Ícono según tipo de prioridad */}
+                                            {['MuyEspecial','Prioritario','PrioritarioRiesgo','Special'].includes(turn.tipoAtencion) && (
+                                                <Box as={FaWheelchair} color={turn.tipoAtencion === 'MuyEspecial' ? '#DC2626' : '#EF4444'} fontSize="3xl" mr={3} />
+                                            )}
+                                            {turn.tipoAtencion === 'RiesgoCaida' && (
+                                                <Box as={FaWheelchair} color="#3B82F6" fontSize="3xl" mr={3} />
                                             )}
                                             <Text color="#1E293B" flex="1" fontWeight="bold" fontSize="4xl" isTruncated>
                                                 {turn.patientName}
@@ -739,16 +742,16 @@ const Queue = memo(function Queue() {
                                             borderLeft="5px solid"
                                             borderLeftColor={
                                                 turn.isDeferred ? "#F59E0B" :
-                                                turn.tipoAtencion === "Special" ? "#EF4444" : "#F59E0B"
+                                                ['MuyEspecial','Prioritario','PrioritarioRiesgo','Special'].includes(turn.tipoAtencion) ? "#EF4444" : turn.tipoAtencion === 'RiesgoCaida' ? "#3B82F6" : "#F59E0B"
                                             }
                                         >
                                             {/* Ícono de reloj de arena para pacientes diferidos */}
                                             {turn.isDeferred && (
                                                 <Box as={FaHourglass} color="#f59e0b" fontSize="3xl" mr={3} />
                                             )}
-                                            {/* Ícono de silla de ruedas para pacientes especiales */}
-                                            {turn.tipoAtencion === "Special" && (
-                                                <Box as={FaWheelchair} color="#EF4444" fontSize="3xl" mr={3} />
+                                            {/* Ícono según tipo de prioridad */}
+                                            {['MuyEspecial','Prioritario','PrioritarioRiesgo','Special','RiesgoCaida'].includes(turn.tipoAtencion) && (
+                                                <Box as={FaWheelchair} color={turn.tipoAtencion === 'RiesgoCaida' ? '#3B82F6' : '#EF4444'} fontSize="3xl" mr={3} />
                                             )}
                                             <Text color="#1E293B" flex="1" fontWeight="semibold" fontSize="3xl" isTruncated>
                                                 {turn.patientName}
