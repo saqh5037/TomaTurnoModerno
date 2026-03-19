@@ -106,10 +106,30 @@ const Queue = memo(function Queue() {
         }
     }, []);
 
-    // Effect para marcar el componente como montado
+    // Effect para marcar el componente como montado + auto-enable audio para modo kiosco
     useEffect(() => {
         setMounted(true);
         setCurrentTime(new Date());
+        // Intentar auto-habilitar audio sin interacción (funciona si Chrome tiene autoplay policy permisiva)
+        const tryAutoEnable = async () => {
+            try {
+                const audio = new Audio("/airport-sound.mp3");
+                audio.volume = 0.01;
+                await audio.play();
+                audio.pause();
+                if (window.speechSynthesis) {
+                    const utterance = new SpeechSynthesisUtterance('');
+                    utterance.volume = 0;
+                    window.speechSynthesis.speak(utterance);
+                    window.speechSynthesis.cancel();
+                }
+                setAudioEnabled(true);
+                console.log('[Queue] Audio auto-habilitado (modo kiosco)');
+            } catch (err) {
+                console.log('[Queue] Auto-enable falló, mostrando overlay para clic manual');
+            }
+        };
+        tryAutoEnable();
     }, []);
 
     // Función para obtener datos de la cola

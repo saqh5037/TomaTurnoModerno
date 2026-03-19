@@ -284,6 +284,30 @@ export async function GET(request) {
       };
     });
 
+    // Obtener razones de cancelación para turnos cancelados
+    const cancelledTurnIds = enrichedTurns.filter(t => t.status === 'Cancelled').map(t => String(t.id));
+    if (cancelledTurnIds.length > 0) {
+      const cancelLogs = await prisma.auditLog.findMany({
+        where: {
+          action: 'ADMIN_CANCEL_TURN',
+          entityId: { in: cancelledTurnIds }
+        },
+        select: { entityId: true, newValue: true }
+      });
+      const reasonMap = {};
+      for (const log of cancelLogs) {
+        const nv = log.newValue;
+        if (nv && typeof nv === 'object' && nv.reason) {
+          reasonMap[log.entityId] = nv.reason;
+        }
+      }
+      for (const turn of enrichedTurns) {
+        if (turn.status === 'Cancelled') {
+          turn.cancellationReason = reasonMap[String(turn.id)] || null;
+        }
+      }
+    }
+
     // Obtener lista de flebotomistas con sesión activa (logged in) para filtros
     const phlebotomists = await prisma.user.findMany({
       where: {

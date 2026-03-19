@@ -833,6 +833,7 @@ function AdminControlPanel() {
                       <Tr>
                         <Th>#</Th>
                         <Th>Paciente</Th>
+                        <Th>OT</Th>
                         <Th>Estado</Th>
                         <Th>Prioridad</Th>
                         <Th>Cubículo</Th>
@@ -858,6 +859,9 @@ function AdminControlPanel() {
                                 <Badge colorScheme="purple" size="sm">Diferido</Badge>
                               )}
                             </VStack>
+                          </Td>
+                          <Td>
+                            <Text fontSize="xs" color="gray.600">{turn.workOrder || '-'}</Text>
                           </Td>
                           <Td>
                             <Badge colorScheme={STATUS_COLORS[turn.visualStatus]}>
@@ -1011,7 +1015,7 @@ function AdminControlPanel() {
                       ))}
                       {turns.length === 0 && (
                         <Tr>
-                          <Td colSpan={9} textAlign="center" py={10}>
+                          <Td colSpan={10} textAlign="center" py={10}>
                             <Text color="gray.500">No hay turnos que mostrar</Text>
                           </Td>
                         </Tr>
@@ -1049,6 +1053,36 @@ function AdminControlPanel() {
           <Text fontSize="xs" color="gray.400" mt={4} textAlign="center">
             {totalCount > 0 && `${totalCount} turnos encontrados · `}Última actualización: {dashboard?.timestamp ? new Date(dashboard.timestamp).toLocaleTimeString() : '-'}
           </Text>
+
+          {/* Leyenda de botones y colores */}
+          <Card bg="white" shadow="sm" mt={4}>
+            <CardBody py={3}>
+              <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
+                {/* Leyenda de botones de acción */}
+                <Box>
+                  <Text fontSize="xs" fontWeight="bold" color="gray.500" mb={2}>Acciones de turno</Text>
+                  <Flex wrap="wrap" gap={2}>
+                    <HStack spacing={1}><Icon as={FiArrowLeft} color="blue.500" boxSize={3} /><Text fontSize="xs">Regresar a cola</Text></HStack>
+                    <HStack spacing={1}><Icon as={FiStar} color="yellow.500" boxSize={3} /><Text fontSize="xs">Cambiar prioridad</Text></HStack>
+                    <HStack spacing={1}><Icon as={FiClock} color="yellow.600" boxSize={3} /><Text fontSize="xs">Diferir turno</Text></HStack>
+                    <HStack spacing={1}><Icon as={FiCheckCircle} color="green.500" boxSize={3} /><Text fontSize="xs">Forzar finalización</Text></HStack>
+                    <HStack spacing={1}><Icon as={FiXCircle} color="red.500" boxSize={3} /><Text fontSize="xs">Cancelar turno</Text></HStack>
+                    <HStack spacing={1}><Icon as={FiUnlock} color="orange.500" boxSize={3} /><Text fontSize="xs">Liberar holding</Text></HStack>
+                  </Flex>
+                </Box>
+                {/* Leyenda de colores de cubículos */}
+                <Box>
+                  <Text fontSize="xs" fontWeight="bold" color="gray.500" mb={2}>Estado de cubículos</Text>
+                  <Flex wrap="wrap" gap={2}>
+                    <HStack spacing={1}><Box w={3} h={3} borderRadius="sm" bg="green.100" border="1px solid" borderColor="green.300" /><Text fontSize="xs">Atendiendo</Text></HStack>
+                    <HStack spacing={1}><Box w={3} h={3} borderRadius="sm" bg="blue.100" border="1px solid" borderColor="blue.300" /><Text fontSize="xs">Llamando</Text></HStack>
+                    <HStack spacing={1}><Box w={3} h={3} borderRadius="sm" bg="yellow.100" border="1px solid" borderColor="yellow.300" /><Text fontSize="xs">Disponible</Text></HStack>
+                    <HStack spacing={1}><Box w={3} h={3} borderRadius="sm" bg="gray.100" border="1px solid" borderColor="gray.300" /><Text fontSize="xs">Libre</Text></HStack>
+                  </Flex>
+                </Box>
+              </SimpleGrid>
+            </CardBody>
+          </Card>
         </Box>
 
         {/* Modal de Acción */}
@@ -1421,6 +1455,16 @@ function AdminControlPanel() {
                       </SimpleGrid>
                     </CardBody>
                   </Card>
+
+                  {/* Razón de cancelación */}
+                  {detailTurn.status === 'Cancelled' && detailTurn.cancellationReason && (
+                    <Card variant="outline" borderColor="red.200" bg="red.50">
+                      <CardBody py={3}>
+                        <Text fontSize="xs" color="red.500" fontWeight="bold">Razón de cancelación</Text>
+                        <Text fontSize="sm" color="red.700">{detailTurn.cancellationReason}</Text>
+                      </CardBody>
+                    </Card>
+                  )}
                 </VStack>
               )}
             </ModalBody>
