@@ -118,8 +118,8 @@ export async function GET(request) {
       }
     }
 
-    // Filtro por flebotomista (attendedBy o holdingBy) — usar andConditions para no sobrescribir
-    if (phlebotomistId) {
+    // Filtro por flebotomista — no aplicar para Cancelados (no tienen attendedBy)
+    if (phlebotomistId && status !== 'Cancelled') {
       const pId = parseInt(phlebotomistId);
       andConditions.push({
         OR: [{ attendedBy: pId }, { holdingBy: pId }]
