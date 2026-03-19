@@ -349,6 +349,28 @@ export default function Attention() {
         }
       }
 
+      // Verificar si hay un paciente Special esperando y el holding actual es General → pedir swap
+      if (heldTurn && heldTurn.tipoAtencion !== 'Special' && data.pendingTurns && userId) {
+        const hasSpecialWaiting = data.pendingTurns.some(t => t.tipoAtencion === 'Special' && !t.holdingBy);
+        if (hasSpecialWaiting) {
+          console.log("[Attention] Special disponible, pidiendo swap de prioridad...");
+          // Re-llamar assignHolding que ahora hace swap automático en el backend
+          fetch("/api/queue/assignHolding", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ userId }),
+          })
+            .then(res => res.json())
+            .then(result => {
+              if (result.success && result.turn && result.turn.id !== heldTurn?.id) {
+                console.log("[Attention] Swap de prioridad exitoso:", result.turn.id, result.turn.patientName);
+                setHeldTurn(result.turn);
+              }
+            })
+            .catch(() => {});
+        }
+      }
+
       // NUEVO: Marcar que la carga inicial terminó (para que assignHolding pueda ejecutarse)
       if (!initialFetchDone) {
         console.log("[Attention] Primera carga de turnos completada");
