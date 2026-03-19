@@ -95,7 +95,7 @@ export async function POST(request) {
         userId: decoded.userId,
         action: 'ADMIN_ASSIGN_PATIENT',
         entity: 'TurnRequest',
-        entityId: String(turnIdNum),
+        entityId: turnIdNum,
         oldValue: { holdingBy: turn.holdingBy, status: turn.status },
         newValue: {
           holdingBy: phlebIdNum,

@@ -733,20 +733,26 @@ export default function ManualTurnAssignment() {
                 </VStack>
               </Box>
 
-              {/* Tipo de Atención */}
+              {/* Tipo de Atención / Prioridad */}
               <Box mt={4} p={3} background="rgba(255, 255, 255, 0.3)" borderRadius="lg">
-                <FormControl display="flex" alignItems="center" justifyContent="space-between">
-                  <FormLabel fontSize="sm" fontWeight="semibold" color="secondary.700" mb={0}>
+                <FormControl>
+                  <FormLabel fontSize="sm" fontWeight="semibold" color="secondary.700">
                     <Flex align="center" gap={2}>
-                      <Box as={FaClock} color={formData.tipoAtencion === 'Special' ? 'error' : 'warning'} />
-                      Atención Prioritaria (Pacientes especiales)
+                      <Box as={FaClock} color={formData.tipoAtencion !== 'General' ? 'error' : 'warning'} />
+                      Tipo de Atención / Prioridad
                     </Flex>
                   </FormLabel>
-                  <Switch
-                    colorScheme="red"
-                    isChecked={formData.tipoAtencion === 'Special'}
-                    onChange={(e) => handleSpecialToggle(e.target.checked)}
-                  />
+                  <Select
+                    value={formData.tipoAtencion}
+                    onChange={(e) => setFormData(prev => ({ ...prev, tipoAtencion: e.target.value }))}
+                    size="sm"
+                  >
+                    <option value="General">General (Orden de llegada)</option>
+                    <option value="Prioritario">Prioritario (O2, camilla, &lt;1 año)</option>
+                    <option value="MuyEspecial">Muy Especial (Presos → Cubículo 6)</option>
+                    <option value="PrioritarioRiesgo">Prioritario + Riesgo (Inicio fila + Cub 1,2)</option>
+                    <option value="RiesgoCaida">Riesgo de Caída (Cub 1,2 sin saltar fila)</option>
+                  </Select>
                 </FormControl>
               </Box>
 

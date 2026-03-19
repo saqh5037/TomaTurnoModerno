@@ -754,6 +754,7 @@ function AdminControlPanel() {
                       const newStatus = e.target.value;
                       setStatusFilter(newStatus);
                       setCurrentPage(1);
+                      setTurns([]); // Limpiar tabla al cambiar filtro
                       // Si selecciona Finalizados o Cancelados, establecer fecha de hoy por defecto
                       if (newStatus === 'Attended' || newStatus === 'Cancelled') {
                         const today = new Date().toISOString().split('T')[0];

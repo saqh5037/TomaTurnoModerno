@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Última actividad: 2026-03-19
 - Branch activo: main
 - En producción: SI - INER Medical Institute
-- Próxima acción: Sprint 2 — Rediseño de prioridades (4 grupos)
+- Próxima acción: Reporte Brenda completado. Pendiente testing con equipo INER.
 
 ## Contexto para retomar
 **Última sesión:** 2026-03-18 y 2026-03-19 (sesión continua)
@@ -30,12 +30,23 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Fix: desactivar timeout inactividad para flebotomistas (60min admins)
 - Feat: auto-enable audio para modo kiosco
 
-**Sprint 1 COMPLETO.** Items del reporte de Brenda resueltos.
+**Los 3 Sprints COMPLETOS.** Todos los items del reporte de Brenda resueltos y deployados.
 
-**Qué falta (Sprint 2 y 3):**
-- **F3: Rediseño prioridades** — 4 grupos: Muy Especial (presos→cub6), Prioritario (O2, camilla, <1año), Riesgo caída (silla, muletas→cub1,2), General. Separar prioridad por condición vs por cubículo. REQUIERE cambios en schema.
-- **F1: Estadísticas flebotomista en tiempo real** — tiempo por toma, última toma, pacientes omitidos con motivo
-- **F2: Asignación manual admin→flebotomista** — con notificación y auto-llamado al aceptar
+**Sprint 2 (completado 19-Mar-2026):**
+- Rediseño prioridades: 5 tipos (MuyEspecial, Prioritario, PrioritarioRiesgo, RiesgoCaida, General)
+- Ruteo automático de cubículos por tipo de paciente
+- LABSIS envía tipoAtencion, backward compatible con "Special"
+
+**Sprint 3 (completado 19-Mar-2026):**
+- F1: Stats de flebotomista en tiempo real (click "Personal en Servicio 📊")
+- F2: Asignación manual admin→flebotomista (botón persona teal en turnos Pending)
+
+**Pendiente de testing con equipo INER:**
+- Verificar que LABSIS envíe los nuevos tipos de prioridad
+- Probar ruteo de presos a cubículo 6
+- Probar riesgo de caída a cubículos 1,2
+- Verificar stats de flebotomista con datos reales
+- Probar asignación manual admin→flebotomista
 
 **Reporte de referencia:** `/Users/samuelquiroz/Downloads/turnador 19-03-2026.pdf`
 **Plan de sprint:** `~/.claude/plans/virtual-questing-rocket.md`

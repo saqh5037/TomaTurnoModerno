@@ -309,16 +309,15 @@ export async function GET(request) {
       }
     }
 
-    // Obtener lista de flebotomistas con sesión activa (logged in) para filtros
+    // Obtener personal: con sesión activa O que hayan atendido hoy
+    const todayForFilter = new Date(`${now.toISOString().split('T')[0]}T00:00:00.000Z`);
     const phlebotomists = await prisma.user.findMany({
       where: {
-        role: { in: ['flebotomista', 'Flebotomista'] },
         isActive: true,
-        sessions: {
-          some: {
-            expiresAt: { gt: now }  // Solo flebotomistas con sesión no expirada
-          }
-        }
+        OR: [
+          { sessions: { some: { expiresAt: { gt: now } } } },
+          { turnRequests: { some: { finishedAt: { gte: todayForFilter } } } }
+        ]
       },
       select: { id: true, name: true }
     });
