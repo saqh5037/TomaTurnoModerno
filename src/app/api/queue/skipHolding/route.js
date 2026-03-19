@@ -80,26 +80,12 @@ export async function POST(request) {
       });
 
       if (!nextTurn) {
-        // No hay más turnos disponibles, volver al turno saltado
-        if (skippedTurn) {
-          const reassigned = await tx.turnRequest.update({
-            where: { id: skippedTurn.id },
-            data: {
-              holdingBy: userIdNum,
-              holdingAt: new Date(),
-            },
-          });
-          console.log(`[skipHolding] No hay más turnos, volviendo a ${skippedTurn.id}`);
-          return {
-            skippedTurn: null,
-            nextTurn: reassigned,
-            cycleCompleted: true,
-          };
-        }
+        // No hay más turnos disponibles — dejar sin holding
+        console.log(`[skipHolding] No hay más turnos disponibles para usuario ${userIdNum}`);
         return {
-          skippedTurn: null,
+          skippedTurn: skippedTurn || null,
           nextTurn: null,
-          cycleCompleted: false,
+          cycleCompleted: true,
         };
       }
 
