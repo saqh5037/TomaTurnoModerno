@@ -263,29 +263,39 @@ export const AuthProvider = ({ children }) => {
     return () => clearInterval(interval);
   }, [user]);
 
-  // Effect para detectar inactividad (20 minutos)
+  // Effect para detectar inactividad
+  // Flebotomistas: SIN timeout (dejan pantalla abierta durante tomas largas)
+  // Admin/Supervisor: 60 minutos de inactividad
   useEffect(() => {
     if (!user) return;
 
+    // No aplicar timeout de inactividad a flebotomistas
+    const userRole = user.role?.toLowerCase();
+    if (userRole === 'flebotomista') {
+      console.log('[AuthContext] Flebotomista detectado, sin timeout de inactividad');
+      return;
+    }
+
     let inactivityTimer;
     let warningTimer;
+    const INACTIVITY_TIMEOUT = 60; // minutos para admin/supervisor
 
     const resetTimers = () => {
       if (inactivityTimer) clearTimeout(inactivityTimer);
       if (warningTimer) clearTimeout(warningTimer);
 
-      // Warning a los 15 minutos
+      // Warning 5 minutos antes
       warningTimer = setTimeout(() => {
         toast({
           title: 'Sesión por expirar',
-          description: 'Tu sesión se cerrará en 5 minutos por inactividad',
+          description: `Tu sesión se cerrará en 5 minutos por inactividad`,
           status: 'warning',
           duration: 10000,
           isClosable: true,
         });
-      }, 15 * 60 * 1000);
+      }, (INACTIVITY_TIMEOUT - 5) * 60 * 1000);
 
-      // Logout a los 20 minutos
+      // Logout
       inactivityTimer = setTimeout(async () => {
         toast({
           title: 'Sesión cerrada',
@@ -326,7 +336,7 @@ export const AuthProvider = ({ children }) => {
         if (!PUBLIC_ROUTES.includes(router.pathname)) {
           router.push('/login');
         }
-      }, 20 * 60 * 1000);
+      }, INACTIVITY_TIMEOUT * 60 * 1000);
 
       localStorage.setItem('lastActivity', String(Date.now()));
     };
