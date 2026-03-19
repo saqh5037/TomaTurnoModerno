@@ -130,7 +130,23 @@ const Queue = memo(function Queue() {
             }
         };
         tryAutoEnable();
-    }, []);
+
+        // Listener global: cualquier interacción activa el audio
+        const handleFirstInteraction = () => {
+            if (!document.querySelector('[data-audio-enabled]')) {
+                enableAudio();
+                document.removeEventListener('click', handleFirstInteraction);
+                document.removeEventListener('touchstart', handleFirstInteraction);
+            }
+        };
+        document.addEventListener('click', handleFirstInteraction, { passive: true });
+        document.addEventListener('touchstart', handleFirstInteraction, { passive: true });
+
+        return () => {
+            document.removeEventListener('click', handleFirstInteraction);
+            document.removeEventListener('touchstart', handleFirstInteraction);
+        };
+    }, [enableAudio]);
 
     // Función para obtener datos de la cola
     const fetchQueueData = useCallback(async () => {
@@ -493,54 +509,24 @@ const Queue = memo(function Queue() {
     return (
         <Box h="100vh" display="flex" flexDirection="column" bg="white" position="relative">
 
-                {/* Overlay para activar audio - Requerido por políticas de navegadores */}
+                {/* Banner no-bloqueante para activar audio — la pantalla funciona sin audio */}
                 {!audioEnabled && (
                     <Box
                         position="fixed"
                         top="0"
                         left="0"
                         right="0"
-                        bottom="0"
-                        bg="rgba(0, 0, 0, 0.95)"
-                        display="flex"
-                        alignItems="center"
-                        justifyContent="center"
+                        bg="rgba(79, 125, 243, 0.9)"
+                        py={2}
+                        px={4}
                         zIndex="10000"
                         cursor="pointer"
                         onClick={enableAudio}
+                        textAlign="center"
                     >
-                        <VStack spacing={8} textAlign="center" px={8}>
-                            <Box
-                                w={40}
-                                h={40}
-                                borderRadius="full"
-                                bg="white"
-                                display="flex"
-                                alignItems="center"
-                                justifyContent="center"
-                                boxShadow="0 0 60px rgba(79, 125, 243, 0.5)"
-                            >
-                                <Box as={FaMicrophone} color="#4F7DF3" fontSize="6xl" />
-                            </Box>
-                            <Text fontSize="5xl" fontWeight="bold" color="white">
-                                PANTALLA DE LLAMADO
-                            </Text>
-                            <Text fontSize="3xl" color="gray.300">
-                                Toque la pantalla para activar el audio
-                            </Text>
-                            <Box
-                                mt={4}
-                                px={12}
-                                py={6}
-                                bg="#4F7DF3"
-                                borderRadius="2xl"
-                                boxShadow="0 4px 20px rgba(79, 125, 243, 0.4)"
-                            >
-                                <Text fontSize="2xl" fontWeight="bold" color="white">
-                                    TOCAR PARA INICIAR
-                                </Text>
-                            </Box>
-                        </VStack>
+                        <Text fontSize="lg" fontWeight="bold" color="white">
+                            Toque aquí para activar el audio del llamado
+                        </Text>
                     </Box>
                 )}
 

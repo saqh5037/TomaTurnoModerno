@@ -1164,7 +1164,7 @@ function AdminControlPanel() {
                         onChange={(e) => setSelectedPriority(e.target.value)}
                         placeholder="Selecciona prioridad"
                       >
-                        <option value="MuyEspecial">🔴 Muy Especial (Presos → Cubículo 6)</option>
+                        <option value="MuyEspecial">🔴 Muy Especial (PPL → Cubículo 6)</option>
                         <option value="Prioritario">🟠 Prioritario (O2, camilla, &lt;1 año)</option>
                         <option value="PrioritarioRiesgo">🟡 Prioritario + Riesgo (Inicio fila + Cub 1,2)</option>
                         <option value="RiesgoCaida">🔵 Riesgo de Caída (Cub 1,2 sin saltar fila)</option>
