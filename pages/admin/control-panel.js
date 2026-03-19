@@ -140,6 +140,11 @@ function AdminControlPanel() {
   const { isOpen: isDetailOpen, onOpen: onDetailOpen, onClose: onDetailClose } = useDisclosure();
   const [detailTurn, setDetailTurn] = useState(null);
 
+  // Modal de estadísticas de flebotomistas
+  const { isOpen: isStatsOpen, onOpen: onStatsOpen, onClose: onStatsClose } = useDisclosure();
+  const [phlebStats, setPhlebStats] = useState([]);
+  const [statsLoading, setStatsLoading] = useState(false);
+
   // Modal de acción
   const { isOpen, onOpen, onClose } = useDisclosure();
   const [selectedTurn, setSelectedTurn] = useState(null);
@@ -163,6 +168,25 @@ function AdminControlPanel() {
 
   // Obtener token
   const getToken = () => localStorage.getItem('token');
+
+  // Cargar estadísticas de flebotomistas
+  const loadPhlebStats = useCallback(async () => {
+    setStatsLoading(true);
+    try {
+      const token = getToken();
+      const response = await fetch('/api/admin/phlebotomist-stats', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await response.json();
+      if (data.success) {
+        setPhlebStats(data.data);
+      }
+    } catch (error) {
+      console.error('Error cargando stats:', error);
+    } finally {
+      setStatsLoading(false);
+    }
+  }, []);
 
   // Cargar datos del dashboard
   const loadDashboard = useCallback(async () => {
@@ -321,7 +345,8 @@ function AdminControlPanel() {
     setActionLoading(true);
     try {
       const token = getToken();
-      const endpoint = reassignType === 'cubicle' ? 'reassign-cubicle' : 'reassign-phlebotomist';
+      const endpoint = reassignType === 'assign-phlebotomist' ? 'assign-patient' :
+                       reassignType === 'cubicle' ? 'reassign-cubicle' : 'reassign-phlebotomist';
       const body = {
         turnId: selectedTurn.id,
         [reassignType === 'cubicle' ? 'cubicleId' : 'phlebotomistId']: parseInt(reassignValue)
@@ -618,8 +643,9 @@ function AdminControlPanel() {
               <Card bg="white" shadow="sm">
                 <CardHeader pb={2}>
                   <HStack justify="space-between">
-                    <Text fontWeight="bold" fontSize="sm" color="gray.600">
-                      Personal en Servicio
+                    <Text fontWeight="bold" fontSize="sm" color="gray.600" cursor="pointer" _hover={{ color: 'blue.500' }}
+                      onClick={() => { loadPhlebStats(); onStatsOpen(); }}>
+                      Personal en Servicio 📊
                     </Text>
                     <Badge colorScheme="green">{dashboard.phlebotomistsCount || 0}</Badge>
                   </HStack>
@@ -915,6 +941,20 @@ function AdminControlPanel() {
                                 </Tooltip>
                               )}
 
+                              {/* Asignar a Flebotomista (solo Pending) */}
+                              {turn.status === 'Pending' && (
+                                <Tooltip label="Asignar a Flebotomista">
+                                  <IconButton
+                                    icon={<FiUser />}
+                                    size="sm"
+                                    colorScheme="teal"
+                                    variant="outline"
+                                    onClick={() => { setSelectedTurn(turn); setReassignType('assign-phlebotomist'); onReassignOpen(); }}
+                                    aria-label="Asignar a Flebotomista"
+                                  />
+                                </Tooltip>
+                              )}
+
                               {/* Cambiar Prioridad (Pending o In Progress) */}
                               {['Pending', 'In Progress'].includes(turn.status) && (
                                 <Tooltip label={turn.isSpecial ? "Quitar Prioridad" : "Hacer Prioritario"}>
@@ -1181,7 +1221,7 @@ function AdminControlPanel() {
           <ModalOverlay />
           <ModalContent>
             <ModalHeader>
-              Reasignar {reassignType === 'cubicle' ? 'Cubículo' : 'Flebotomista'}
+              {reassignType === 'assign-phlebotomist' ? 'Asignar Paciente a Flebotomista' : `Reasignar ${reassignType === 'cubicle' ? 'Cubículo' : 'Flebotomista'}`}
             </ModalHeader>
             <ModalCloseButton />
             <ModalBody>
@@ -1297,6 +1337,79 @@ function AdminControlPanel() {
             </ModalFooter>
           </ModalContent>
         </Modal>
+        {/* Modal de Estadísticas de Flebotomistas */}
+        <Modal isOpen={isStatsOpen} onClose={onStatsClose} size="xl">
+          <ModalOverlay />
+          <ModalContent maxW="900px">
+            <ModalHeader>
+              <HStack justify="space-between">
+                <Text>Estadísticas del Personal</Text>
+                <Button size="sm" onClick={loadPhlebStats} isLoading={statsLoading}>Actualizar</Button>
+              </HStack>
+            </ModalHeader>
+            <ModalCloseButton />
+            <ModalBody pb={6}>
+              {statsLoading && <Spinner />}
+              {!statsLoading && phlebStats.length === 0 && (
+                <Text color="gray.500" textAlign="center">No hay personal activo hoy</Text>
+              )}
+              {!statsLoading && phlebStats.length > 0 && (
+                <Box overflowX="auto">
+                  <Table size="sm" variant="simple">
+                    <Thead bg="gray.50">
+                      <Tr>
+                        <Th>Nombre</Th>
+                        <Th>Cubículo</Th>
+                        <Th>Estado</Th>
+                        <Th isNumeric>Atendidos</Th>
+                        <Th isNumeric>Prom/Toma</Th>
+                        <Th isNumeric>Última Toma</Th>
+                        <Th>Último Paciente</Th>
+                      </Tr>
+                    </Thead>
+                    <Tbody>
+                      {phlebStats.map(p => (
+                        <Tr key={p.id}>
+                          <Td>
+                            <Text fontWeight="medium" fontSize="sm">{p.name}</Text>
+                            <Text fontSize="xs" color="gray.400">{p.role}</Text>
+                          </Td>
+                          <Td>{p.cubicleName || '-'}</Td>
+                          <Td>
+                            <Badge colorScheme={
+                              p.status === 'atendiendo' ? 'green' :
+                              p.status === 'con_holding' ? 'orange' :
+                              p.status === 'disponible' ? 'yellow' : 'gray'
+                            } fontSize="xs">
+                              {p.status === 'atendiendo' ? `Atendiendo ${p.currentPatient || ''}` :
+                               p.status === 'con_holding' ? `Holding: ${p.holdingPatient || ''}` :
+                               p.status === 'disponible' ? 'Disponible' : 'Offline'}
+                            </Badge>
+                          </Td>
+                          <Td isNumeric fontWeight="bold">{p.attendedCount}</Td>
+                          <Td isNumeric>{p.avgTimePerToma != null ? `${p.avgTimePerToma} min` : '-'}</Td>
+                          <Td isNumeric>{p.lastTomaTime != null ? `${p.lastTomaTime} min` : '-'}</Td>
+                          <Td>
+                            <Text fontSize="xs" noOfLines={1}>{p.lastTomaPatient || '-'}</Text>
+                            {p.lastTomaFinished && (
+                              <Text fontSize="xs" color="gray.400">
+                                {new Date(p.lastTomaFinished).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}
+                              </Text>
+                            )}
+                          </Td>
+                        </Tr>
+                      ))}
+                    </Tbody>
+                  </Table>
+                </Box>
+              )}
+            </ModalBody>
+            <ModalFooter>
+              <Button onClick={onStatsClose}>Cerrar</Button>
+            </ModalFooter>
+          </ModalContent>
+        </Modal>
+
         {/* Modal de Detalle del Turno */}
         <Modal isOpen={isDetailOpen} onClose={onDetailClose} size="lg">
           <ModalOverlay />
