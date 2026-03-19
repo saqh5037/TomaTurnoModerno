@@ -158,6 +158,10 @@ export async function GET(request) {
       where.AND = andConditions;
     }
 
+    // Debug logging para diagnosticar filtros
+    console.log('[Admin Turns] Query params:', { status, phlebotomistId: phlebotomistId || 'none', dateFrom, dateTo, activeOnly });
+    console.log('[Admin Turns] Where clause:', JSON.stringify(where, null, 2));
+
     // Obtener total para paginación
     const totalCount = await prisma.turnRequest.count({ where });
 
