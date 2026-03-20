@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
 import jwt from "jsonwebtoken";
 import prisma from "../../../../../lib/prisma.js";
+import { TIPOS_ATENCION } from "../../../../../lib/prioridadUtils.js";
 
 const JWT_SECRET = process.env.NEXTAUTH_SECRET || process.env.JWT_SECRET;
+const VALID_PRIORITIES = Object.values(TIPOS_ATENCION);
 
-// POST - Cambiar prioridad de un turno (General <-> Special)
+// POST - Cambiar prioridad de un turno
 export async function POST(request) {
   try {
     // Verificar autorización
@@ -47,9 +49,9 @@ export async function POST(request) {
       );
     }
 
-    if (!newPriority || !['General', 'Special'].includes(newPriority)) {
+    if (!newPriority || !VALID_PRIORITIES.includes(newPriority)) {
       return NextResponse.json(
-        { success: false, error: "newPriority debe ser 'General' o 'Special'" },
+        { success: false, error: `newPriority debe ser uno de: ${VALID_PRIORITIES.join(', ')}` },
         { status: 400 }
       );
     }
