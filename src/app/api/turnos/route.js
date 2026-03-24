@@ -11,6 +11,7 @@
 
 import { NextResponse } from 'next/server';
 import { labsisToIner } from '@/lib/labsisTubeMapping';
+import { getTubeById } from '@/lib/tubesCatalog';
 
 /**
  * Mapeo COMPUESTO containerCode + sampleType → INER tube ID
@@ -58,6 +59,11 @@ const LABSIS_CONTAINER_SAMPLE_TO_INER = {
   'EST3+Sudor': 'est3',      // ID 14: RECIPIENTE ESTERIL 3
   'ORI+Orina': 'ori',        // ID 4: TUBO CONICO
   'EGO+Orina': 'ego',        // ID 16: TUBO CONICO (EGO)
+
+  // Contenedores orina especiales
+  'CO24H+Orina': 'co24h',   // ID 42: CONTENEDOR ORINA 24HRS
+  'CO12H+Orina': 'co12h',   // ID 41: CONTENEDOR ORINA 12HRS
+  'CORTO24+Orina': 'corto24', // ID 43: CORTISOL ORINA 24
 };
 
 /**
@@ -152,10 +158,21 @@ function transformTubesDetails(labsisTubesDetails) {
         }
       }
 
-      // PASO 3: Si aún no hay match, error
+      // PASO 3: Buscar directamente en catálogo INER
       if (!inerTubeId) {
-        errors.push(`Tubo ${index + 1}: containerCode "${tube.containerCode}" no encontrado en ningún mapeo`);
-        return;
+        const catalogMatch = getTubeById(tube.containerCode.toLowerCase());
+        if (catalogMatch) {
+          inerTubeId = catalogMatch.id;
+          console.log(`[transformTubesDetails] Tubo ${index + 1}: ${tube.containerCode} → ${inerTubeId} (match directo en catálogo INER)`);
+          warnings.push(`Tubo ${index + 1}: "${tube.containerCode}" encontrado directamente en catálogo INER (sin mapeo LABSIS)`);
+        }
+      }
+
+      // PASO 4: Último recurso — aceptar código desconocido, NUNCA bloquear turno
+      if (!inerTubeId) {
+        inerTubeId = tube.containerCode.toLowerCase();
+        console.log(`[transformTubesDetails] Tubo ${index + 1}: ${tube.containerCode} → ${inerTubeId} (código desconocido, aceptado como genérico)`);
+        warnings.push(`Tubo ${index + 1}: containerCode "${tube.containerCode}" no encontrado en ningún mapeo ni catálogo — aceptado como tipo genérico`);
       }
     }
     // FORMATO LEGACY: { type, quantity }
