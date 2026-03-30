@@ -96,6 +96,7 @@ model TurnRequest {
   @@index([status, suggestedFor])
   @@index([holdingBy])
   @@index([status, holdingBy])
+  @@index([workOrder])
 }
 
 model Cubicle {

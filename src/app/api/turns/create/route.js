@@ -289,19 +289,27 @@ export async function POST(req) {
     });
 
     if (existingActive) {
-      console.warn(`[Duplicado] Turno activo ${existingActive.id} ya existe para ${dataToInsert.patientName}`);
-      return new Response(
-        JSON.stringify({
-          error: "Turno duplicado",
-          message: `Ya existe un turno activo para ${dataToInsert.patientName} (turno #${existingActive.assignedTurn}).`,
-          existingTurnId: existingActive.id,
-          existingAssignedTurn: existingActive.assignedTurn
-        }),
-        { status: 409, headers: { "Content-Type": "application/json; charset=utf-8" } }
-      );
+      // Si ambos tienen el mismo workOrder, es un re-envío de LABSIS → Check 2 lo maneja como update
+      const incomingWO = dataToInsert.workOrder;
+      const existingWO = existingActive.workOrder;
+      const isSameWorkOrder = incomingWO && existingWO && incomingWO === existingWO;
+
+      if (!isSameWorkOrder) {
+        console.warn(`[Duplicado] Turno activo ${existingActive.id} ya existe para ${dataToInsert.patientName}`);
+        return new Response(
+          JSON.stringify({
+            error: "Turno duplicado",
+            message: `Ya existe un turno activo para ${dataToInsert.patientName} (turno #${existingActive.assignedTurn}).`,
+            existingTurnId: existingActive.id,
+            existingAssignedTurn: existingActive.assignedTurn
+          }),
+          { status: 409, headers: { "Content-Type": "application/json; charset=utf-8" } }
+        );
+      }
+      // isSameWorkOrder === true → fall through to Check 2 for upsert
     }
 
-    // Check 2: Si existe un turno con la misma orden de trabajo hoy (cualquier status)
+    // Check 2: Si existe un turno con la misma orden de trabajo hoy → UPSERT si Pending, rechazar si otro status
     const workOrderValue = dataToInsert.workOrder;
     if (workOrderValue) {
       const existingByOT = await prisma.turnRequest.findFirst({
@@ -312,15 +320,93 @@ export async function POST(req) {
       });
 
       if (existingByOT) {
-        console.warn(`[Duplicado OT] Turno ${existingByOT.id} con OT ${workOrderValue} ya existe (status: ${existingByOT.status})`);
+        // Solo permitir actualización si el turno está en Pending
+        if (existingByOT.status !== 'Pending') {
+          console.warn(`[OT no actualizable] Turno ${existingByOT.id} con OT ${workOrderValue} tiene status "${existingByOT.status}"`);
+          return new Response(
+            JSON.stringify({
+              error: "Orden de trabajo no actualizable",
+              message: `La OT ${workOrderValue} ya existe con status "${existingByOT.status}" (turno #${existingByOT.assignedTurn}). Solo se pueden actualizar turnos en status "Pending".`,
+              existingTurnId: existingByOT.id,
+              existingAssignedTurn: existingByOT.assignedTurn,
+              existingStatus: existingByOT.status
+            }),
+            { status: 409, headers: { "Content-Type": "application/json; charset=utf-8" } }
+          );
+        }
+
+        // === UPSERT: Actualizar turno Pending existente con datos nuevos de LABSIS ===
+        const oldValues = {
+          patientName: existingByOT.patientName,
+          patientID: existingByOT.patientID,
+          age: existingByOT.age,
+          gender: existingByOT.gender,
+          tipoAtencion: existingByOT.tipoAtencion,
+          codigoAtencion: existingByOT.codigoAtencion,
+          studies: existingByOT.studies,
+          tubesRequired: existingByOT.tubesRequired,
+          observations: existingByOT.observations,
+          clinicalInfo: existingByOT.clinicalInfo,
+        };
+
+        const updateData = {
+          patientName: dataToInsert.patientName,
+          patientID: dataToInsert.patientID,
+          age: dataToInsert.age,
+          gender: dataToInsert.gender,
+          contactInfo: dataToInsert.contactInfo,
+          studies: dataToInsert.studies,
+          studies_json: dataToInsert.studies_json,
+          tubesRequired: dataToInsert.tubesRequired,
+          tubesDetails: dataToInsert.tubesDetails,
+          observations: dataToInsert.observations,
+          clinicalInfo: dataToInsert.clinicalInfo,
+          tipoAtencion: dataToInsert.tipoAtencion,
+          codigoAtencion: dataToInsert.codigoAtencion,
+          labsisOrderId: dataToInsert.labsisOrderId,
+          samplesGenerated: dataToInsert.samplesGenerated,
+        };
+
+        const updatedTurn = await prisma.turnRequest.update({
+          where: { id: existingByOT.id },
+          data: updateData,
+        });
+
+        console.log(`[Upsert OT] Turno ${existingByOT.id} actualizado por OT ${workOrderValue}`, {
+          oldValues,
+          newValues: {
+            patientName: updateData.patientName,
+            tipoAtencion: updateData.tipoAtencion,
+            codigoAtencion: updateData.codigoAtencion,
+            studies: `[${dataToInsert.studies_json ? JSON.parse(JSON.stringify(dataToInsert.studies_json)).length : 0} estudios]`,
+            tubesRequired: updateData.tubesRequired,
+          }
+        });
+
         return new Response(
           JSON.stringify({
-            error: "Orden de trabajo duplicada",
-            message: `Ya existe un turno con la orden de trabajo ${workOrderValue} (turno #${existingByOT.assignedTurn}, ${existingByOT.status}).`,
-            existingTurnId: existingByOT.id,
-            existingAssignedTurn: existingByOT.assignedTurn
+            assignedTurn: existingByOT.assignedTurn,
+            message: "Turno actualizado con éxito (OT existente)",
+            updated: true,
+            turnId: existingByOT.id,
+            tipoAtencion: updatedTurn.tipoAtencion,
+            tubesRequired: finalTubesRequired,
+            tubesDetails: finalTubesDetails,
+            studiesProcessed: processedData.studies?.map(s => ({
+              name: s.name,
+              container: s.container ? {
+                type: s.container.name || s.container.type,
+                color: s.container.color
+              } : null
+            })),
+            tubesGrouped: processedData.tubesGrouped,
+            stats: {
+              totalStudies: processedData.stats.totalStudies,
+              totalTubes: processedData.stats.totalTubes,
+              uniqueTubeTypes: processedData.stats.uniqueTubeTypes
+            }
           }),
-          { status: 409, headers: { "Content-Type": "application/json; charset=utf-8" } }
+          { status: 200, headers: { "Content-Type": "application/json; charset=utf-8" } }
         );
       }
     }

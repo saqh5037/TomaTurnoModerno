@@ -327,13 +327,17 @@ export async function POST(request) {
       );
     }
 
-    console.log('[/api/turnos] Turno creado exitosamente:', {
+    const wasUpdated = responseData.updated === true;
+    console.log(`[/api/turnos] Turno ${wasUpdated ? 'actualizado' : 'creado'} exitosamente:`, {
       responseData
     });
 
     return NextResponse.json({
       success: true,
-      message: 'Turno creado exitosamente desde LABSIS',
+      message: wasUpdated
+        ? 'Turno actualizado exitosamente desde LABSIS (OT existente)'
+        : 'Turno creado exitosamente desde LABSIS',
+      updated: wasUpdated,
       ...responseData,
       _labsisTransformation: {
         warnings: tubesTransformation.warnings,
