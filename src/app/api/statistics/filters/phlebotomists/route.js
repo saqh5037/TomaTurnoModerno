@@ -2,10 +2,13 @@ import prisma from '../../../../../../lib/prisma.js';
 
 export async function GET() {
   try {
-    // Obtener usuarios con el rol "Flebotomista"
+    // Obtener usuarios con rol flebotomista (case-insensitive: "Flebotomista" y "flebotomista")
     const phlebotomists = await prisma.user.findMany({
-      where: { role: "Flebotomista" }, // Usando el rol correcto
-      select: { id: true, name: true }, // Devolver solo id y nombre
+      where: {
+        role: { in: ["Flebotomista", "flebotomista"] }
+      },
+      select: { id: true, name: true },
+      orderBy: { name: 'asc' },
     });
 
     return new Response(JSON.stringify(phlebotomists), {
