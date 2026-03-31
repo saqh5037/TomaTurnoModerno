@@ -309,9 +309,34 @@ export async function POST(req) {
       // isSameWorkOrder === true → fall through to Check 2 for upsert
     }
 
-    // Check 2: Si existe un turno con la misma orden de trabajo hoy → UPSERT si Pending, rechazar si otro status
+    // Check 2: Si existe un turno con la misma orden de trabajo → proteger turnos ya atendidos
     const workOrderValue = dataToInsert.workOrder;
     if (workOrderValue) {
+      // Primero: buscar OT en CUALQUIER fecha — si ya fue atendido/finalizado, rechazar
+      const existingByOTAnyDate = await prisma.turnRequest.findFirst({
+        where: {
+          workOrder: workOrderValue,
+          status: { in: ['Completed', 'In Progress', 'Cancelled'] }
+        },
+        orderBy: { createdAt: 'desc' }
+      });
+
+      if (existingByOTAnyDate) {
+        console.warn(`[OT ya atendida] Turno ${existingByOTAnyDate.id} con OT ${workOrderValue} tiene status "${existingByOTAnyDate.status}" (${existingByOTAnyDate.createdAt.toISOString().split('T')[0]})`);
+        return new Response(
+          JSON.stringify({
+            error: "Turno ya atendido",
+            message: `No se puede editar la OT ${workOrderValue}: el turno #${existingByOTAnyDate.assignedTurn} ya fue ${existingByOTAnyDate.status === 'Completed' ? 'atendido' : existingByOTAnyDate.status === 'Cancelled' ? 'cancelado' : 'procesado'} el ${existingByOTAnyDate.createdAt.toISOString().split('T')[0]}.`,
+            existingTurnId: existingByOTAnyDate.id,
+            existingAssignedTurn: existingByOTAnyDate.assignedTurn,
+            existingStatus: existingByOTAnyDate.status,
+            existingDate: existingByOTAnyDate.createdAt.toISOString().split('T')[0]
+          }),
+          { status: 409, headers: { "Content-Type": "application/json; charset=utf-8" } }
+        );
+      }
+
+      // Segundo: buscar OT de HOY para upsert de turnos Pending
       const existingByOT = await prisma.turnRequest.findFirst({
         where: {
           workOrder: workOrderValue,
