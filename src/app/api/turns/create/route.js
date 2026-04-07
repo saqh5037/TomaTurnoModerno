@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { calculateTotalTubes, TUBE_TYPES } from '@/lib/tubesCatalog';
 import { processStudiesComplete } from '@/lib/studiesProcessor';
 import { getMappingByLabsisCode } from '@/lib/labsisTubeMapping';
+import { tipoAtencionFromCodigo } from '@/lib/labsisCodigoAtencionMapping';
 import DOMPurify from 'isomorphic-dompurify';
 
 // Generar array de IDs de tubos válidos desde el catálogo actualizado (43 tipos INER)
@@ -245,8 +246,15 @@ export async function POST(req) {
       tubesDetails: finalTubesDetails,
       observations: validatedData.observations ? DOMPurify.sanitize(validatedData.observations) : null,
       clinicalInfo: validatedData.clinicalInfo ? DOMPurify.sanitize(validatedData.clinicalInfo) : null,
-      // Normalizar tipoAtencion a los 5 valores canónicos
+      // Normalizar tipoAtencion a los 5 valores canónicos.
+      // 1. Si LABSIS envía codigoAtencion (código crudo del departamento),
+      //    ESA es la autoridad — derivamos el tipo desde ahí.
+      // 2. Si no hay codigoAtencion o el código es desconocido, fallback al
+      //    campo tipoAtencion explícito (creación manual desde admin UI).
+      // Backward compat: el fallback es idéntico al normalizador anterior.
       tipoAtencion: (() => {
+        const fromCodigo = tipoAtencionFromCodigo(validatedData.codigoAtencion);
+        if (fromCodigo) return fromCodigo;
         const t = validatedData.tipoAtencion?.toLowerCase();
         if (['muyespecial'].includes(t)) return 'MuyEspecial';
         if (['prioritarioriesgo'].includes(t)) return 'PrioritarioRiesgo';
