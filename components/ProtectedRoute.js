@@ -29,6 +29,7 @@ const ROLE_RESTRICTED_ROUTES = {
   '/statistics/daily': ['admin', 'Admin', 'Administrador', 'supervisor', 'Flebotomista', 'flebotomista'],
   '/statistics/average-time': ['admin', 'Admin', 'Administrador', 'supervisor', 'Flebotomista', 'flebotomista'],
   '/statistics/phlebotomists': ['admin', 'Admin', 'Administrador', 'supervisor', 'Flebotomista', 'flebotomista'],
+  '/statistics/patients': ['admin', 'Admin', 'Administrador', 'supervisor', 'Flebotomista', 'flebotomista'],
   '/cubicles': ['admin', 'Admin', 'Administrador'],
   '/admin/control-panel': ['admin', 'Admin', 'Administrador', 'supervisor'],
   '/document-prep': ['admin', 'Admin', 'Administrador', 'supervisor', 'Flebotomista', 'flebotomista', 'recepcion', 'Recepcion', 'Recepción']

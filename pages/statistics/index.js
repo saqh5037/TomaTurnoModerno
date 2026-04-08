@@ -358,7 +358,7 @@ const StatisticsDashboard = memo(function StatisticsDashboard() {
         </Flex>
         
         {/* Métricas Principales */}
-        <SimpleGrid columns={{ base: 1, sm: 2, md: 2, lg: 4 }} spacing={{ base: 4, md: 6 }} mb={4}>
+        <SimpleGrid columns={{ base: 1, sm: 2, md: 3, lg: 5 }} spacing={{ base: 4, md: 6 }} mb={4}>
           {/* Total de Pacientes */}
           <GlassCard
             p={4}
@@ -611,6 +611,61 @@ const StatisticsDashboard = memo(function StatisticsDashboard() {
                   +{dashboardData.overview.trendsEfficiency}% este mes
                 </Text>
               </HStack>
+            </VStack>
+          </GlassCard>
+
+          {/* Por Paciente — Detalle turno por turno */}
+          <GlassCard
+            p={4}
+            cursor="pointer"
+            onClick={() => navigateToDetail('patients')}
+            _hover={{
+              transform: 'translateY(-4px)',
+              boxShadow: 'xl',
+              background: "rgba(255, 255, 255, 0.35)"
+            }}
+            transition="all 0.3s ease"
+            animation={`${fadeInUp} 1.4s ease-out`}
+            position="relative"
+            overflow="hidden"
+          >
+            <Box
+              position="absolute"
+              top={0}
+              left={0}
+              right={0}
+              height="3px"
+              background="linear-gradient(135deg, #14b8a6 0%, #0d9488 100%)"
+              borderTopRadius="2xl"
+            />
+
+            <Flex justify="space-between" align="center" mb={4}>
+              <Box
+                w={12}
+                h={12}
+                borderRadius="xl"
+                background="linear-gradient(135deg, #14b8a6 0%, #0d9488 100%)"
+                display="flex"
+                alignItems="center"
+                justifyContent="center"
+                color="white"
+                boxShadow="lg"
+              >
+                <Box as={FaUserMd} fontSize="xl" />
+              </Box>
+              <Box as={FaChevronRight} color="secondary.400" fontSize="lg" />
+            </Flex>
+
+            <VStack align="start" spacing={2}>
+              <Text fontSize="sm" color="secondary.600" fontWeight="medium">
+                Por Paciente
+              </Text>
+              <Text fontSize={{ base: "lg", md: "xl" }} fontWeight="extrabold" color="secondary.800" lineHeight="1.1">
+                Detalle turno por turno
+              </Text>
+              <Text fontSize="xs" color="secondary.500">
+                OT, tiempos y flebotomista
+              </Text>
             </VStack>
           </GlassCard>
         </SimpleGrid>
