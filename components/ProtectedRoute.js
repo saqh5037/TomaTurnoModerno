@@ -24,11 +24,12 @@ const PUBLIC_ROUTES = [
 // Rutas que requieren roles específicos
 const ROLE_RESTRICTED_ROUTES = {
   '/users': ['admin', 'Admin', 'Administrador'],
-  '/statistics': ['admin', 'Admin', 'Administrador', 'supervisor'],
-  '/statistics/monthly': ['admin', 'Admin', 'Administrador', 'supervisor'],
-  '/statistics/daily': ['admin', 'Admin', 'Administrador', 'supervisor'],
-  '/statistics/average-time': ['admin', 'Admin', 'Administrador', 'supervisor'],
-  '/statistics/phlebotomists': ['admin', 'Admin', 'Administrador', 'supervisor'],
+  '/statistics': ['admin', 'Admin', 'Administrador', 'supervisor', 'Flebotomista', 'flebotomista'],
+  '/statistics/monthly': ['admin', 'Admin', 'Administrador', 'supervisor', 'Flebotomista', 'flebotomista'],
+  '/statistics/daily': ['admin', 'Admin', 'Administrador', 'supervisor', 'Flebotomista', 'flebotomista'],
+  '/statistics/average-time': ['admin', 'Admin', 'Administrador', 'supervisor', 'Flebotomista', 'flebotomista'],
+  '/statistics/phlebotomists': ['admin', 'Admin', 'Administrador', 'supervisor', 'Flebotomista', 'flebotomista'],
+  '/statistics/patients': ['admin', 'Admin', 'Administrador', 'supervisor', 'Flebotomista', 'flebotomista'],
   '/cubicles': ['admin', 'Admin', 'Administrador'],
   '/admin/control-panel': ['admin', 'Admin', 'Administrador', 'supervisor'],
   '/document-prep': ['admin', 'Admin', 'Administrador', 'supervisor', 'Flebotomista', 'flebotomista', 'recepcion', 'Recepcion', 'Recepción']

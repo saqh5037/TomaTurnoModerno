@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Box, FormControl, FormLabel, Select, Button, useToast, Heading, Spinner, Text } from "@chakra-ui/react";
 import { useRouter } from "next/router";
+import { FaHome } from "react-icons/fa";
 
 export default function SelectCubicle() {
   const [cubicle, setCubicle] = useState("");
@@ -165,10 +166,27 @@ export default function SelectCubicle() {
   };
 
   return (
-    <Box maxW="md" mx="auto" mt={10} p={6} borderRadius="md" boxShadow="lg" bg="white">
-      <Heading as="h2" size="lg" textAlign="center" mb={6} color="blue.600">
-        Selección de Cubículo
-      </Heading>
+    <Box position="relative" minH="100vh">
+      {/* Botón Ir a inicio — escape hatch para flebo que no quiere elegir cubículo */}
+      <Button
+        leftIcon={<FaHome />}
+        colorScheme="blue"
+        variant="solid"
+        size="md"
+        position="absolute"
+        top={6}
+        left={6}
+        onClick={() => router.push('/')}
+        boxShadow="md"
+        _hover={{ transform: 'translateY(-1px)', boxShadow: 'lg' }}
+      >
+        Ir a inicio
+      </Button>
+
+      <Box maxW="md" mx="auto" mt={10} p={6} borderRadius="md" boxShadow="lg" bg="white">
+        <Heading as="h2" size="lg" textAlign="center" mb={6} color="blue.600">
+          Selección de Cubículo
+        </Heading>
       {loading ? (
         <Spinner size="xl" color="blue.500" />
       ) : cubicles.length === 0 ? (
@@ -226,6 +244,7 @@ export default function SelectCubicle() {
       >
         Confirmar Cubículo
       </Button>
+      </Box>
     </Box>
   );
 }
