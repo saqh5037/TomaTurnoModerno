@@ -22,6 +22,10 @@ import {
   Flex,
   SimpleGrid,
   Tooltip,
+  Menu,
+  MenuButton,
+  MenuList,
+  MenuItem,
   useToast,
 } from "@chakra-ui/react";
 import {
@@ -33,6 +37,9 @@ import {
   FaChevronRight,
   FaUser,
   FaBroom,
+  FaFileExcel,
+  FaFilePdf,
+  FaDownload,
 } from "react-icons/fa";
 import { useRouter } from "next/router";
 import { useAuth } from "../../contexts/AuthContext";
@@ -42,6 +49,9 @@ import {
   ModernContainer,
   ModernHeader,
 } from "../../components/theme/ModernTheme";
+import * as XLSX from "xlsx";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 const PAGE_SIZE = 50;
 
@@ -104,24 +114,12 @@ const PatientStatisticsPage = memo(function PatientStatisticsPage() {
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
   }, []);
-
-  // Cargar lista de flebotomistas para el selector
-  useEffect(() => {
-    if (!mounted) return;
-    fetch("/api/statistics/filters/phlebotomists")
-      .then((res) => res.json())
-      .then((data) => {
-        if (Array.isArray(data)) setPhlebotomists(data);
-      })
-      .catch((err) => {
-        console.error("Error cargando flebotomistas:", err);
-      });
-  }, [mounted]);
 
   // Debounce del input de búsqueda (400ms)
   useEffect(() => {
@@ -162,6 +160,8 @@ const PatientStatisticsPage = memo(function PatientStatisticsPage() {
       setRows(data.data.rows || []);
       setTotal(data.data.total || 0);
       setTotalPages(data.data.totalPages || 1);
+      // Dropdown dinámico: solo flebos que atendieron turnos en el rango
+      setPhlebotomists(data.data.filters?.phlebotomists || []);
     } catch (err) {
       console.error("[patient-stats] load error:", err);
       toast({
@@ -197,6 +197,252 @@ const PatientStatisticsPage = memo(function PatientStatisticsPage() {
 
   const handleNextPage = () => {
     if (page < totalPages) setPage(page + 1);
+  };
+
+  // Fetch de TODOS los turnos del rango actual (hasta 5000) para export
+  const fetchAllForExport = useCallback(async () => {
+    const token = localStorage.getItem("token");
+    const params = new URLSearchParams({
+      dateFrom,
+      dateTo,
+      page: "1",
+      limit: "5000",
+    });
+    if (phlebotomistId) params.set("phlebotomistId", phlebotomistId);
+    if (debouncedSearch) params.set("search", debouncedSearch);
+
+    const res = await fetch(
+      `/api/statistics/patient-stats?${params.toString()}`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.error || "Error al obtener datos para exportar");
+    }
+    return data.data.rows || [];
+  }, [dateFrom, dateTo, phlebotomistId, debouncedSearch]);
+
+  // Nombre base del archivo exportado
+  const buildExportFilename = () => {
+    const safeFrom = dateFrom.replace(/-/g, "");
+    const safeTo = dateTo.replace(/-/g, "");
+    const phlebPart = phlebotomistId
+      ? `_flebo${phlebotomistId}`
+      : "";
+    return `estadisticas_paciente_${safeFrom}-${safeTo}${phlebPart}`;
+  };
+
+  const handleExportExcel = async () => {
+    setExporting(true);
+    try {
+      const allRows = await fetchAllForExport();
+      if (allRows.length === 0) {
+        toast({
+          title: "Sin datos",
+          description: "No hay turnos para exportar en este rango.",
+          status: "warning",
+          duration: 3000,
+          isClosable: true,
+        });
+        return;
+      }
+
+      const sheetRows = allRows.map((r) => ({
+        "# Turno": r.turnNumber ?? "",
+        "OT LABSIS": r.workOrder || "",
+        Paciente: r.patientName,
+        Prioridad: PRIORITY_LABELS[r.tipoAtencion] || r.tipoAtencion || "",
+        "Hora inicio": r.startTime
+          ? new Date(r.startTime).toLocaleString("es-MX")
+          : "",
+        "Hora fin": r.endTime
+          ? new Date(r.endTime).toLocaleString("es-MX")
+          : "",
+        "Tiempo (min)": r.durationMinutes,
+        Flebotomista: r.phlebotomistName,
+      }));
+
+      const worksheet = XLSX.utils.json_to_sheet(sheetRows);
+
+      // Ajuste de anchos de columna
+      worksheet["!cols"] = [
+        { wch: 10 }, // # Turno
+        { wch: 14 }, // OT LABSIS
+        { wch: 36 }, // Paciente
+        { wch: 16 }, // Prioridad
+        { wch: 22 }, // Hora inicio
+        { wch: 22 }, // Hora fin
+        { wch: 12 }, // Tiempo
+        { wch: 30 }, // Flebotomista
+      ];
+
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(
+        workbook,
+        worksheet,
+        "Estadísticas por Paciente"
+      );
+
+      XLSX.writeFile(workbook, `${buildExportFilename()}.xlsx`);
+
+      toast({
+        title: "Excel generado",
+        description: `${allRows.length} turnos exportados correctamente.`,
+        status: "success",
+        duration: 3000,
+        isClosable: true,
+      });
+    } catch (err) {
+      console.error("[export excel] error:", err);
+      toast({
+        title: "Error al exportar",
+        description: err.message || "No se pudo generar el archivo Excel.",
+        status: "error",
+        duration: 4000,
+        isClosable: true,
+      });
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const handleExportPDF = async () => {
+    setExporting(true);
+    try {
+      const allRows = await fetchAllForExport();
+      if (allRows.length === 0) {
+        toast({
+          title: "Sin datos",
+          description: "No hay turnos para exportar en este rango.",
+          status: "warning",
+          duration: 3000,
+          isClosable: true,
+        });
+        return;
+      }
+
+      const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+
+      // Header institucional
+      const primaryColor = [79, 125, 243];
+      doc.setFillColor(...primaryColor);
+      doc.rect(0, 0, pageWidth, 20, "F");
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(14);
+      doc.setFont(undefined, "bold");
+      doc.text("ESTADÍSTICAS POR PACIENTE", pageWidth / 2, 9, { align: "center" });
+      doc.setFontSize(9);
+      doc.setFont(undefined, "normal");
+      doc.text(
+        "TomaTurno INER · Instituto Nacional de Enfermedades Respiratorias",
+        pageWidth / 2,
+        15,
+        { align: "center" }
+      );
+
+      // Metadata del reporte
+      doc.setTextColor(60, 60, 60);
+      doc.setFontSize(10);
+      let metaY = 28;
+      doc.text(`Rango: ${dateFrom} a ${dateTo}`, 14, metaY);
+      if (phlebotomistId) {
+        const flebo = phlebotomists.find(
+          (p) => String(p.id) === String(phlebotomistId)
+        );
+        doc.text(
+          `Flebotomista: ${flebo?.name || phlebotomistId}`,
+          14,
+          metaY + 5
+        );
+        metaY += 5;
+      }
+      if (debouncedSearch) {
+        doc.text(`Búsqueda: "${debouncedSearch}"`, 14, metaY + 5);
+        metaY += 5;
+      }
+      doc.text(`Total de turnos: ${allRows.length}`, 14, metaY + 5);
+
+      // Tabla
+      const head = [
+        [
+          "# Turno",
+          "OT LABSIS",
+          "Paciente",
+          "Prioridad",
+          "Hora inicio",
+          "Hora fin",
+          "Tiempo (min)",
+          "Flebotomista",
+        ],
+      ];
+      const body = allRows.map((r) => [
+        r.turnNumber ?? "—",
+        r.workOrder || "—",
+        r.patientName,
+        PRIORITY_LABELS[r.tipoAtencion] || r.tipoAtencion || "—",
+        r.startTime ? formatTime(r.startTime) : "—",
+        r.endTime ? formatTime(r.endTime) : "—",
+        r.durationMinutes.toFixed(1),
+        r.phlebotomistName,
+      ]);
+
+      autoTable(doc, {
+        head,
+        body,
+        startY: metaY + 12,
+        headStyles: {
+          fillColor: primaryColor,
+          textColor: [255, 255, 255],
+          fontStyle: "bold",
+          fontSize: 9,
+          halign: "center",
+        },
+        bodyStyles: { fontSize: 8, cellPadding: 2 },
+        alternateRowStyles: { fillColor: [245, 247, 250] },
+        columnStyles: {
+          0: { halign: "center", cellWidth: 18 },
+          1: { halign: "center", cellWidth: 22 },
+          2: { cellWidth: 60 },
+          3: { halign: "center", cellWidth: 25 },
+          4: { halign: "center", cellWidth: 22 },
+          5: { halign: "center", cellWidth: 22 },
+          6: { halign: "right", cellWidth: 20 },
+          7: { cellWidth: 45 },
+        },
+        margin: { left: 10, right: 10 },
+        theme: "striped",
+        didDrawPage: (dataArg) => {
+          // Footer en cada página
+          const str = `Página ${doc.internal.getCurrentPageInfo().pageNumber} · Generado ${new Date().toLocaleString("es-MX")}`;
+          doc.setFontSize(8);
+          doc.setTextColor(130, 130, 130);
+          doc.text(str, pageWidth / 2, pageHeight - 6, { align: "center" });
+        },
+      });
+
+      doc.save(`${buildExportFilename()}.pdf`);
+
+      toast({
+        title: "PDF generado",
+        description: `${allRows.length} turnos exportados correctamente.`,
+        status: "success",
+        duration: 3000,
+        isClosable: true,
+      });
+    } catch (err) {
+      console.error("[export pdf] error:", err);
+      toast({
+        title: "Error al exportar",
+        description: err.message || "No se pudo generar el archivo PDF.",
+        status: "error",
+        duration: 4000,
+        isClosable: true,
+      });
+    } finally {
+      setExporting(false);
+    }
   };
 
   // Reset page cuando cambian filtros que no son la página
@@ -314,16 +560,39 @@ const PatientStatisticsPage = memo(function PatientStatisticsPage() {
           </FormControl>
         </SimpleGrid>
 
-        <Flex justify="flex-end" mt={4}>
+        <Flex justify="flex-end" mt={4} gap={2} flexWrap="wrap">
           <Button
             leftIcon={<FaBroom />}
             size="sm"
             variant="outline"
             colorScheme="blue"
             onClick={handleClearFilters}
+            isDisabled={exporting}
           >
             Limpiar filtros
           </Button>
+          <Menu>
+            <MenuButton
+              as={Button}
+              leftIcon={<FaDownload />}
+              size="sm"
+              colorScheme="teal"
+              variant="solid"
+              isLoading={exporting}
+              loadingText="Exportando..."
+              isDisabled={loading || total === 0}
+            >
+              Exportar
+            </MenuButton>
+            <MenuList>
+              <MenuItem icon={<FaFileExcel color="#16a34a" />} onClick={handleExportExcel}>
+                Descargar Excel (.xlsx)
+              </MenuItem>
+              <MenuItem icon={<FaFilePdf color="#dc2626" />} onClick={handleExportPDF}>
+                Descargar PDF
+              </MenuItem>
+            </MenuList>
+          </Menu>
         </Flex>
       </GlassCard>
 
