@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, memo, useMemo } from "react";
+import { useState, useEffect, useCallback, useRef, memo, useMemo } from "react";
 import {
   Box,
   Heading,
@@ -26,6 +26,19 @@ import {
   MenuButton,
   MenuList,
   MenuItem,
+  Modal,
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+  ModalCloseButton,
+  Stat,
+  StatLabel,
+  StatNumber,
+  StatHelpText,
+  Divider,
+  useDisclosure,
   useToast,
 } from "@chakra-ui/react";
 import {
@@ -40,6 +53,12 @@ import {
   FaFileExcel,
   FaFilePdf,
   FaDownload,
+  FaChartBar,
+  FaChartLine,
+  FaChartPie,
+  FaClock,
+  FaUsers,
+  FaPrint,
 } from "react-icons/fa";
 import { useRouter } from "next/router";
 import { useAuth } from "../../contexts/AuthContext";
@@ -52,6 +71,7 @@ import {
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { Bar, Line, Doughnut } from "react-chartjs-2";
 
 const PAGE_SIZE = 50;
 
@@ -116,6 +136,19 @@ const PatientStatisticsPage = memo(function PatientStatisticsPage() {
   const [loading, setLoading] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [mounted, setMounted] = useState(false);
+
+  // Estado para el dashboard de gráficas
+  const { isOpen: chartsOpen, onOpen: openCharts, onClose: closeCharts } =
+    useDisclosure();
+  const [chartData, setChartData] = useState(null);
+  const [chartsLoading, setChartsLoading] = useState(false);
+  const [chartsExporting, setChartsExporting] = useState(false);
+
+  // Refs a los canvas de cada gráfica (para capturarlos en export PDF)
+  const peakChartRef = useRef(null);
+  const avgTimeChartRef = useRef(null);
+  const typeChartRef = useRef(null);
+  const phlebChartRef = useRef(null);
 
   useEffect(() => {
     setMounted(true);
@@ -182,6 +215,203 @@ const PatientStatisticsPage = memo(function PatientStatisticsPage() {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  // === Dashboard de gráficas ===
+
+  const loadChartData = useCallback(async () => {
+    setChartsLoading(true);
+    try {
+      const token = localStorage.getItem("token");
+      const params = new URLSearchParams({ dateFrom, dateTo });
+      if (phlebotomistId) params.set("phlebotomistId", phlebotomistId);
+      if (debouncedSearch) params.set("search", debouncedSearch);
+
+      const res = await fetch(
+        `/api/statistics/patient-stats/chart-data?${params.toString()}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Error al cargar gráficas");
+      }
+      setChartData(data.data);
+    } catch (err) {
+      console.error("[chart-data] error:", err);
+      toast({
+        title: "Error al cargar gráficas",
+        description: err.message,
+        status: "error",
+        duration: 4000,
+        isClosable: true,
+      });
+      setChartData(null);
+    } finally {
+      setChartsLoading(false);
+    }
+  }, [dateFrom, dateTo, phlebotomistId, debouncedSearch, toast]);
+
+  const handleOpenCharts = () => {
+    openCharts();
+    loadChartData();
+  };
+
+  // Export PDF con todas las gráficas + KPIs
+  const handleExportChartsPDF = async () => {
+    if (!chartData) return;
+    setChartsExporting(true);
+    try {
+      const doc = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: "a4",
+      });
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+
+      // Header
+      const primaryColor = [79, 125, 243];
+      doc.setFillColor(...primaryColor);
+      doc.rect(0, 0, pageWidth, 20, "F");
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(14);
+      doc.setFont(undefined, "bold");
+      doc.text("DASHBOARD DE ESTADÍSTICAS POR PACIENTE", pageWidth / 2, 9, {
+        align: "center",
+      });
+      doc.setFontSize(9);
+      doc.setFont(undefined, "normal");
+      doc.text(
+        "TomaTurno INER · Instituto Nacional de Enfermedades Respiratorias",
+        pageWidth / 2,
+        15,
+        { align: "center" }
+      );
+
+      // Metadata
+      doc.setTextColor(60, 60, 60);
+      doc.setFontSize(10);
+      let y = 28;
+      doc.text(`Rango: ${dateFrom} a ${dateTo}`, 14, y);
+      if (phlebotomistId) {
+        const flebo = phlebotomists.find(
+          (p) => String(p.id) === String(phlebotomistId)
+        );
+        y += 5;
+        doc.text(`Flebotomista: ${flebo?.name || phlebotomistId}`, 14, y);
+      }
+      if (debouncedSearch) {
+        y += 5;
+        doc.text(`Búsqueda: "${debouncedSearch}"`, 14, y);
+      }
+      y += 10;
+
+      // KPIs en una tabla de 2x2
+      doc.setFontSize(11);
+      doc.setFont(undefined, "bold");
+      doc.text("Indicadores clave", 14, y);
+      y += 6;
+      autoTable(doc, {
+        startY: y,
+        head: [["Métrica", "Valor"]],
+        body: [
+          ["Total atendidos", String(chartData.kpis.totalAttended)],
+          ["Tiempo promedio", `${chartData.kpis.avgDurationMin} min`],
+          [
+            "Hora pico",
+            `${chartData.kpis.peakHourLabel} (${chartData.kpis.peakHourCount} turnos)`,
+          ],
+          [
+            "Flebotomista top",
+            `${chartData.kpis.topPhlebotomistName} (${chartData.kpis.topPhlebotomistCount})`,
+          ],
+        ],
+        headStyles: {
+          fillColor: primaryColor,
+          textColor: [255, 255, 255],
+          fontStyle: "bold",
+          fontSize: 9,
+        },
+        bodyStyles: { fontSize: 9 },
+        theme: "striped",
+        margin: { left: 14, right: 14 },
+      });
+      y = doc.lastAutoTable.finalY + 8;
+
+      // Helper para meter una imagen de canvas en el PDF
+      const addChartImage = (chartRef, title, maxHeight = 70) => {
+        if (!chartRef.current) return;
+        try {
+          const chart = chartRef.current;
+          const imgData = chart.toBase64Image();
+
+          if (y + maxHeight + 10 > pageHeight - 15) {
+            doc.addPage();
+            y = 15;
+          }
+
+          doc.setFontSize(11);
+          doc.setFont(undefined, "bold");
+          doc.setTextColor(60, 60, 60);
+          doc.text(title, 14, y);
+          y += 4;
+
+          const imgWidth = pageWidth - 28;
+          doc.addImage(imgData, "PNG", 14, y, imgWidth, maxHeight);
+          y += maxHeight + 8;
+        } catch (err) {
+          console.warn(`No se pudo capturar la gráfica "${title}":`, err);
+        }
+      };
+
+      addChartImage(peakChartRef, "Horario pico — turnos por bloque de 30 min");
+      addChartImage(
+        avgTimeChartRef,
+        "Tiempo promedio de atención (min) por bloque de 30 min"
+      );
+      addChartImage(typeChartRef, "Distribución por tipo de atención", 75);
+      addChartImage(phlebChartRef, "Top flebotomistas por volumen", 75);
+
+      // Footer en todas las páginas
+      const pageCount = doc.internal.getNumberOfPages();
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setFontSize(8);
+        doc.setTextColor(130, 130, 130);
+        doc.text(
+          `Página ${i} de ${pageCount} · Generado ${new Date().toLocaleString("es-MX")}`,
+          pageWidth / 2,
+          pageHeight - 6,
+          { align: "center" }
+        );
+      }
+
+      const safeFrom = dateFrom.replace(/-/g, "");
+      const safeTo = dateTo.replace(/-/g, "");
+      doc.save(`dashboard_paciente_${safeFrom}-${safeTo}.pdf`);
+
+      toast({
+        title: "PDF generado",
+        status: "success",
+        duration: 2500,
+        isClosable: true,
+      });
+    } catch (err) {
+      console.error("[export charts pdf] error:", err);
+      toast({
+        title: "Error al exportar PDF",
+        description: err.message,
+        status: "error",
+        duration: 4000,
+        isClosable: true,
+      });
+    } finally {
+      setChartsExporting(false);
+    }
+  };
+
+  const handlePrintCharts = () => {
+    window.print();
+  };
 
   const handleClearFilters = () => {
     setDateFrom(today);
@@ -571,6 +801,16 @@ const PatientStatisticsPage = memo(function PatientStatisticsPage() {
           >
             Limpiar filtros
           </Button>
+          <Button
+            leftIcon={<FaChartBar />}
+            size="sm"
+            colorScheme="purple"
+            variant="solid"
+            onClick={handleOpenCharts}
+            isDisabled={loading || total === 0}
+          >
+            Ver gráficas
+          </Button>
           <Menu>
             <MenuButton
               as={Button}
@@ -723,8 +963,384 @@ const PatientStatisticsPage = memo(function PatientStatisticsPage() {
           </>
         )}
       </GlassCard>
+
+      {/* === Modal: Dashboard de gráficas === */}
+      <Modal
+        isOpen={chartsOpen}
+        onClose={closeCharts}
+        size="full"
+        scrollBehavior="inside"
+      >
+        <ModalOverlay />
+        <ModalContent id="charts-dashboard-content">
+          <ModalHeader
+            bg="linear-gradient(135deg, #4F7DF3 0%, #6B73FF 100%)"
+            color="white"
+            className="charts-no-print-header"
+          >
+            <Flex justify="space-between" align="center" wrap="wrap" gap={3}>
+              <HStack>
+                <FaChartBar />
+                <Text>Dashboard de Estadísticas por Paciente</Text>
+              </HStack>
+              <HStack spacing={2}>
+                <Button
+                  leftIcon={<FaPrint />}
+                  size="sm"
+                  colorScheme="whiteAlpha"
+                  variant="outline"
+                  onClick={handlePrintCharts}
+                  isDisabled={chartsLoading || !chartData}
+                  className="charts-no-print"
+                >
+                  Imprimir
+                </Button>
+                <Button
+                  leftIcon={<FaFilePdf />}
+                  size="sm"
+                  colorScheme="whiteAlpha"
+                  variant="solid"
+                  onClick={handleExportChartsPDF}
+                  isLoading={chartsExporting}
+                  loadingText="Generando PDF..."
+                  isDisabled={chartsLoading || !chartData}
+                  className="charts-no-print"
+                >
+                  Exportar PDF
+                </Button>
+              </HStack>
+            </Flex>
+          </ModalHeader>
+          <ModalCloseButton
+            color="white"
+            className="charts-no-print"
+            size="lg"
+          />
+          <ModalBody py={6} className="charts-dashboard-body">
+            {chartsLoading || !chartData ? (
+              <Flex justify="center" align="center" minH="400px">
+                <VStack spacing={4}>
+                  <Spinner size="xl" color="purple.500" thickness="4px" />
+                  <Text color="secondary.600">Calculando estadísticas...</Text>
+                </VStack>
+              </Flex>
+            ) : (
+              <VStack spacing={6} align="stretch">
+                {/* Metadata */}
+                <Box textAlign="center" color="secondary.600" fontSize="sm">
+                  <Text>
+                    Rango: <strong>{dateFrom}</strong> a <strong>{dateTo}</strong>
+                    {phlebotomistId && (
+                      <>
+                        {" · "}Flebotomista:{" "}
+                        <strong>
+                          {phlebotomists.find(
+                            (p) => String(p.id) === String(phlebotomistId)
+                          )?.name || phlebotomistId}
+                        </strong>
+                      </>
+                    )}
+                    {debouncedSearch && (
+                      <>
+                        {" · "}Búsqueda: <strong>"{debouncedSearch}"</strong>
+                      </>
+                    )}
+                  </Text>
+                </Box>
+
+                {/* KPIs */}
+                <SimpleGrid columns={{ base: 1, sm: 2, lg: 4 }} spacing={4}>
+                  <KpiCard
+                    icon={<FaUsers />}
+                    label="Total atendidos"
+                    value={chartData.kpis.totalAttended}
+                    helpText="turnos en el rango"
+                    gradient="linear-gradient(135deg, #4F7DF3 0%, #6B73FF 100%)"
+                  />
+                  <KpiCard
+                    icon={<FaClock />}
+                    label="Tiempo promedio"
+                    value={`${chartData.kpis.avgDurationMin}`}
+                    helpText="min por paciente"
+                    gradient="linear-gradient(135deg, #f59e0b 0%, #f97316 100%)"
+                  />
+                  <KpiCard
+                    icon={<FaChartLine />}
+                    label="Hora pico"
+                    value={chartData.kpis.peakHourLabel}
+                    helpText={`${chartData.kpis.peakHourCount} turnos`}
+                    gradient="linear-gradient(135deg, #ef4444 0%, #dc2626 100%)"
+                  />
+                  <KpiCard
+                    icon={<FaUserMd />}
+                    label="Flebo. top"
+                    value={chartData.kpis.topPhlebotomistName.split(" ")[0]}
+                    helpText={`${chartData.kpis.topPhlebotomistCount} turnos`}
+                    gradient="linear-gradient(135deg, #14b8a6 0%, #0d9488 100%)"
+                  />
+                </SimpleGrid>
+
+                {/* Gráfica 1: Horario pico (30-min bins) */}
+                <GlassCard p={5}>
+                  <HStack mb={3}>
+                    <FaChartBar color="#4F7DF3" />
+                    <Heading size="sm" color="secondary.800">
+                      Horario pico — turnos atendidos por bloque de 30 min
+                    </Heading>
+                  </HStack>
+                  <Box h="300px">
+                    <Bar
+                      ref={peakChartRef}
+                      data={{
+                        labels: chartData.halfHourBins.map((b) => b.label),
+                        datasets: [
+                          {
+                            label: "Turnos atendidos",
+                            data: chartData.halfHourBins.map((b) => b.count),
+                            backgroundColor: chartData.halfHourBins.map((b) =>
+                              b.label === chartData.kpis.peakHourLabel
+                                ? "#ef4444"
+                                : "#4F7DF3"
+                            ),
+                            borderRadius: 4,
+                          },
+                        ],
+                      }}
+                      options={{
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        animation: { duration: 600 },
+                        plugins: {
+                          legend: { display: false },
+                          tooltip: {
+                            callbacks: {
+                              label: (ctx) => `${ctx.parsed.y} turnos`,
+                            },
+                          },
+                        },
+                        scales: {
+                          y: {
+                            beginAtZero: true,
+                            ticks: { stepSize: 1, precision: 0 },
+                            title: { display: true, text: "Turnos" },
+                          },
+                          x: { title: { display: true, text: "Hora (bloques de 30 min)" } },
+                        },
+                      }}
+                    />
+                  </Box>
+                </GlassCard>
+
+                {/* Gráfica 2: Tiempo promedio por bin */}
+                <GlassCard p={5}>
+                  <HStack mb={3}>
+                    <FaChartLine color="#f59e0b" />
+                    <Heading size="sm" color="secondary.800">
+                      Tiempo promedio de atención (min) por bloque de 30 min
+                    </Heading>
+                  </HStack>
+                  <Box h="280px">
+                    <Line
+                      ref={avgTimeChartRef}
+                      data={{
+                        labels: chartData.halfHourBins.map((b) => b.label),
+                        datasets: [
+                          {
+                            label: "Tiempo promedio (min)",
+                            data: chartData.halfHourBins.map((b) => b.avgDuration),
+                            borderColor: "#f59e0b",
+                            backgroundColor: "rgba(245, 158, 11, 0.15)",
+                            tension: 0.3,
+                            fill: true,
+                            pointRadius: 3,
+                          },
+                        ],
+                      }}
+                      options={{
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        animation: { duration: 600 },
+                        plugins: { legend: { display: false } },
+                        scales: {
+                          y: {
+                            beginAtZero: true,
+                            title: { display: true, text: "Minutos" },
+                          },
+                          x: { title: { display: true, text: "Hora" } },
+                        },
+                      }}
+                    />
+                  </Box>
+                </GlassCard>
+
+                {/* Gráfica 3 y 4 lado a lado */}
+                <SimpleGrid columns={{ base: 1, lg: 2 }} spacing={6}>
+                  <GlassCard p={5}>
+                    <HStack mb={3}>
+                      <FaChartPie color="#14b8a6" />
+                      <Heading size="sm" color="secondary.800">
+                        Distribución por tipo de atención
+                      </Heading>
+                    </HStack>
+                    {chartData.byType.length > 0 ? (
+                      <Box h="300px">
+                        <Doughnut
+                          ref={typeChartRef}
+                          data={{
+                            labels: chartData.byType.map((t) => t.label),
+                            datasets: [
+                              {
+                                data: chartData.byType.map((t) => t.count),
+                                backgroundColor: [
+                                  "#ef4444",
+                                  "#f59e0b",
+                                  "#eab308",
+                                  "#3b82f6",
+                                  "#6b7280",
+                                  "#a78bfa",
+                                ],
+                                borderWidth: 2,
+                                borderColor: "#fff",
+                              },
+                            ],
+                          }}
+                          options={{
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                              legend: { position: "right" },
+                            },
+                          }}
+                        />
+                      </Box>
+                    ) : (
+                      <Flex justify="center" align="center" h="300px">
+                        <Text color="secondary.500">Sin datos</Text>
+                      </Flex>
+                    )}
+                  </GlassCard>
+
+                  <GlassCard p={5}>
+                    <HStack mb={3}>
+                      <FaUserMd color="#9333EA" />
+                      <Heading size="sm" color="secondary.800">
+                        Top flebotomistas por volumen
+                      </Heading>
+                    </HStack>
+                    {chartData.topPhlebotomists.length > 0 ? (
+                      <Box h="300px">
+                        <Bar
+                          ref={phlebChartRef}
+                          data={{
+                            labels: chartData.topPhlebotomists.map((p) => p.name),
+                            datasets: [
+                              {
+                                label: "Turnos atendidos",
+                                data: chartData.topPhlebotomists.map((p) => p.count),
+                                backgroundColor: "#9333EA",
+                                borderRadius: 4,
+                              },
+                            ],
+                          }}
+                          options={{
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            indexAxis: "y",
+                            plugins: {
+                              legend: { display: false },
+                              tooltip: {
+                                callbacks: {
+                                  label: (ctx) => `${ctx.parsed.x} turnos`,
+                                },
+                              },
+                            },
+                            scales: {
+                              x: {
+                                beginAtZero: true,
+                                ticks: { stepSize: 1, precision: 0 },
+                              },
+                            },
+                          }}
+                        />
+                      </Box>
+                    ) : (
+                      <Flex justify="center" align="center" h="300px">
+                        <Text color="secondary.500">Sin datos</Text>
+                      </Flex>
+                    )}
+                  </GlassCard>
+                </SimpleGrid>
+              </VStack>
+            )}
+          </ModalBody>
+          <ModalFooter className="charts-no-print">
+            <Button variant="ghost" onClick={closeCharts}>
+              Cerrar
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
+      {/* CSS para imprimir: ocultar botones y elementos no imprimibles */}
+      <style jsx global>{`
+        @media print {
+          .charts-no-print,
+          .charts-no-print-header button {
+            display: none !important;
+          }
+          .charts-dashboard-body {
+            padding: 0 !important;
+          }
+          body > :not(#__next),
+          #__next > :not(.chakra-modal__content-container) {
+            display: none !important;
+          }
+        }
+      `}</style>
     </ModernContainer>
   );
 });
+
+// Card compacto para KPIs en el dashboard de gráficas
+const KpiCard = ({ icon, label, value, helpText, gradient }) => (
+  <GlassCard p={4} position="relative" overflow="hidden">
+    <Box
+      position="absolute"
+      top={0}
+      left={0}
+      right={0}
+      height="3px"
+      background={gradient}
+      borderTopRadius="2xl"
+    />
+    <HStack spacing={3} align="start">
+      <Box
+        w={10}
+        h={10}
+        borderRadius="lg"
+        background={gradient}
+        display="flex"
+        alignItems="center"
+        justifyContent="center"
+        color="white"
+        fontSize="lg"
+        flexShrink={0}
+      >
+        {icon}
+      </Box>
+      <Stat>
+        <StatLabel fontSize="xs" color="secondary.600">
+          {label}
+        </StatLabel>
+        <StatNumber fontSize="xl" fontWeight="extrabold" color="secondary.800" lineHeight="1.2">
+          {value}
+        </StatNumber>
+        <StatHelpText fontSize="xs" mb={0} color="secondary.500">
+          {helpText}
+        </StatHelpText>
+      </Stat>
+    </HStack>
+  </GlassCard>
+);
 
 export default PatientStatisticsPage;
