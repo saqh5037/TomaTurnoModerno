@@ -1,32 +1,13 @@
 import { NextResponse } from "next/server";
 import jwt from "jsonwebtoken";
 import prisma from "../../../../../lib/prisma.js";
+import { calculateDurationMinutes } from "../../../../../lib/patientStatsUtils.js";
 
 const JWT_SECRET = process.env.NEXTAUTH_SECRET || process.env.JWT_SECRET;
 
 const ALLOWED_ROLES = ["admin", "administrador", "supervisor", "flebotomista"];
 const MAX_LIMIT = 200;
 const DEFAULT_LIMIT = 50;
-const DURATION_CAP_MIN = 240; // 4h, mismo cap que /api/statistics/dashboard
-
-/**
- * Calcula la duración en minutos de un turno atendido.
- * Función pura, exportada para tests unitarios.
- *
- * @param {Date|string|null} startTime - calledAt o createdAt
- * @param {Date|string|null} endTime - finishedAt
- * @returns {number} duración en minutos, redondeada a 1 decimal, capped en 4h
- */
-export function calculateDurationMinutes(startTime, endTime) {
-  if (!startTime || !endTime) return 0;
-  const start = new Date(startTime).getTime();
-  const end = new Date(endTime).getTime();
-  if (Number.isNaN(start) || Number.isNaN(end)) return 0;
-  let minutes = (end - start) / 60000;
-  if (minutes < 0) minutes = 0;
-  if (minutes > DURATION_CAP_MIN) minutes = DURATION_CAP_MIN;
-  return Math.round(minutes * 10) / 10;
-}
 
 // GET - Lista de turnos atendidos con detalle por paciente
 export async function GET(request) {
