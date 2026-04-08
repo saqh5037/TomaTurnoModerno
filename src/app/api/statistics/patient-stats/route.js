@@ -6,7 +6,7 @@ import { calculateDurationMinutes } from "../../../../../lib/patientStatsUtils.j
 const JWT_SECRET = process.env.NEXTAUTH_SECRET || process.env.JWT_SECRET;
 
 const ALLOWED_ROLES = ["admin", "administrador", "supervisor", "flebotomista"];
-const MAX_LIMIT = 200;
+const MAX_LIMIT = 5000; // alto para permitir export Excel/PDF en un solo fetch
 const DEFAULT_LIMIT = 50;
 
 // GET - Lista de turnos atendidos con detalle por paciente
@@ -84,8 +84,17 @@ export async function GET(request) {
       where.OR = orClauses;
     }
 
-    // Query + count en paralelo
-    const [rowsRaw, total] = await Promise.all([
+    // Para el dropdown: flebos que tienen turnos en el rango (ignora filtro
+    // de phlebotomistId y search para que el dropdown siempre muestre la
+    // lista completa de los que tuvieron interacción en el rango).
+    const rangeOnlyWhere = {
+      status: "Attended",
+      finishedAt: where.finishedAt,
+      attendedBy: { not: null },
+    };
+
+    // Query + count + distinct phlebotomists en paralelo
+    const [rowsRaw, total, distinctPhlebIds] = await Promise.all([
       prisma.turnRequest.findMany({
         where,
         select: {
@@ -104,7 +113,23 @@ export async function GET(request) {
         take: limit,
       }),
       prisma.turnRequest.count({ where }),
+      prisma.turnRequest.groupBy({
+        by: ["attendedBy"],
+        where: rangeOnlyWhere,
+      }),
     ]);
+
+    // Resolver nombres de los flebotomistas distinct del rango
+    const phlebIds = distinctPhlebIds
+      .map((r) => r.attendedBy)
+      .filter((id) => id !== null);
+    const phlebotomistsInRange = phlebIds.length
+      ? await prisma.user.findMany({
+          where: { id: { in: phlebIds } },
+          select: { id: true, name: true },
+          orderBy: { name: "asc" },
+        })
+      : [];
 
     const rows = rowsRaw.map((t) => {
       const startTime = t.calledAt || t.createdAt;
@@ -131,6 +156,9 @@ export async function GET(request) {
         page,
         limit,
         totalPages: Math.max(1, Math.ceil(total / limit)),
+        filters: {
+          phlebotomists: phlebotomistsInRange,
+        },
       },
     });
   } catch (error) {
