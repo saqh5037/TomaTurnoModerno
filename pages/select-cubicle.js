@@ -176,7 +176,12 @@ export default function SelectCubicle() {
         position="absolute"
         top={6}
         left={6}
-        onClick={() => router.push('/')}
+        onClick={() => {
+          // Limpiar cubículo residual antes de salir (defense in depth
+          // contra bug de cubículo fantasma v2.8.44)
+          localStorage.removeItem('selectedCubicle');
+          router.push('/');
+        }}
         boxShadow="md"
         _hover={{ transform: 'translateY(-1px)', boxShadow: 'lg' }}
       >

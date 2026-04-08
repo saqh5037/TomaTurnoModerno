@@ -260,23 +260,32 @@ export default function Attention() {
     const isSupervisorOrAdminRole = decodedRole &&
       ['supervisor', 'admin', 'administrador'].includes(decodedRole.toLowerCase());
 
-    // Obtener cubículo seleccionado y sincronizar con backend
-    // Para supervisores/admins: NO cargar cubículo automáticamente, dejar que seleccionen manualmente
-    const savedCubicle = localStorage.getItem("selectedCubicle");
-    if (savedCubicle && token && !isSupervisorOrAdminRole) {
-      setSelectedCubicle(parseInt(savedCubicle)); // Convert to number for Select
-
-      // Sincronizar con backend
-      fetch("/api/session/update-cubicle", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${token}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ cubicleId: parseInt(savedCubicle) })
-      }).catch(error => {
-        console.error("Error al sincronizar cubículo:", error);
-      });
+    // Para flebotomistas: consultar BD como fuente de verdad del cubículo asignado.
+    // NO confiar en localStorage porque puede estar contaminado con valores
+    // de sesiones previas del mismo navegador (bug de seguridad v2.8.44).
+    if (token && !isSupervisorOrAdminRole) {
+      fetch("/api/session/current-cubicle", {
+        headers: { "Authorization": `Bearer ${token}` }
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success && data.cubicleId) {
+            // BD dice que SÍ tiene cubículo asignado → usarlo y cachear
+            setSelectedCubicle(data.cubicleId);
+            localStorage.setItem("selectedCubicle", String(data.cubicleId));
+          } else {
+            // BD dice que NO tiene cubículo → limpiar localStorage residual
+            // y mostrar el prompt "Selecciona un cubículo".
+            localStorage.removeItem("selectedCubicle");
+            setSelectedCubicle("");
+          }
+        })
+        .catch(err => {
+          console.error("Error consultando cubículo actual de la sesión:", err);
+          // Fallback conservador: no preseleccionar nada
+          localStorage.removeItem("selectedCubicle");
+          setSelectedCubicle("");
+        });
     }
   }, []);
 
