@@ -9,6 +9,11 @@ const ALLOWED_ROLES = ["admin", "administrador", "supervisor", "flebotomista"];
 const MAX_LIMIT = 5000; // alto para permitir export Excel/PDF en un solo fetch
 const DEFAULT_LIMIT = 50;
 
+// PostgreSQL INT4 max (assignedTurn está tipado como Int → INT4).
+// Las OT de LABSIS pueden exceder este rango (ej: 2604080221), por eso
+// validamos antes de agregar el clause de assignedTurn en el search.
+const INT4_MAX = 2147483647;
+
 // GET - Lista de turnos atendidos con detalle por paciente
 export async function GET(request) {
   try {
@@ -78,7 +83,15 @@ export async function GET(request) {
         { patientName: { contains: trimmed, mode: "insensitive" } },
         { workOrder: { contains: trimmed, mode: "insensitive" } },
       ];
-      if (!Number.isNaN(searchNum)) {
+      // Solo matchear assignedTurn si el número cabe en INT4.
+      // Las OT de LABSIS (ej: 2604080221) exceden INT4 y harían crashear
+      // la query con ConversionError del driver Postgres. Ese caso se
+      // cubre igualmente por el clause de workOrder (String contains).
+      if (
+        !Number.isNaN(searchNum) &&
+        searchNum > 0 &&
+        searchNum <= INT4_MAX
+      ) {
         orClauses.push({ assignedTurn: searchNum });
       }
       where.OR = orClauses;
