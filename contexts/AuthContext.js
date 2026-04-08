@@ -38,6 +38,11 @@ export const AuthProvider = ({ children }) => {
       const data = await response.json();
 
       if (response.ok && data.success) {
+        // Limpiar cubículo residual de sesiones previas ANTES de guardar
+        // el nuevo token. Si no se limpia, un flebo que entra después
+        // puede heredar el cubicleId de quien usó el navegador antes.
+        localStorage.removeItem('selectedCubicle');
+
         // Guardar datos en localStorage
         localStorage.setItem('token', data.token);
         localStorage.setItem('userData', JSON.stringify(data.user));
@@ -85,6 +90,7 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('refreshToken');
     localStorage.removeItem('userRole');
     localStorage.removeItem('user');
+    localStorage.removeItem('selectedCubicle');
 
     // Limpiar estado
     setUser(null);
