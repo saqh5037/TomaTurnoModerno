@@ -1042,7 +1042,7 @@ const PatientStatisticsPage = memo(function PatientStatisticsPage() {
                     )}
                     {debouncedSearch && (
                       <>
-                        {" · "}Búsqueda: <strong>"{debouncedSearch}"</strong>
+                        {" · "}Búsqueda: <strong>&ldquo;{debouncedSearch}&rdquo;</strong>
                       </>
                     )}
                   </Text>
