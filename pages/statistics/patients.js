@@ -143,6 +143,7 @@ const PatientStatisticsPage = memo(function PatientStatisticsPage() {
   const [chartData, setChartData] = useState(null);
   const [chartsLoading, setChartsLoading] = useState(false);
   const [chartsExporting, setChartsExporting] = useState(false);
+  const [binSize, setBinSize] = useState(30); // minutos: 10, 20, 30, 60
 
   // Refs a los canvas de cada gráfica (para capturarlos en export PDF)
   const peakChartRef = useRef(null);
@@ -222,7 +223,11 @@ const PatientStatisticsPage = memo(function PatientStatisticsPage() {
     setChartsLoading(true);
     try {
       const token = localStorage.getItem("token");
-      const params = new URLSearchParams({ dateFrom, dateTo });
+      const params = new URLSearchParams({
+        dateFrom,
+        dateTo,
+        binSize: String(binSize),
+      });
       if (phlebotomistId) params.set("phlebotomistId", phlebotomistId);
       if (debouncedSearch) params.set("search", debouncedSearch);
 
@@ -248,12 +253,20 @@ const PatientStatisticsPage = memo(function PatientStatisticsPage() {
     } finally {
       setChartsLoading(false);
     }
-  }, [dateFrom, dateTo, phlebotomistId, debouncedSearch, toast]);
+  }, [dateFrom, dateTo, phlebotomistId, debouncedSearch, binSize, toast]);
 
   const handleOpenCharts = () => {
     openCharts();
     loadChartData();
   };
+
+  // Re-fetch cuando cambia binSize mientras el modal está abierto
+  useEffect(() => {
+    if (chartsOpen) {
+      loadChartData();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [binSize]);
 
   // Export PDF con todas las gráficas + KPIs
   const handleExportChartsPDF = async () => {
@@ -363,10 +376,11 @@ const PatientStatisticsPage = memo(function PatientStatisticsPage() {
         }
       };
 
-      addChartImage(peakChartRef, "Horario pico — turnos por bloque de 30 min");
+      const binLabel = binSize === 60 ? "1 hora" : `${binSize} min`;
+      addChartImage(peakChartRef, `Horario pico — turnos por bloque de ${binLabel}`);
       addChartImage(
         avgTimeChartRef,
-        "Tiempo promedio de atención (min) por bloque de 30 min"
+        `Tiempo promedio de atención (min) por bloque de ${binLabel}`
       );
       addChartImage(typeChartRef, "Distribución por tipo de atención", 75);
       addChartImage(phlebChartRef, "Top flebotomistas por volumen", 75);
@@ -1080,12 +1094,44 @@ const PatientStatisticsPage = memo(function PatientStatisticsPage() {
                   />
                 </SimpleGrid>
 
-                {/* Gráfica 1: Horario pico (30-min bins) */}
+                {/* Selector de intervalo (bin size) */}
+                <GlassCard p={4} className="charts-no-print">
+                  <Flex
+                    justify="space-between"
+                    align="center"
+                    wrap="wrap"
+                    gap={3}
+                  >
+                    <HStack spacing={2}>
+                      <FaClock color="#6B73FF" />
+                      <Text fontSize="sm" fontWeight="semibold" color="secondary.700">
+                        Tamaño del bloque horario
+                      </Text>
+                    </HStack>
+                    <HStack spacing={2}>
+                      {[10, 20, 30, 60].map((size) => (
+                        <Button
+                          key={size}
+                          size="sm"
+                          variant={binSize === size ? "solid" : "outline"}
+                          colorScheme="purple"
+                          onClick={() => setBinSize(size)}
+                          isDisabled={chartsLoading}
+                        >
+                          {size === 60 ? "1 hora" : `${size} min`}
+                        </Button>
+                      ))}
+                    </HStack>
+                  </Flex>
+                </GlassCard>
+
+                {/* Gráfica 1: Horario pico */}
                 <GlassCard p={5}>
                   <HStack mb={3}>
                     <FaChartBar color="#4F7DF3" />
                     <Heading size="sm" color="secondary.800">
-                      Horario pico — turnos atendidos por bloque de 30 min
+                      Horario pico — turnos atendidos por bloque de{" "}
+                      {binSize === 60 ? "1 hora" : `${binSize} min`}
                     </Heading>
                   </HStack>
                   <Box h="300px">
@@ -1136,7 +1182,8 @@ const PatientStatisticsPage = memo(function PatientStatisticsPage() {
                   <HStack mb={3}>
                     <FaChartLine color="#f59e0b" />
                     <Heading size="sm" color="secondary.800">
-                      Tiempo promedio de atención (min) por bloque de 30 min
+                      Tiempo promedio de atención (min) por bloque de{" "}
+                      {binSize === 60 ? "1 hora" : `${binSize} min`}
                     </Heading>
                   </HStack>
                   <Box h="280px">

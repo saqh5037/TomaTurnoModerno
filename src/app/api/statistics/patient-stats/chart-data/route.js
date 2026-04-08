@@ -7,6 +7,8 @@ const JWT_SECRET = process.env.NEXTAUTH_SECRET || process.env.JWT_SECRET;
 
 const ALLOWED_ROLES = ["admin", "administrador", "supervisor", "flebotomista"];
 const INT4_MAX = 2147483647;
+const ALLOWED_BIN_SIZES = [10, 20, 30, 60]; // minutos
+const DEFAULT_BIN_SIZE = 30;
 
 /**
  * GET /api/statistics/patient-stats/chart-data
@@ -67,6 +69,12 @@ export async function GET(request) {
     const phlebotomistId = searchParams.get("phlebotomistId");
     const search = searchParams.get("search");
 
+    // Tamaño del bin en minutos (10, 20, 30, 60). Default 30.
+    const requestedBinSize = parseInt(searchParams.get("binSize") || DEFAULT_BIN_SIZE);
+    const binSize = ALLOWED_BIN_SIZES.includes(requestedBinSize)
+      ? requestedBinSize
+      : DEFAULT_BIN_SIZE;
+
     // Where clause idéntico al endpoint tabular
     const where = {
       status: "Attended",
@@ -113,18 +121,17 @@ export async function GET(request) {
       take: 50000,
     });
 
-    // ===== 1. Bins de 30 min por hora de inicio (calledAt || createdAt) =====
+    // ===== 1. Bins dinámicos por hora de inicio (calledAt || createdAt) =====
     // Usamos la hora local de México (UTC-6) asumiendo que los timestamps
-    // están en UTC. Para INER esto es consistente con las otras pantallas.
+    // están en UTC. El tamaño del bin viene del parámetro binSize.
     const MX_OFFSET_MIN = -6 * 60; // UTC-6
 
-    // Rango operativo: 6:00 AM a 8:00 PM → 28 bins de 30 min
-    const BIN_START_HOUR = 6;
-    const BIN_END_HOUR = 20;
-    const NUM_BINS = (BIN_END_HOUR - BIN_START_HOUR) * 2;
+    // Siempre cubrimos el día completo (1440 min) en bins; después
+    // recortamos al rango con datos para no mostrar eternidades vacías.
+    const NUM_BINS = Math.floor(1440 / binSize);
 
     const bins = Array.from({ length: NUM_BINS }, (_, i) => {
-      const totalMin = BIN_START_HOUR * 60 + i * 30;
+      const totalMin = i * binSize;
       const hh = String(Math.floor(totalMin / 60)).padStart(2, "0");
       const mm = String(totalMin % 60).padStart(2, "0");
       return {
@@ -134,28 +141,18 @@ export async function GET(request) {
       };
     });
 
-    // Bin "fuera de rango" por seguridad (muy temprano/tarde)
-    let outOfRangeCount = 0;
-
     turns.forEach((t) => {
       const startISO = t.calledAt || t.createdAt;
       if (!startISO) return;
 
       // Convertir UTC a hora local México
       const utcDate = new Date(startISO);
-      const mxMinutes = utcDate.getUTCHours() * 60 + utcDate.getUTCMinutes() + MX_OFFSET_MIN;
+      const mxMinutes =
+        utcDate.getUTCHours() * 60 + utcDate.getUTCMinutes() + MX_OFFSET_MIN;
       // Normalizar a 0-1439 en caso de cruzar medianoche
       const normMin = ((mxMinutes % 1440) + 1440) % 1440;
 
-      const hour = Math.floor(normMin / 60);
-      const minuteSlot = normMin % 60 < 30 ? 0 : 30;
-
-      if (hour < BIN_START_HOUR || hour >= BIN_END_HOUR) {
-        outOfRangeCount++;
-        return;
-      }
-
-      const binIdx = (hour - BIN_START_HOUR) * 2 + (minuteSlot === 30 ? 1 : 0);
+      const binIdx = Math.floor(normMin / binSize);
       if (binIdx >= 0 && binIdx < NUM_BINS) {
         const duration = calculateDurationMinutes(startISO, t.finishedAt);
         bins[binIdx].count += 1;
@@ -163,10 +160,26 @@ export async function GET(request) {
       }
     });
 
-    const halfHourBins = bins.map((b) => ({
+    // Trim: quedarnos con el rango [primer bin con datos, último bin con datos]
+    // inclusive. Los bins vacíos INTERIORES se conservan para que el eje X
+    // sea continuo y los gaps sean honestos.
+    let firstIdx = -1;
+    let lastIdx = -1;
+    for (let i = 0; i < bins.length; i++) {
+      if (bins[i].count > 0) {
+        if (firstIdx === -1) firstIdx = i;
+        lastIdx = i;
+      }
+    }
+
+    const trimmedBins =
+      firstIdx === -1 ? [] : bins.slice(firstIdx, lastIdx + 1);
+
+    const halfHourBins = trimmedBins.map((b) => ({
       label: b.label,
       count: b.count,
-      avgDuration: b.count > 0 ? Math.round((b.totalDuration / b.count) * 10) / 10 : 0,
+      avgDuration:
+        b.count > 0 ? Math.round((b.totalDuration / b.count) * 10) / 10 : 0,
     }));
 
     // ===== 2. Distribución por tipo de atención =====
@@ -243,6 +256,7 @@ export async function GET(request) {
     return NextResponse.json({
       success: true,
       data: {
+        binSize,
         kpis: {
           totalAttended,
           avgDurationMin,
@@ -254,7 +268,6 @@ export async function GET(request) {
         halfHourBins,
         byType,
         topPhlebotomists,
-        outOfRangeCount,
       },
     });
   } catch (error) {
