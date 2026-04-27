@@ -336,7 +336,7 @@ export async function GET(request) {
       }
     }
 
-    // Obtener personal: con sesión activa O que hayan atendido hoy
+    // Personal para FILTRO histórico: con sesión activa O que hayan atendido hoy
     const todayForFilter = new Date(`${now.toISOString().split('T')[0]}T00:00:00.000Z`);
     const phlebotomists = await prisma.user.findMany({
       where: {
@@ -348,6 +348,39 @@ export async function GET(request) {
       },
       select: { id: true, name: true }
     });
+
+    // Personal para MODAL de reasignación: solo usuarios con sesión activa Y cubículo seleccionado AHORA
+    const activeSessionsForAssign = await prisma.session.findMany({
+      where: {
+        expiresAt: { gt: now },
+        selectedCubicleId: { not: null }
+      },
+      select: {
+        userId: true,
+        selectedCubicleId: true,
+        user: { select: { id: true, name: true, isActive: true } }
+      },
+      orderBy: { lastActivity: 'desc' }
+    });
+    const activeCubicleNames = await prisma.cubicle.findMany({
+      where: { id: { in: activeSessionsForAssign.map(s => s.selectedCubicleId) } },
+      select: { id: true, name: true }
+    });
+    const cubicleNameById = Object.fromEntries(activeCubicleNames.map(c => [c.id, c.name]));
+    const seenUserIds = new Set();
+    const activePhlebotomists = activeSessionsForAssign
+      .filter(s => s.user?.isActive)
+      .filter(s => {
+        if (seenUserIds.has(s.userId)) return false;
+        seenUserIds.add(s.userId);
+        return true;
+      })
+      .map(s => ({
+        id: s.user.id,
+        name: s.user.name,
+        cubicleId: s.selectedCubicleId,
+        cubicleName: cubicleNameById[s.selectedCubicleId] || null
+      }));
 
     // Obtener lista de cubículos activos para filtros
     const cubicles = await prisma.cubicle.findMany({
@@ -366,6 +399,7 @@ export async function GET(request) {
         totalPages: Math.ceil(totalCount / limit),
         filters: {
           phlebotomists,
+          activePhlebotomists,
           cubicles
         },
         timestamp: now.toISOString()

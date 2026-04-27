@@ -57,12 +57,8 @@ export async function GET(request) {
     const userLatestSession = {}; // Track latest session per user
 
     // Primero, encontrar la sesión más reciente de cada usuario
+    // Cualquier rol con cubículo seleccionado bloquea el cubículo (admins/supervisores también atienden)
     for (const session of activeSessions) {
-      // Solo considerar flebotomistas (no admins ni supervisores)
-      const role = session.user.role.toLowerCase();
-      if (role !== 'flebotomista') continue;
-
-      // Guardar solo la sesión más reciente de cada usuario
       if (!userLatestSession[session.userId] ||
           new Date(session.lastActivity) > new Date(userLatestSession[session.userId].lastActivity)) {
         userLatestSession[session.userId] = session;

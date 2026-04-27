@@ -122,7 +122,7 @@ function AdminControlPanel() {
   // Estado del dashboard
   const [dashboard, setDashboard] = useState(null);
   const [turns, setTurns] = useState([]);
-  const [filters, setFilters] = useState({ phlebotomists: [], cubicles: [] });
+  const [filters, setFilters] = useState({ phlebotomists: [], activePhlebotomists: [], cubicles: [] });
   const [loading, setLoading] = useState(true);
   const [autoRefresh, setAutoRefresh] = useState(true);
 
@@ -1246,8 +1246,10 @@ function AdminControlPanel() {
                         ? filters.cubicles.map(c => (
                             <option key={c.id} value={c.id}>{c.name}</option>
                           ))
-                        : filters.phlebotomists.map(p => (
-                            <option key={p.id} value={p.id}>{p.name}</option>
+                        : (filters.activePhlebotomists || []).map(p => (
+                            <option key={p.id} value={p.id}>
+                              {p.name}{p.cubicleName ? ` — Cub ${p.cubicleName}` : ''}
+                            </option>
                           ))
                       }
                     </Select>
