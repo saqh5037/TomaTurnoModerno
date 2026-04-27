@@ -59,6 +59,10 @@ const Queue = memo(function Queue() {
     const [inProgressTurns, setInProgressTurns] = useState([]);
     const [callingPatient, setCallingPatient] = useState(null);
     const [isCalling, setIsCalling] = useState(false);
+    // Cola FIFO de pacientes pendientes de anunciar — evita que un segundo
+    // llamado interrumpa el audio del primero cuando dos flebotomistas
+    // llaman casi simultáneamente.
+    const [callQueue, setCallQueue] = useState([]);
     const [error, setError] = useState(null);
     const [currentTime, setCurrentTime] = useState(null);
     const [mounted, setMounted] = useState(false);
@@ -162,15 +166,32 @@ const Queue = memo(function Queue() {
             errorCountRef.current = 0; // Reset error counter on success
             if (error) setError(null); // Clear any previous error
 
-            // Detectar pacientes siendo llamados
+            // Detectar pacientes siendo llamados — encolar en FIFO sin interrumpir audio activo
             if (data.inCallingTurns && data.inCallingTurns.length > 0) {
-                const newCallingPatient = data.inCallingTurns[0];
-
-                // Si no hay llamado activo, o si hay un paciente DIFERENTE siendo llamado
-                if (!isCalling || (callingPatient && callingPatient.id !== newCallingPatient.id)) {
-                    console.log('[Queue] Nuevo paciente detectado para llamar:', newCallingPatient.patientName);
-                    setCallingPatient(newCallingPatient);
+                if (!isCalling && !callingPatient) {
+                    // No hay audio activo — empezar con el primero (orden del backend respeta prioridad)
+                    const next = data.inCallingTurns[0];
+                    console.log('[Queue] Iniciando llamado:', next.patientName);
+                    setCallingPatient(next);
                     setIsCalling(true);
+                    // Encolar el resto si vinieron varios juntos
+                    if (data.inCallingTurns.length > 1) {
+                        setCallQueue(prev => {
+                            const seen = new Set([next.id, ...prev.map(p => p.id)]);
+                            const additions = data.inCallingTurns.slice(1).filter(p => !seen.has(p.id));
+                            return additions.length ? [...prev, ...additions] : prev;
+                        });
+                    }
+                } else {
+                    // Hay audio activo — encolar nuevos sin interrumpir
+                    setCallQueue(prev => {
+                        const seen = new Set([
+                            callingPatient?.id,
+                            ...prev.map(p => p.id)
+                        ].filter(Boolean));
+                        const additions = data.inCallingTurns.filter(p => !seen.has(p.id));
+                        return additions.length ? [...prev, ...additions] : prev;
+                    });
                 }
             } else {
                 // Si no hay pacientes en llamado pero el estado dice que sí, resetear
@@ -193,7 +214,7 @@ const Queue = memo(function Queue() {
         }
     }, [isCalling, callingPatient]);
 
-    // Función para actualizar estado de llamado
+    // Función para actualizar estado de llamado — al terminar audio, sacar siguiente de la cola
     const updateCallStatus = useCallback(async () => {
         if (!callingPatient) return;
 
@@ -205,8 +226,19 @@ const Queue = memo(function Queue() {
             });
             if (!response.ok) throw new Error("Error al actualizar el estado del paciente.");
 
-            setCallingPatient(null);
-            setIsCalling(false);
+            // Promover el siguiente paciente de la cola si hay alguno
+            setCallQueue(prev => {
+                if (prev.length === 0) {
+                    setCallingPatient(null);
+                    setIsCalling(false);
+                    return prev;
+                }
+                const [next, ...rest] = prev;
+                console.log('[Queue] Promoviendo de cola:', next.patientName);
+                setCallingPatient(next);
+                setIsCalling(true);
+                return rest;
+            });
         } catch (err) {
             console.error("Error al actualizar el estado del paciente:", err);
             setError("Error al actualizar el estado del paciente.");

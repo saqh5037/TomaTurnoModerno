@@ -55,6 +55,7 @@ export async function GET(request) {
         expiresAt: { gt: new Date() },
       },
       select: {
+        id: true,
         selectedCubicleId: true,
       },
     });
@@ -64,6 +65,16 @@ export async function GET(request) {
         { success: false, error: "Sesión no encontrada" },
         { status: 404 }
       );
+    }
+
+    // Heartbeat: actualizar lastActivity para evitar que cleanupCubicles libere
+    // el cubículo de una sesión activa pero sin acciones recientes (>20 min).
+    // El flebotomista mira la pantalla esperando paciente — esto es actividad legítima.
+    if (session.selectedCubicleId) {
+      await prisma.session.update({
+        where: { id: session.id },
+        data: { lastActivity: new Date() }
+      });
     }
 
     return NextResponse.json({

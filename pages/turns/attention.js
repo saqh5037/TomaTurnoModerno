@@ -267,27 +267,43 @@ export default function Attention() {
       fetch("/api/session/current-cubicle", {
         headers: { "Authorization": `Bearer ${token}` }
       })
-        .then(res => res.json())
+        .then(res => res.ok ? res.json() : Promise.reject(new Error(`HTTP ${res.status}`)))
         .then(data => {
           if (data.success && data.cubicleId) {
             // BD dice que SÍ tiene cubículo asignado → usarlo y cachear
             setSelectedCubicle(data.cubicleId);
             localStorage.setItem("selectedCubicle", String(data.cubicleId));
-          } else {
-            // BD dice que NO tiene cubículo → limpiar localStorage residual
-            // y mostrar el prompt "Selecciona un cubículo".
+          } else if (data.success && data.cubicleId === null) {
+            // BD dice EXPLÍCITAMENTE que no tiene cubículo → limpiar
             localStorage.removeItem("selectedCubicle");
             setSelectedCubicle("");
           }
+          // Si data.success === false (404, error transitorio): mantener state actual
         })
         .catch(err => {
           console.error("Error consultando cubículo actual de la sesión:", err);
-          // Fallback conservador: no preseleccionar nada
-          localStorage.removeItem("selectedCubicle");
-          setSelectedCubicle("");
+          // Defensivo: no borrar localStorage en errores de red — puede ser transitorio
         });
     }
   }, []);
+
+  // Heartbeat: refrescar lastActivity de la sesión cada 60s mientras la página
+  // está abierta. Evita que cleanupCubicles libere el cubículo del flebotomista
+  // que está esperando un paciente sin hacer acciones explícitas.
+  useEffect(() => {
+    if (!mounted || !selectedCubicle) return;
+    const token = localStorage.getItem("token");
+    if (!token) return;
+
+    const heartbeat = () => {
+      fetch("/api/session/current-cubicle", {
+        headers: { "Authorization": `Bearer ${token}` }
+      }).catch(() => {});
+    };
+
+    const intervalId = setInterval(heartbeat, 60_000);
+    return () => clearInterval(intervalId);
+  }, [mounted, selectedCubicle]);
 
   // El reloj ahora está en un componente separado (Clock) para evitar re-renders
 
