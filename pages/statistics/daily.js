@@ -687,6 +687,15 @@ const DailyStatistics = memo(function DailyStatistics() {
                     
                     {/* Días del mes */}
                     <SimpleGrid columns={7} spacing={2}>
+                      {(() => {
+                        const monthIndex = monthOrder.indexOf(selectedMonth);
+                        const firstDay = new Date(selectedYear, monthIndex, 1).getDay();
+                        // Convertir a sistema Lunes=0..Domingo=6 para alinear con encabezados
+                        const offset = (firstDay + 6) % 7;
+                        return Array.from({ length: offset }).map((_, i) => (
+                          <Box key={`empty-${i}`} p={3} visibility="hidden" />
+                        ));
+                      })()}
                       {filteredStats.dailyData.map(({ day, count }) => {
                         const intensity = maxDayValue > 0 ? (count / maxDayValue) : 0;
                         const bgColor = count === 0 

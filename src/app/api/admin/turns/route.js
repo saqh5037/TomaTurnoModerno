@@ -76,7 +76,9 @@ export async function GET(request) {
       where.status = { in: ['Pending', 'In Progress'] };
     } else if (dateFrom || dateTo) {
       // Rango de fechas (timezone-safe)
-      const dateField = status === 'Attended' ? 'finishedAt' : 'createdAt';
+      // Attended y Cancelled usan finishedAt (cancel-turn lo setea como timestamp de cancelación)
+      // Esto alinea con el contador del dashboard que también filtra por finishedAt
+      const dateField = (status === 'Attended' || status === 'Cancelled') ? 'finishedAt' : 'createdAt';
       const rangeFilter = {};
       if (dateFrom) {
         rangeFilter.gte = new Date(`${dateFrom}T00:00:00.000Z`);
@@ -87,7 +89,9 @@ export async function GET(request) {
       where[dateField] = rangeFilter;
     } else if (dateFilter) {
       // Filtro por fecha específica (timezone-safe)
-      const dateField = status === 'Attended' ? 'finishedAt' : 'createdAt';
+      // Attended y Cancelled usan finishedAt (cancel-turn lo setea como timestamp de cancelación)
+      // Esto alinea con el contador del dashboard que también filtra por finishedAt
+      const dateField = (status === 'Attended' || status === 'Cancelled') ? 'finishedAt' : 'createdAt';
       where[dateField] = {
         gte: new Date(`${dateFilter}T00:00:00.000Z`),
         lte: new Date(`${dateFilter}T23:59:59.999Z`)
@@ -206,9 +210,13 @@ export async function GET(request) {
 
     // Enriquecer datos con tiempos y alertas
     const enrichedTurns = turns.map(turn => {
-      const waitTime = turn.calledAt
-        ? Math.floor((new Date(turn.calledAt) - new Date(turn.createdAt)) / 60000)
-        : Math.floor((now - new Date(turn.createdAt)) / 60000);
+      // Tope del waitTime: calledAt si fue llamado; finishedAt si fue cancelado sin llamar; now si sigue en espera
+      const waitEndTime = turn.calledAt
+        ? new Date(turn.calledAt)
+        : (turn.status === 'Cancelled' && turn.finishedAt)
+          ? new Date(turn.finishedAt)
+          : now;
+      const waitTime = Math.floor((waitEndTime - new Date(turn.createdAt)) / 60000);
 
       const attentionTime = turn.finishedAt && turn.attendedAt
         ? Math.floor((new Date(turn.finishedAt) - new Date(turn.attendedAt)) / 60000)
