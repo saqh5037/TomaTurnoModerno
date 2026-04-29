@@ -76,13 +76,13 @@ export async function POST(request) {
     }
 
     // Asignar el turno en holding al flebotomista designado
-    // Usamos holdingBy + un flag especial para que el frontend sepa que fue asignación admin
+    // forcedAssign=true → assignNextHolding NUNCA hace swap por prioridad ni libera por timeout
     const updatedTurn = await prisma.turnRequest.update({
       where: { id: turnIdNum },
       data: {
         holdingBy: phlebIdNum,
         holdingAt: new Date(),
-        // Guardar en observations que fue asignación admin
+        forcedAssign: true,
         observations: turn.observations
           ? `${turn.observations} | ASIGNADO POR ADMIN: ${decoded.name || decoded.userId} a ${phlebotomist.name}`
           : `ASIGNADO POR ADMIN: ${decoded.name || decoded.userId} a ${phlebotomist.name}`

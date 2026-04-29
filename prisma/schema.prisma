@@ -71,6 +71,7 @@ model TurnRequest {
   suggestedAt      DateTime?                  // Timestamp de cuando se hizo la sugerencia (DEPRECATED - usar holdingAt)
   holdingBy        Int?                       // ID del flebotomista que tiene este turno en holding (reservado)
   holdingAt        DateTime?                  // Timestamp de cuando se puso en holding (para timeout de 5 min)
+  forcedAssign     Boolean   @default(false)  // True si holdingBy fue seteado manualmente por admin (no se hace swap por prioridad ni timeout)
   labsisOrderId    String?                    // NUEVO: ID de orden en sistema LABSIS para trazabilidad
   samplesGenerated Json?                      // NUEVO: Array de muestras físicas generadas con barcodes y correlativos
   patientID        String?   @map("patient_id")   // CI/Expediente del paciente enviado por HIS
@@ -96,6 +97,7 @@ model TurnRequest {
   @@index([status, suggestedFor])
   @@index([holdingBy])
   @@index([status, holdingBy])
+  @@index([forcedAssign])
   @@index([workOrder])
 }
 

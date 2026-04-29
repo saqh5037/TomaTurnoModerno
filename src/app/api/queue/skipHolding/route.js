@@ -48,14 +48,17 @@ export async function POST(request) {
         });
 
         if (skippedTurn) {
+          // Si era asignación admin (forcedAssign), también limpiar el flag — el flebotomista
+          // decidió no atenderlo y debe volver a la cola normal.
           await tx.turnRequest.update({
             where: { id: skippedTurn.id },
             data: {
               holdingBy: null,
               holdingAt: null,
+              forcedAssign: false,
             },
           });
-          console.log(`[skipHolding] Turno ${skippedTurn.id} liberado de holding`);
+          console.log(`[skipHolding] Turno ${skippedTurn.id} liberado de holding${skippedTurn.forcedAssign ? ' (era forcedAssign del admin)' : ''}`);
         }
       }
 

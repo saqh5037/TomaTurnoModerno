@@ -112,11 +112,22 @@ const QueueTV = memo(function QueueTV() {
     const [inProgressTurns, setInProgressTurns] = useState([]);
     const [callingPatient, setCallingPatient] = useState(null);
     const [isCalling, setIsCalling] = useState(false);
+    // Cola FIFO de pacientes pendientes — evita que un segundo llamado interrumpa
+    // el audio del primero. Espejo de la lógica en pages/turns/queue.js (v2.8.51).
+    const [callQueue, setCallQueue] = useState([]);
     const [error, setError] = useState(null);
     const [currentTime, setCurrentTime] = useState(null);
     const [mounted, setMounted] = useState(false);
     const [scrollPositions, setScrollPositions] = useState({ inProgress: 0, pending: 0 });
     const [retryCount, setRetryCount] = useState(0);
+
+    // Locks anti-interrupción (v2.8.52):
+    // - currentCallIdRef: ID del paciente que el audio está anunciando ahora.
+    //   El cleanup del useEffect de audio solo cancela si este ID cambia realmente.
+    // - audioPlayingRef: lock duro. Mientras true, NINGÚN polling puede tocar
+    //   callingPatient/isCalling — solo encolar en callQueue.
+    const currentCallIdRef = useRef(null);
+    const audioPlayingRef = useRef(false);
 
     // Effect para marcar el componente como montado
     useEffect(() => {
@@ -162,9 +173,48 @@ const QueueTV = memo(function QueueTV() {
             setPendingTurns(sortedPendingTurns);
             setInProgressTurns(sortedInProgressTurns);
 
-            if (!isCalling && data.inCallingTurns && data.inCallingTurns.length > 0) {
-                setCallingPatient(data.inCallingTurns[0]);
-                setIsCalling(true);
+            // Cola FIFO + lock anti-interrupción.
+            // Mientras audioPlayingRef.current sea true, NUNCA tocamos callingPatient/isCalling —
+            // solo encolamos los nuevos. Esto garantiza que el audio en curso NO se corte.
+            if (data.inCallingTurns && data.inCallingTurns.length > 0) {
+                if (audioPlayingRef.current) {
+                    setCallQueue(prev => {
+                        const seen = new Set([
+                            currentCallIdRef.current,
+                            ...prev.map(p => p.id)
+                        ].filter(Boolean));
+                        const additions = data.inCallingTurns.filter(p => !seen.has(p.id));
+                        return additions.length ? [...prev, ...additions] : prev;
+                    });
+                } else if (!isCalling && !callingPatient) {
+                    // No hay audio activo — empezar con el primero
+                    const next = data.inCallingTurns[0];
+                    console.log('[queue-tv] Iniciando llamado:', next.patientName);
+                    setCallingPatient(next);
+                    setIsCalling(true);
+                    if (data.inCallingTurns.length > 1) {
+                        setCallQueue(prev => {
+                            const seen = new Set([next.id, ...prev.map(p => p.id)]);
+                            const additions = data.inCallingTurns.slice(1).filter(p => !seen.has(p.id));
+                            return additions.length ? [...prev, ...additions] : prev;
+                        });
+                    }
+                } else {
+                    // isCalling=true pero audioPlayingRef aún no se setea — encolar igual
+                    setCallQueue(prev => {
+                        const seen = new Set([
+                            callingPatient?.id,
+                            ...prev.map(p => p.id)
+                        ].filter(Boolean));
+                        const additions = data.inCallingTurns.filter(p => !seen.has(p.id));
+                        return additions.length ? [...prev, ...additions] : prev;
+                    });
+                }
+            } else {
+                // Sync defensivo: si backend no tiene llamados activos pero local sí, resetear
+                if (isCalling && !callingPatient && !audioPlayingRef.current) {
+                    setIsCalling(false);
+                }
             }
         } catch (err) {
             console.error("[queue-tv] Error al cargar los turnos:", err);
@@ -180,12 +230,12 @@ const QueueTV = memo(function QueueTV() {
                 window.location.reload();
             }
         }
-    }, [isCalling, error, retryCount]);
+    }, [isCalling, error, retryCount, callingPatient]);
 
-    // Función para actualizar estado de llamado
+    // Función para actualizar estado de llamado — al terminar audio, sacar siguiente de la cola
     const updateCallStatus = useCallback(async () => {
         if (!callingPatient) return;
-        
+
         try {
             const response = await fetch(`/api/queue/updateCall`, {
                 method: "PUT",
@@ -193,12 +243,29 @@ const QueueTV = memo(function QueueTV() {
                 body: JSON.stringify({ id: callingPatient.id, isCalled: true }),
             });
             if (!response.ok) throw new Error("Error al actualizar el estado del paciente.");
-            
-            setCallingPatient(null);
-            setIsCalling(false);
+
+            // Liberar locks ANTES de promover el siguiente
+            audioPlayingRef.current = false;
+            currentCallIdRef.current = null;
+
+            // Promover siguiente paciente de la cola si hay alguno
+            setCallQueue(prev => {
+                if (prev.length === 0) {
+                    setCallingPatient(null);
+                    setIsCalling(false);
+                    return prev;
+                }
+                const [next, ...rest] = prev;
+                console.log('[queue-tv] Promoviendo de cola:', next.patientName);
+                setCallingPatient(next);
+                setIsCalling(true);
+                return rest;
+            });
         } catch (err) {
             console.error("Error al actualizar el estado del paciente:", err);
             setError("Error al actualizar el estado del paciente.");
+            audioPlayingRef.current = false;
+            currentCallIdRef.current = null;
             setIsCalling(false);
         }
     }, [callingPatient]);
@@ -304,9 +371,22 @@ const QueueTV = memo(function QueueTV() {
         }
     }, []);
 
-    // Effect para manejo de anuncios
+    // Effect para manejo de anuncios — locks anti-interrupción (v2.8.52)
+    // Dependencia callingPatient?.id (primitive) en vez de callingPatient (object) —
+    // evita re-runs por cambios de referencia que no son cambios reales de paciente.
+    const callingPatientId = callingPatient?.id;
     useEffect(() => {
         if (!mounted || !callingPatient || !isCalling) return;
+
+        // Si el ID actual ya está siendo anunciado, NO reiniciar audio (re-render espurio)
+        if (currentCallIdRef.current === callingPatient.id && audioPlayingRef.current) {
+            return;
+        }
+
+        // Tomar el lock — ningún polling puede tocar callingPatient ahora
+        currentCallIdRef.current = callingPatient.id;
+        audioPlayingRef.current = true;
+        const lockedId = callingPatient.id;
 
         let isActive = true;
         let audio = null;
@@ -314,21 +394,19 @@ const QueueTV = memo(function QueueTV() {
         const playAnnouncement = async () => {
             try {
                 audio = new Audio("/airport-sound.mp3");
-                audio.volume = 1.0; // Volumen máximo para campana
+                audio.volume = 1.0;
 
-                // Reproducir campana 2 veces para captar atención
                 for (let bellCount = 0; bellCount < 2 && isActive; bellCount++) {
                     audio.currentTime = 0;
                     await audio.play();
                     if (bellCount < 1 && isActive) {
                         await new Promise(resolve => {
                             audio.onended = resolve;
-                            setTimeout(resolve, 3500); // Seguridad
+                            setTimeout(resolve, 3500);
                         });
                     }
                 }
 
-                // Esperar a que termine la última campana antes del TTS
                 await new Promise(resolve => {
                     audio.onended = resolve;
                     setTimeout(resolve, 3500);
@@ -342,7 +420,7 @@ const QueueTV = memo(function QueueTV() {
                         await new Promise(resolve => setTimeout(resolve, 1000));
                     }
                 }
-                
+
                 if (isActive) {
                     updateCallStatus();
                 }
@@ -356,16 +434,23 @@ const QueueTV = memo(function QueueTV() {
         playAnnouncement();
 
         return () => {
-            isActive = false;
-            if (audio) {
-                audio.pause();
-                audio.currentTime = 0;
-            }
-            if (window.speechSynthesis) {
-                window.speechSynthesis.cancel();
+            // Cleanup: SOLO cancelar audio si el ID realmente cambió (paciente distinto).
+            // Si el ID es el mismo, es un re-render espurio (cambio de useCallback,
+            // re-render padre, etc.) — NO interrumpimos audio activo.
+            if (currentCallIdRef.current !== lockedId) {
+                isActive = false;
+                if (audio) {
+                    audio.pause();
+                    audio.currentTime = 0;
+                }
+                if (window.speechSynthesis) {
+                    window.speechSynthesis.cancel();
+                }
+                audioPlayingRef.current = false;
             }
         };
-    }, [mounted, callingPatient, isCalling, speakAnnouncement, updateCallStatus]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [mounted, callingPatientId, isCalling]);
 
     // Función para formatear la hora
     const formatTime = useCallback((date) => {

@@ -66,6 +66,7 @@ export async function POST(req) {
             // Limpiar campos de holding al pasar a In Progress
             holdingBy: null,
             holdingAt: null,
+            forcedAssign: false,
             // También limpiar campos de sugerencia (deprecated)
             suggestedFor: null,
             suggestedAt: null,

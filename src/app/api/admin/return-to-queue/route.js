@@ -101,7 +101,8 @@ export async function POST(request) {
         attendedAt: null,
         // Mantener holdingBy/holdingAt si existían (no debería en In Progress)
         holdingBy: null,
-        holdingAt: null
+        holdingAt: null,
+        forcedAssign: false
       }
     });
 

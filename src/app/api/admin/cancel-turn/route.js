@@ -107,6 +107,7 @@ export async function POST(request) {
         // Limpiar asignaciones
         holdingBy: null,
         holdingAt: null,
+        forcedAssign: false,
         attendedBy: null,
         cubicleId: null,
         isCalled: false,

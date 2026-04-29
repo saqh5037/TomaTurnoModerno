@@ -112,7 +112,8 @@ export async function POST(request) {
         callCount: 0,
         // Limpiar holding también
         holdingBy: null,
-        holdingAt: null
+        holdingAt: null,
+        forcedAssign: false
       }
     });
 

@@ -80,7 +80,8 @@ export async function POST(request) {
         isCalled: true,
         // Limpiar holding si existe
         holdingBy: null,
-        holdingAt: null
+        holdingAt: null,
+        forcedAssign: false
       }
     });
 
