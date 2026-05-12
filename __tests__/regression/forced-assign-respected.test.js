@@ -9,6 +9,7 @@
 const mockPrisma = {
   turnRequest: {
     findFirst: jest.fn(),
+    findMany: jest.fn(),
     update: jest.fn(),
     updateMany: jest.fn(),
     findUnique: jest.fn(),
@@ -57,15 +58,15 @@ describe('forcedAssign respeta asignación manual del admin', () => {
       forcedAssign: true,
       cubicle: null,
     };
-    mockPrisma.turnRequest.findFirst.mockResolvedValueOnce(adminAssignedTurn);
+    mockPrisma.turnRequest.findMany.mockResolvedValueOnce([adminAssignedTurn]);
 
     const result = await assignNextHolding(10);
 
     expect(result).not.toBeNull();
     expect(result.id).toBe(104524);
     expect(result.tipoAtencion).toBe('General');
-    // Solo se ejecutó la query de "existing holding" — el swap NO buscó alternativa
-    expect(mockPrisma.turnRequest.findFirst).toHaveBeenCalledTimes(1);
+    // Solo se ejecutó la query de cola — el swap NO buscó alternativa
+    expect(mockPrisma.turnRequest.findFirst).not.toHaveBeenCalled();
     // No se liberó el holding
     expect(mockPrisma.turnRequest.update).not.toHaveBeenCalled();
   });
@@ -80,13 +81,13 @@ describe('forcedAssign respeta asignación manual del admin', () => {
       forcedAssign: true,
       cubicle: null,
     };
-    mockPrisma.turnRequest.findFirst.mockResolvedValueOnce(adminPriorityTurn);
+    mockPrisma.turnRequest.findMany.mockResolvedValueOnce([adminPriorityTurn]);
 
     const result = await assignNextHolding(10);
 
     expect(result.id).toBe(500);
     expect(result.isSpecial).toBe(true);
-    expect(mockPrisma.turnRequest.findFirst).toHaveBeenCalledTimes(1);
+    expect(mockPrisma.turnRequest.findFirst).not.toHaveBeenCalled();
   });
 
   test('si holding actual tiene forcedAssign=false (asignado automático), permite el swap por prioridad', async () => {
@@ -105,8 +106,8 @@ describe('forcedAssign respeta asignación manual del admin', () => {
       status: 'Pending',
       holdingBy: null,
     };
+    mockPrisma.turnRequest.findMany.mockResolvedValueOnce([autoAssignedTurn]);
     mockPrisma.turnRequest.findFirst
-      .mockResolvedValueOnce(autoAssignedTurn) // existing holding
       .mockResolvedValueOnce(higherPriorityTurn) // higher priority disponible
       .mockResolvedValueOnce(null); // no inProgress
     mockPrisma.turnRequest.update.mockResolvedValue({});
@@ -136,5 +137,78 @@ describe('forcedAssign respeta asignación manual del admin', () => {
       })
     );
     expect(result).not.toBeNull();
+  });
+
+  test('cola FIFO: con múltiples holdings forced, devuelve el más antiguo (holdingAt menor)', async () => {
+    // v2.8.53 — Samuel pidió FIFO multi-paciente por flebo
+    const oldest = {
+      id: 1001,
+      patientName: 'A',
+      tipoAtencion: 'General',
+      status: 'Pending',
+      holdingBy: 10,
+      holdingAt: new Date('2026-05-12T10:00:00Z'),
+      forcedAssign: true,
+      cubicle: null,
+    };
+    const middle = {
+      id: 1002,
+      patientName: 'B',
+      tipoAtencion: 'General',
+      status: 'Pending',
+      holdingBy: 10,
+      holdingAt: new Date('2026-05-12T10:01:00Z'),
+      forcedAssign: true,
+      cubicle: null,
+    };
+    const newest = {
+      id: 1003,
+      patientName: 'C',
+      tipoAtencion: 'General',
+      status: 'Pending',
+      holdingBy: 10,
+      holdingAt: new Date('2026-05-12T10:02:00Z'),
+      forcedAssign: true,
+      cubicle: null,
+    };
+    // Backend ordena por holdingAt ASC y devuelve la cola completa
+    mockPrisma.turnRequest.findMany.mockResolvedValueOnce([oldest, middle, newest]);
+
+    const result = await assignNextHolding(10);
+
+    expect(result).not.toBeNull();
+    expect(result.id).toBe(1001); // el más antiguo
+    expect(result.patientName).toBe('A');
+    // Nunca se hizo swap aunque hubiera prioritarios disponibles
+    expect(mockPrisma.turnRequest.findFirst).not.toHaveBeenCalled();
+    expect(mockPrisma.turnRequest.update).not.toHaveBeenCalled();
+  });
+
+  test('cola FIFO: hasAnyForced=true bloquea swap aun cuando hay un holding auto en la cola', async () => {
+    const forcedOld = {
+      id: 2001,
+      tipoAtencion: 'General',
+      status: 'Pending',
+      holdingBy: 10,
+      holdingAt: new Date('2026-05-12T09:00:00Z'),
+      forcedAssign: true,
+      cubicle: null,
+    };
+    const autoLater = {
+      id: 2002,
+      tipoAtencion: 'General',
+      status: 'Pending',
+      holdingBy: 10,
+      holdingAt: new Date('2026-05-12T09:05:00Z'),
+      forcedAssign: false,
+      cubicle: null,
+    };
+    mockPrisma.turnRequest.findMany.mockResolvedValueOnce([forcedOld, autoLater]);
+
+    const result = await assignNextHolding(10);
+
+    expect(result.id).toBe(2001);
+    // Aunque haya un auto en la cola, el hasAnyForced=true bloquea el swap
+    expect(mockPrisma.turnRequest.findFirst).not.toHaveBeenCalled();
   });
 });

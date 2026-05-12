@@ -14,6 +14,8 @@ export async function GET(request) {
     // Consulta para turnos pendientes
     // Filtra turnos en holding de OTROS usuarios (solo muestra los propios o sin holding)
     // Ordenamiento: Por prioridad (Special primero), luego por tiempo efectivo de cola
+    // Sentinel = 0: usuario nulo no matchea ningún holdingBy real (PKs son >0)
+    const uid = userIdNum ?? 0;
     const pendingTurns = await prisma.$queryRaw`
       SELECT
         id,
@@ -30,6 +32,7 @@ export async function GET(request) {
         "suggestedAt",
         "holdingBy",
         "holdingAt",
+        "forcedAssign",
         "createdAt",
         "deferredAt",
         "tubesRequired",
@@ -41,8 +44,10 @@ export async function GET(request) {
         codigo_atencion as "codigoAtencion"
       FROM "TurnRequest"
       WHERE status = 'Pending'
-        AND ("holdingBy" IS NULL OR "holdingBy" = ${userIdNum})
+        AND ("holdingBy" IS NULL OR "holdingBy" = ${uid})
       ORDER BY
+        CASE WHEN "holdingBy" = ${uid} THEN 0 ELSE 1 END,
+        CASE WHEN "holdingBy" = ${uid} THEN "holdingAt" END ASC,
         CASE WHEN "tipoAtencion" = 'MuyEspecial' THEN 0 WHEN "tipoAtencion" IN ('Prioritario','PrioritarioRiesgo') THEN 1 ELSE 2 END,
         COALESCE("deferredAt", "createdAt") ASC
     `;
@@ -113,6 +118,8 @@ export async function GET(request) {
           // Campos de holding (nuevo sistema)
           isHeldByMe: userIdNum ? turn.holdingBy === userIdNum : false,
           holdingBy: turn.holdingBy,
+          holdingAt: turn.holdingAt,
+          forcedAssign: turn.forcedAssign,
           // Campos de sugerencia (deprecated, mantener para compatibilidad)
           isSuggestedForMe: userIdNum ? turn.suggestedFor === userIdNum : false,
           suggestedFor: turn.suggestedFor,

@@ -70,13 +70,25 @@ export async function POST(request) {
       return NextResponse.json({ success: false, error: "Flebotomista no encontrado" }, { status: 404 });
     }
 
-    // Liberar holding anterior si existe
-    if (turn.holdingBy) {
-      console.log(`[assign-patient] Liberando holding anterior de usuario ${turn.holdingBy}`);
+    // Detectar tipo de operación: nueva asignación, re-asignación, o no-op
+    let opType = 'NEW_ASSIGNMENT';
+    let reassignNote = '';
+    if (turn.holdingBy && turn.holdingBy !== phlebIdNum) {
+      opType = 'REASSIGNMENT';
+      const prevPhleb = await prisma.user.findUnique({
+        where: { id: turn.holdingBy },
+        select: { name: true }
+      });
+      reassignNote = ` | RE-ASIGNADO desde ${prevPhleb?.name || `usuario ${turn.holdingBy}`}`;
+      console.log(`[assign-patient] Re-asignando turno ${turnIdNum} de usuario ${turn.holdingBy} a ${phlebIdNum}`);
+    } else if (turn.holdingBy === phlebIdNum) {
+      opType = 'NOOP_ALREADY_ASSIGNED';
+      console.log(`[assign-patient] Turno ${turnIdNum} ya estaba asignado a ${phlebotomist.name}, refrescando holdingAt`);
     }
 
     // Asignar el turno en holding al flebotomista designado
     // forcedAssign=true → assignNextHolding NUNCA hace swap por prioridad ni libera por timeout
+    const baseAssignNote = `ASIGNADO POR ADMIN: ${decoded.name || decoded.userId} a ${phlebotomist.name}${reassignNote}`;
     const updatedTurn = await prisma.turnRequest.update({
       where: { id: turnIdNum },
       data: {
@@ -84,10 +96,19 @@ export async function POST(request) {
         holdingAt: new Date(),
         forcedAssign: true,
         observations: turn.observations
-          ? `${turn.observations} | ASIGNADO POR ADMIN: ${decoded.name || decoded.userId} a ${phlebotomist.name}`
-          : `ASIGNADO POR ADMIN: ${decoded.name || decoded.userId} a ${phlebotomist.name}`
+          ? `${turn.observations} | ${baseAssignNote}`
+          : baseAssignNote
       }
     });
+
+    // Calcular posición FIFO en la cola del flebo destino (1-indexed)
+    const queue = await prisma.turnRequest.findMany({
+      where: { status: 'Pending', holdingBy: phlebIdNum },
+      orderBy: { holdingAt: 'asc' },
+      select: { id: true }
+    });
+    const queuePosition = queue.findIndex(t => t.id === turnIdNum) + 1;
+    const queueSize = queue.length;
 
     // Crear audit log
     await prisma.auditLog.create({
@@ -100,18 +121,27 @@ export async function POST(request) {
         newValue: {
           holdingBy: phlebIdNum,
           phlebotomistName: phlebotomist.name,
-          assignedBy: decoded.name || decoded.userId
+          assignedBy: decoded.name || decoded.userId,
+          opType,
+          queuePosition,
+          queueSize
         }
       }
     });
 
-    console.log(`[assign-patient] Turno ${turnIdNum} (${turn.patientName}) asignado a ${phlebotomist.name} por admin ${decoded.name}`);
+    console.log(`[assign-patient] Turno ${turnIdNum} (${turn.patientName}) asignado a ${phlebotomist.name} por admin ${decoded.name} — posición ${queuePosition}/${queueSize}`);
 
+    const positionLabel = queueSize > 1
+      ? ` (posición ${queuePosition} de ${queueSize} en cola)`
+      : '';
     return NextResponse.json({
       success: true,
-      message: `Paciente ${turn.patientName} asignado a ${phlebotomist.name}`,
+      message: `Paciente ${turn.patientName} asignado a ${phlebotomist.name}${positionLabel}`,
       turn: updatedTurn,
-      phlebotomist
+      phlebotomist,
+      queuePosition,
+      queueSize,
+      opType
     });
 
   } catch (error) {

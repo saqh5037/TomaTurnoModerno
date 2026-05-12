@@ -1850,6 +1850,10 @@ export default function Attention() {
   const displayPatient = activePatient || nextPatient;
   const currentPatient = inProgressTurns[0] || null;
 
+  // Cola FIFO personal del flebotomista (asignaciones admin + auto-holding).
+  // Ya viene ordenada por holdingAt ASC desde /api/attention/list (criterio primario del ORDER BY).
+  const myHoldingQueue = pendingTurns.filter(t => t.isHeldByMe);
+
   // Flag para mostrar estado de carga o "sin pacientes"
   const showLoadingHolding = isLoadingHolding && !heldTurn && !activePatient;
 
@@ -2032,6 +2036,59 @@ export default function Attention() {
                   isSupervisor={isSupervisorOrAdmin()}
                   isLoading={showLoadingHolding}
                 />
+              )}
+
+              {/* Mini-panel "Mi cola FIFO" — visible si tengo más de 1 asignación */}
+              {selectedCubicle && myHoldingQueue.length > 1 && (
+                <GlassCard p={{ base: 3, md: 4 }} borderRadius="xl" border="2px solid" borderColor="teal.300">
+                  <HStack mb={2} justify="space-between">
+                    <HStack spacing={2}>
+                      <FaUserMd color="#0d9488" />
+                      <Text fontWeight="bold" color="teal.700" fontSize={{ base: "sm", md: "md" }}>
+                        Mi cola ({myHoldingQueue.length} pacientes)
+                      </Text>
+                    </HStack>
+                    <Text fontSize="xs" color="gray.500">FIFO: el más antiguo primero</Text>
+                  </HStack>
+                  <VStack align="stretch" spacing={1.5}>
+                    {myHoldingQueue.map((t, idx) => (
+                      <HStack
+                        key={t.id}
+                        p={2}
+                        bg={idx === 0 ? "teal.50" : "white"}
+                        borderRadius="md"
+                        border="1px solid"
+                        borderColor={idx === 0 ? "teal.300" : "gray.200"}
+                        spacing={3}
+                      >
+                        <Badge
+                          colorScheme={idx === 0 ? "teal" : "gray"}
+                          fontSize="sm"
+                          minW="28px"
+                          textAlign="center"
+                        >
+                          #{idx + 1}
+                        </Badge>
+                        <VStack align="start" spacing={0} flex={1} minW={0}>
+                          <Text fontWeight="semibold" fontSize="sm" noOfLines={1}>
+                            Turno {t.assignedTurn} — {t.patientName}
+                          </Text>
+                          <HStack spacing={2} flexWrap="wrap">
+                            {t.forcedAssign && (
+                              <Badge colorScheme="purple" fontSize="xs">ASIGNADO POR ADMIN</Badge>
+                            )}
+                            {(t.tipoAtencion === 'MuyEspecial' || t.tipoAtencion === 'Prioritario' || t.tipoAtencion === 'PrioritarioRiesgo') && (
+                              <Badge colorScheme="orange" fontSize="xs">{t.tipoAtencion}</Badge>
+                            )}
+                            {idx === 0 && (
+                              <Text fontSize="xs" color="teal.600" fontWeight="medium">Siguiente a llamar</Text>
+                            )}
+                          </HStack>
+                        </VStack>
+                      </HStack>
+                    ))}
+                  </VStack>
+                </GlassCard>
               )}
 
               {/* Indicador de turnos saltados */}

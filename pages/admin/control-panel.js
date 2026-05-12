@@ -364,14 +364,26 @@ function AdminControlPanel() {
       const data = await response.json();
 
       if (data.success) {
+        const isPhlebAssign = reassignType === 'assign-phlebotomist';
+        const positionLabel = isPhlebAssign && data.queueSize > 1
+          ? ` · Posición ${data.queuePosition} de ${data.queueSize} en cola FIFO`
+          : '';
         toast({
-          title: 'Reasignación completada',
-          description: data.message,
+          title: isPhlebAssign ? 'Paciente asignado a la cola' : 'Reasignación completada',
+          description: `${data.message}${positionLabel}`,
           status: 'success',
-          duration: 3000
+          duration: 4000
         });
-        onReassignClose();
-        setReassignValue('');
+        if (isPhlebAssign) {
+          // Encadenar asignaciones: cerrar modal pero MANTENER el flebo destino
+          // preseleccionado para que el próximo clic en persona-teal lo abra
+          // listo para confirmar al mismo flebo. Reset al cambiar a otro modal.
+          onReassignClose();
+          // No resetear reassignValue — queda preseleccionado para el siguiente paciente.
+        } else {
+          onReassignClose();
+          setReassignValue('');
+        }
         loadTurns();
       } else {
         toast({

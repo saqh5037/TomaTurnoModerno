@@ -297,6 +297,31 @@ export async function GET(request) {
       };
     });
 
+    // Calcular queuePosition/queueSize para turnos en holding (FIFO por flebo destino, global)
+    // Hacemos una query global de todos los Pending con holding y agrupamos por flebo + holdingAt ASC.
+    const allHoldingsForPosition = await prisma.turnRequest.findMany({
+      where: { status: 'Pending', holdingBy: { not: null } },
+      orderBy: { holdingAt: 'asc' },
+      select: { id: true, holdingBy: true }
+    });
+    const queueByPhleb = new Map(); // phlebId -> [turnId,...] en orden FIFO
+    for (const t of allHoldingsForPosition) {
+      if (!queueByPhleb.has(t.holdingBy)) queueByPhleb.set(t.holdingBy, []);
+      queueByPhleb.get(t.holdingBy).push(t.id);
+    }
+    for (const turn of enrichedTurns) {
+      const phlebId = turn.holdingBy?.id;
+      if (phlebId && queueByPhleb.has(phlebId)) {
+        const arr = queueByPhleb.get(phlebId);
+        const idx = arr.indexOf(turn.id);
+        turn.queuePosition = idx >= 0 ? idx + 1 : null;
+        turn.queueSize = arr.length;
+      } else {
+        turn.queuePosition = null;
+        turn.queueSize = null;
+      }
+    }
+
     // Obtener historial de acciones de AuditLog para todos los turnos visibles
     const turnIds = enrichedTurns.map(t => t.id);
     if (turnIds.length > 0) {
