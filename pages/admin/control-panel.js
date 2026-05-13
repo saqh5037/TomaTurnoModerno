@@ -255,6 +255,19 @@ function AdminControlPanel() {
     }
   }, [statusFilter, phlebotomistFilter, searchTerm, dateFrom, dateTo, currentPage]);
 
+  // Cargar estado de llamados (pausado o no) — declarado ARRIBA del useEffect que lo usa (TDZ fix v2.8.57)
+  const loadCallingStatus = useCallback(async () => {
+    try {
+      const response = await fetch('/api/admin/calling-status');
+      const data = await response.json();
+      if (data.success) {
+        setCallingPaused(data.data.paused);
+      }
+    } catch (error) {
+      console.error('Error cargando estado de llamados:', error);
+    }
+  }, []);
+
   // Cargar datos iniciales
   useEffect(() => {
     loadDashboard();
@@ -448,19 +461,6 @@ function AdminControlPanel() {
     setActionReason('');
     onOpen();
   };
-
-  // Cargar estado de llamados (pausado o no)
-  const loadCallingStatus = useCallback(async () => {
-    try {
-      const response = await fetch('/api/admin/calling-status');
-      const data = await response.json();
-      if (data.success) {
-        setCallingPaused(data.data.paused);
-      }
-    } catch (error) {
-      console.error('Error cargando estado de llamados:', error);
-    }
-  }, []);
 
   // Ejecutar Pausar Llamados
   const executePauseCalling = async () => {
