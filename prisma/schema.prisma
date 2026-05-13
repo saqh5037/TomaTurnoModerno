@@ -158,6 +158,27 @@ model SatisfactionSurvey {
   createdAt DateTime @default(now())
 }
 
+model SystemState {
+  id        Int      @id @default(autoincrement())
+  key       String   @unique
+  value     String
+  updatedAt DateTime @updatedAt
+  updatedBy Int?
+}
+
+model LabsisInboundLog {
+  id          Int      @id @default(autoincrement())
+  payload     Json
+  status      String
+  error       String?
+  createdAt   DateTime @default(now())
+  processedAt DateTime?
+  turnId      Int?
+
+  @@index([status])
+  @@index([createdAt])
+}
+
 enum CubicleType {
   GENERAL
   SPECIAL

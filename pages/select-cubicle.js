@@ -231,7 +231,7 @@ export default function SelectCubicle() {
                   }}
                 >
                   {cub.name}
-                  {cub.isSpecial ? " ★" : ""}
+                  {cub.type === 'SPECIAL' ? ' [Especial]' : ' [General]'}
                   {!cub.isActive ? " (Inactivo)" : ""}
                   {isOccupiedByOther ? ` (Ocupado por ${cub.occupiedBy.userName})` : ""}
                 </option>

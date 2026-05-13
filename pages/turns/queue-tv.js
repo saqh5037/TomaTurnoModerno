@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, useMemo, memo, useRef } from "react";
 import { Box, Heading, Text, Grid, Flex, extendTheme, VStack, HStack, Icon, Circle } from "@chakra-ui/react";
 import { keyframes } from "@emotion/react";
-import { FaHeartbeat, FaClock, FaUserMd, FaUser, FaWheelchair, FaMicrophone, FaStar, FaQrcode } from 'react-icons/fa';
+import { FaHeartbeat, FaClock, FaUserMd, FaUser, FaWheelchair, FaMicrophone, FaStar, FaQrcode, FaPauseCircle } from 'react-icons/fa';
 import QRCode from 'react-qr-code';
 
 // Tema personalizado optimizado para TV - Tamaños aumentados significativamente
@@ -120,6 +120,7 @@ const QueueTV = memo(function QueueTV() {
     const [mounted, setMounted] = useState(false);
     const [scrollPositions, setScrollPositions] = useState({ inProgress: 0, pending: 0 });
     const [retryCount, setRetryCount] = useState(0);
+    const [callingPaused, setCallingPaused] = useState(false);
 
     // Locks anti-interrupción (v2.8.52):
     // - currentCallIdRef: ID del paciente que el audio está anunciando ahora.
@@ -172,6 +173,19 @@ const QueueTV = memo(function QueueTV() {
 
             setPendingTurns(sortedPendingTurns);
             setInProgressTurns(sortedInProgressTurns);
+            setCallingPaused(!!data.callingPaused);
+
+            // Si llamados están pausados, limpiar estado local de audio inmediatamente
+            if (data.callingPaused) {
+                if (audioPlayingRef.current) {
+                    audioPlayingRef.current = false;
+                    currentCallIdRef.current = null;
+                }
+                setCallingPatient(null);
+                setIsCalling(false);
+                setCallQueue([]);
+                return;
+            }
 
             // Cola FIFO + lock anti-interrupción.
             // Mientras audioPlayingRef.current sea true, NUNCA tocamos callingPatient/isCalling —
@@ -562,6 +576,31 @@ const QueueTV = memo(function QueueTV() {
                         </Box>
                     </Flex>
                 </Box>
+
+                {/* Banner de llamados pausados */}
+                {callingPaused && (
+                    <Box
+                        p={4}
+                        mb={6}
+                        background="rgba(239, 68, 68, 0.9)"
+                        backdropFilter="blur(10px)"
+                        borderRadius="2xl"
+                        boxShadow="0 0 40px rgba(239, 68, 68, 0.5)"
+                        border="2px solid rgba(239, 68, 68, 1)"
+                        textAlign="center"
+                        animation={`${fadeInUp} 0.5s ease-out`}
+                    >
+                        <Flex align="center" justify="center" gap={4}>
+                            <Box as={FaPauseCircle} color="white" fontSize="4xl" />
+                            <Text fontSize="4xl" fontWeight="extrabold" color="white">
+                                LLAMADOS PAUSADOS
+                            </Text>
+                        </Flex>
+                        <Text fontSize="2xl" color="white" mt={1} opacity={0.9}>
+                            Los anuncios de llamado están temporalmente suspendidos
+                        </Text>
+                    </Box>
+                )}
 
                 {/* Grid Principal - Optimizado para TV */}
                 <Grid 

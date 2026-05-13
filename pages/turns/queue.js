@@ -68,6 +68,7 @@ const Queue = memo(function Queue() {
     const [mounted, setMounted] = useState(false);
     const [currentPhraseIndex, setCurrentPhraseIndex] = useState(0);
     const [audioEnabled, setAudioEnabled] = useState(false);
+    const [callingPaused, setCallingPaused] = useState(false);
     const errorCountRef = useRef(0);
 
     // Frases motivacionales que rotan
@@ -163,8 +164,17 @@ const Queue = memo(function Queue() {
             // No necesitamos re-ordenar en el cliente
             setPendingTurns(data.pendingTurns || []);
             setInProgressTurns(data.inProgressTurns || []);
+            setCallingPaused(!!data.callingPaused);
             errorCountRef.current = 0; // Reset error counter on success
             if (error) setError(null); // Clear any previous error
+
+            // Si llamados están pausados, limpiar estado local de audio inmediatamente
+            if (data.callingPaused) {
+                setCallingPatient(null);
+                setIsCalling(false);
+                setCallQueue([]);
+                return;
+            }
 
             // Detectar pacientes siendo llamados — encolar en FIFO sin interrumpir audio activo
             if (data.inCallingTurns && data.inCallingTurns.length > 0) {
@@ -597,6 +607,21 @@ const Queue = memo(function Queue() {
                         </Box>
                     </Flex>
                 </Box>
+
+                {/* Banner de llamados pausados */}
+                {callingPaused && (
+                    <Box
+                        px={4}
+                        py={2}
+                        bg="red.500"
+                        color="white"
+                        textAlign="center"
+                    >
+                        <Text fontSize="lg" fontWeight="bold">
+                            🛑 LLAMADOS PAUSADOS — Los anuncios están temporalmente suspendidos
+                        </Text>
+                    </Box>
+                )}
 
                 {/* Contenido Principal - DOS COLUMNAS */}
                 <Flex flex="1" overflow="hidden" p={3} gap={3}>

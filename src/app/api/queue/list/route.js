@@ -2,6 +2,20 @@ import prisma from "@/lib/prisma";
 
 export async function GET(req) {
   try {
+    // Verificar si los llamados están pausados
+    const pausedState = await prisma.systemState.findUnique({
+      where: { key: 'callingPaused' }
+    });
+    let callingPaused = false;
+    if (pausedState) {
+      try {
+        const parsed = JSON.parse(pausedState.value);
+        callingPaused = !!parsed.paused;
+      } catch (e) {
+        callingPaused = false;
+      }
+    }
+
     // Pacientes en Espera
     // Ordenamiento: Por "tiempo efectivo de cola" = COALESCE(deferredAt, createdAt)
     // Esto asegura que:
@@ -66,7 +80,12 @@ export async function GET(req) {
     `;
 
     return new Response(
-      JSON.stringify({ pendingTurns, inCallingTurns, inProgressTurns }),
+      JSON.stringify({
+        pendingTurns,
+        inCallingTurns: callingPaused ? [] : inCallingTurns,
+        inProgressTurns,
+        callingPaused
+      }),
       {
         status: 200,
         headers: { "Content-Type": "application/json" },

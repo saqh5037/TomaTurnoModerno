@@ -163,6 +163,13 @@ function AdminControlPanel() {
   const [finishAllReason, setFinishAllReason] = useState('');
   const [finishAllLoading, setFinishAllLoading] = useState(false);
 
+  // Estados para Pausar/Reanudar Llamados
+  const { isOpen: isPauseOpen, onOpen: onPauseOpen, onClose: onPauseClose } = useDisclosure();
+  const { isOpen: isResumeOpen, onOpen: onResumeOpen, onClose: onResumeClose } = useDisclosure();
+  const [pauseReason, setPauseReason] = useState('');
+  const [pauseResumeLoading, setPauseResumeLoading] = useState(false);
+  const [callingPaused, setCallingPaused] = useState(false);
+
   // Estado para ocultar alertas temporalmente
   const [hideAlerts, setHideAlerts] = useState(false);
 
@@ -247,7 +254,8 @@ function AdminControlPanel() {
   useEffect(() => {
     loadDashboard();
     loadTurns();
-  }, [loadDashboard, loadTurns]);
+    loadCallingStatus();
+  }, [loadDashboard, loadTurns, loadCallingStatus]);
 
   // Auto-refresh cada 3 segundos (igual que monitoreo)
   useEffect(() => {
@@ -256,6 +264,7 @@ function AdminControlPanel() {
     const interval = setInterval(() => {
       loadDashboard();
       loadTurns();
+      loadCallingStatus();
     }, 3000);
 
     return () => clearInterval(interval);
@@ -413,6 +422,119 @@ function AdminControlPanel() {
     onOpen();
   };
 
+  // Cargar estado de llamados (pausado o no)
+  const loadCallingStatus = useCallback(async () => {
+    try {
+      const response = await fetch('/api/admin/calling-status');
+      const data = await response.json();
+      if (data.success) {
+        setCallingPaused(data.data.paused);
+      }
+    } catch (error) {
+      console.error('Error cargando estado de llamados:', error);
+    }
+  }, []);
+
+  // Ejecutar Pausar Llamados
+  const executePauseCalling = async () => {
+    if (!pauseReason || pauseReason.trim().length < 5) {
+      toast({
+        title: 'Razón requerida',
+        description: 'Ingresa una razón de al menos 5 caracteres',
+        status: 'warning',
+        duration: 3000
+      });
+      return;
+    }
+
+    setPauseResumeLoading(true);
+    try {
+      const token = getToken();
+      const response = await fetch('/api/admin/pause-calling', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ reason: pauseReason.trim() })
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        toast({
+          title: 'Llamados pausados',
+          description: data.message,
+          status: 'success',
+          duration: 5000
+        });
+        onPauseClose();
+        setPauseReason('');
+        setCallingPaused(true);
+      } else {
+        toast({
+          title: 'Error',
+          description: data.error,
+          status: 'error',
+          duration: 5000
+        });
+      }
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Error al pausar llamados',
+        status: 'error',
+        duration: 5000
+      });
+    } finally {
+      setPauseResumeLoading(false);
+    }
+  };
+
+  // Ejecutar Reanudar Llamados
+  const executeResumeCalling = async () => {
+    setPauseResumeLoading(true);
+    try {
+      const token = getToken();
+      const response = await fetch('/api/admin/resume-calling', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        toast({
+          title: 'Llamados reanudados',
+          description: data.message,
+          status: 'success',
+          duration: 5000
+        });
+        onResumeClose();
+        setCallingPaused(false);
+      } else {
+        toast({
+          title: 'Error',
+          description: data.error,
+          status: 'error',
+          duration: 5000
+        });
+      }
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Error al reanudar llamados',
+        status: 'error',
+        duration: 5000
+      });
+    } finally {
+      setPauseResumeLoading(false);
+    }
+  };
+
   // Ejecutar Finalizar Todos
   const executeFinishAll = async () => {
     if (!finishAllReason || finishAllReason.trim().length < 5) {
@@ -543,6 +665,27 @@ function AdminControlPanel() {
               >
                 Finalizar Todos
               </Button>
+              {callingPaused ? (
+                <Button
+                  leftIcon={<FiPlay />}
+                  colorScheme="green"
+                  variant="solid"
+                  size="sm"
+                  onClick={onResumeOpen}
+                >
+                  Reanudar Llamados
+                </Button>
+              ) : (
+                <Button
+                  leftIcon={<FiPause />}
+                  colorScheme="red"
+                  variant="outline"
+                  size="sm"
+                  onClick={onPauseOpen}
+                >
+                  Pausar Llamados
+                </Button>
+              )}
             </HStack>
           </Flex>
 
@@ -1352,6 +1495,87 @@ function AdminControlPanel() {
             </ModalFooter>
           </ModalContent>
         </Modal>
+
+        {/* Modal de Pausar Llamados */}
+        <Modal isOpen={isPauseOpen} onClose={onPauseClose} size="lg">
+          <ModalOverlay />
+          <ModalContent>
+            <ModalHeader>Pausar Llamados</ModalHeader>
+            <ModalCloseButton />
+            <ModalBody>
+              <VStack align="stretch" spacing={4}>
+                <Alert status="warning" borderRadius="md">
+                  <AlertIcon />
+                  <Box>
+                    <AlertTitle>Atención</AlertTitle>
+                    <AlertDescription fontSize="sm">
+                      Esta acción silenciará inmediatamente todos los anuncios de llamado activos.
+                      Los turnos en atención NO se finalizan — solo se suspenden los anuncios.
+                      Los flebotomistas pueden seguir atendiendo pacientes normalmente.
+                    </AlertDescription>
+                  </Box>
+                </Alert>
+                <FormControl isRequired>
+                  <FormLabel>Razón de la pausa</FormLabel>
+                  <Textarea
+                    value={pauseReason}
+                    onChange={(e) => setPauseReason(e.target.value)}
+                    placeholder="Ej: Error en el sistema de audio, Mantenimiento de equipos, Emergencia..."
+                    rows={3}
+                  />
+                  <FormHelperText>Mínimo 5 caracteres</FormHelperText>
+                </FormControl>
+              </VStack>
+            </ModalBody>
+            <ModalFooter>
+              <Button variant="ghost" mr={3} onClick={onPauseClose}>
+                Cancelar
+              </Button>
+              <Button
+                colorScheme="red"
+                onClick={executePauseCalling}
+                isLoading={pauseResumeLoading}
+                isDisabled={!pauseReason || pauseReason.trim().length < 5}
+              >
+                Pausar Llamados
+              </Button>
+            </ModalFooter>
+          </ModalContent>
+        </Modal>
+
+        {/* Modal de Reanudar Llamados */}
+        <Modal isOpen={isResumeOpen} onClose={onResumeClose} size="md">
+          <ModalOverlay />
+          <ModalContent>
+            <ModalHeader>Reanudar Llamados</ModalHeader>
+            <ModalCloseButton />
+            <ModalBody>
+              <Alert status="info" borderRadius="md">
+                <AlertIcon />
+                <Box>
+                  <AlertTitle>Confirmar</AlertTitle>
+                  <AlertDescription fontSize="sm">
+                    ¿Deseas reanudar los anuncios de llamado?
+                    Los nuevos llamados se anunciarán normalmente.
+                  </AlertDescription>
+                </Box>
+              </Alert>
+            </ModalBody>
+            <ModalFooter>
+              <Button variant="ghost" mr={3} onClick={onResumeClose}>
+                Cancelar
+              </Button>
+              <Button
+                colorScheme="green"
+                onClick={executeResumeCalling}
+                isLoading={pauseResumeLoading}
+              >
+                Reanudar Llamados
+              </Button>
+            </ModalFooter>
+          </ModalContent>
+        </Modal>
+
         {/* Modal de Estadísticas de Flebotomistas */}
         <Modal isOpen={isStatsOpen} onClose={onStatsClose} size="xl">
           <ModalOverlay />

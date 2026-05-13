@@ -12,6 +12,8 @@
 import { NextResponse } from 'next/server';
 import { labsisToIner } from '@/lib/labsisTubeMapping';
 import { getTubeById } from '@/lib/tubesCatalog';
+import { fetchWithRetry } from '@/lib/apiHelpers';
+import prisma from '@/lib/prisma';
 
 /**
  * Mapeo COMPUESTO containerCode + sampleType → INER tube ID
@@ -296,31 +298,76 @@ export async function POST(request) {
       transformedTubes: transformedData.tubesDetails
     });
 
-    // 5. Reenviar solicitud a /api/turns/create
+    // 5. Persistir request entrante en LabsisInboundLog para trazabilidad y reprocesamiento
+    const logEntry = await prisma.labsisInboundLog.create({
+      data: {
+        payload: labsisData,
+        status: 'RECEIVED'
+      }
+    });
+    console.log(`[/api/turnos] LabsisInboundLog creado: id=${logEntry.id}`);
+
+    // 6. Reenviar solicitud a /api/turns/create con retry
     const baseUrl = request.headers.get('host') || 'localhost:3006';
     const protocol = baseUrl.includes('localhost') ? 'http' : 'https';
     const createTurnUrl = `${protocol}://${baseUrl}/api/turns/create`;
 
     console.log('[/api/turnos] Reenviando a:', createTurnUrl);
 
-    const response = await fetch(createTurnUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(transformedData)
-    });
+    let response;
+    let responseData;
+    try {
+      response = await fetchWithRetry(createTurnUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(transformedData)
+      }, 3, 1000);
 
-    const responseData = await response.json();
+      responseData = await response.json();
+    } catch (forwardError) {
+      // Falló el forward incluso después de retries — marcar log como FAILED
+      await prisma.labsisInboundLog.update({
+        where: { id: logEntry.id },
+        data: {
+          status: 'FAILED',
+          error: forwardError.message || 'Error de red al reenviar a /api/turns/create'
+        }
+      });
+      console.error(`[/api/turnos] Forward fallido después de retries. Log id=${logEntry.id} marcado como FAILED:`, forwardError.message);
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Error de red al procesar turno. El request ha sido guardado para reprocesamiento.',
+          labsisLogId: logEntry.id,
+          _source: 'INER_TURNOS_ENDPOINT'
+        },
+        { status: 500 }
+      );
+    }
 
-    // 6. Retornar respuesta de /api/turns/create a LABSIS
+    // 7. Retornar respuesta de /api/turns/create a LABSIS
     if (!response.ok) {
       console.error('[/api/turnos] Error de /api/turns/create:', responseData);
+      // Marcar log como FAILED con detalles del error
+      await prisma.labsisInboundLog.update({
+        where: { id: logEntry.id },
+        data: {
+          status: 'FAILED',
+          error: JSON.stringify({
+            status: response.status,
+            error: responseData.error || 'Error al crear turno',
+            details: responseData.details || responseData.message
+          })
+        }
+      });
       return NextResponse.json(
         {
           success: false,
           error: responseData.error || 'Error al crear turno',
           details: responseData.details || responseData.message,
+          labsisLogId: logEntry.id,
           _source: 'INER_CREATE_ENDPOINT'
         },
         { status: response.status }
@@ -328,9 +375,19 @@ export async function POST(request) {
     }
 
     const wasUpdated = responseData.updated === true;
-    console.log(`[/api/turnos] Turno ${wasUpdated ? 'actualizado' : 'creado'} exitosamente:`, {
-      responseData
+    const turnId = responseData.turnId || responseData.assignedTurn || null;
+
+    // Marcar log como PROCESSED
+    await prisma.labsisInboundLog.update({
+      where: { id: logEntry.id },
+      data: {
+        status: 'PROCESSED',
+        processedAt: new Date(),
+        turnId: turnId
+      }
     });
+
+    console.log(`[/api/turnos] Turno ${wasUpdated ? 'actualizado' : 'creado'} exitosamente. Log id=${logEntry.id} → PROCESSED`);
 
     return NextResponse.json({
       success: true,
