@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import jwt from "jsonwebtoken";
 import prisma from "../../../../../lib/prisma.js";
+import { requiresSpecialCubicle } from "../../../../../lib/prioridadUtils.js";
 
 const JWT_SECRET = process.env.NEXTAUTH_SECRET || process.env.JWT_SECRET;
 
@@ -10,7 +11,12 @@ const JWT_SECRET = process.env.NEXTAUTH_SECRET || process.env.JWT_SECRET;
  * El paciente queda en holding para ese flebotomista.
  * Al detectarlo, el flebotomista recibe notificación y al aceptar se hace el llamado.
  *
- * Body: { turnId: number, phlebotomistId: number }
+ * Body: { turnId: number, phlebotomistId: number, force?: boolean, forceReason?: string }
+ *
+ * Validación cubículo↔prioridad (v2.8.55):
+ *   - MuyEspecial debe ir a cubículo SPECIAL (cub 6).
+ *   - Si hay mismatch y NO viene force=true, responde 409 con suggestedAction.
+ *   - Con force=true, asigna igual y registra override en audit.
  */
 export async function POST(request) {
   try {
@@ -32,7 +38,7 @@ export async function POST(request) {
       return NextResponse.json({ success: false, error: "Acceso denegado" }, { status: 403 });
     }
 
-    const { turnId, phlebotomistId } = await request.json();
+    const { turnId, phlebotomistId, force = false, forceReason = null } = await request.json();
 
     if (!turnId || !phlebotomistId) {
       return NextResponse.json(
@@ -69,6 +75,54 @@ export async function POST(request) {
     if (!phlebotomist) {
       return NextResponse.json({ success: false, error: "Flebotomista no encontrado" }, { status: 404 });
     }
+
+    // Validación blanda cubículo↔prioridad (v2.8.55)
+    // Tomar la sesión activa más reciente del flebo para conocer su cubículo actual
+    const activeSession = await prisma.session.findFirst({
+      where: {
+        userId: phlebIdNum,
+        expiresAt: { gt: new Date() },
+        selectedCubicleId: { not: null }
+      },
+      orderBy: { lastActivity: 'desc' },
+      select: {
+        selectedCubicleId: true
+      }
+    });
+
+    let phlebCubicle = null;
+    if (activeSession?.selectedCubicleId) {
+      phlebCubicle = await prisma.cubicle.findUnique({
+        where: { id: activeSession.selectedCubicleId },
+        select: { id: true, name: true, type: true }
+      });
+    }
+
+    const needsSpecial = requiresSpecialCubicle(turn.tipoAtencion);
+    const phlebCubicleType = phlebCubicle?.type || null;
+    let compatible = true;
+    let incompatibilityReason = null;
+
+    if (needsSpecial && phlebCubicleType !== 'SPECIAL') {
+      compatible = false;
+      incompatibilityReason = `Paciente MuyEspecial requiere cubículo SPECIAL. Flebotomista está en cubículo ${phlebCubicle?.name || '(sin cubículo)'} de tipo ${phlebCubicleType || 'desconocido'}.`;
+    }
+
+    if (!compatible && !force) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: incompatibilityReason,
+          incompatible: true,
+          suggestedAction: "Confirmar override con force=true si es decisión consciente",
+          turnTipoAtencion: turn.tipoAtencion,
+          phlebCubicleType
+        },
+        { status: 409 }
+      );
+    }
+
+    const forcedOverride = !compatible && force === true;
 
     // Detectar tipo de operación: nueva asignación, re-asignación, o no-op
     let opType = 'NEW_ASSIGNMENT';
@@ -114,7 +168,7 @@ export async function POST(request) {
     await prisma.auditLog.create({
       data: {
         userId: decoded.userId,
-        action: 'ADMIN_ASSIGN_PATIENT',
+        action: forcedOverride ? 'ADMIN_ASSIGN_PATIENT_FORCED' : 'ADMIN_ASSIGN_PATIENT',
         entity: 'TurnRequest',
         entityId: turnIdNum,
         oldValue: { holdingBy: turn.holdingBy, status: turn.status },
@@ -124,7 +178,14 @@ export async function POST(request) {
           assignedBy: decoded.name || decoded.userId,
           opType,
           queuePosition,
-          queueSize
+          queueSize,
+          ...(forcedOverride && {
+            forcedOverride: true,
+            forceReason: forceReason || null,
+            incompatibilityReason,
+            turnTipoAtencion: turn.tipoAtencion,
+            phlebCubicleType
+          })
         }
       }
     });

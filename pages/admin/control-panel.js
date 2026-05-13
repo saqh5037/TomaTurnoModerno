@@ -43,6 +43,7 @@ import {
   CloseButton,
   Tooltip,
   Switch,
+  Checkbox,
   Spinner,
   Divider,
   Card,
@@ -157,6 +158,10 @@ function AdminControlPanel() {
   const { isOpen: isReassignOpen, onOpen: onReassignOpen, onClose: onReassignClose } = useDisclosure();
   const [reassignType, setReassignType] = useState(null); // 'cubicle' o 'phlebotomist'
   const [reassignValue, setReassignValue] = useState('');
+  // v2.8.55: override de incompatibilidad cubicleType↔tipoAtencion en asignación manual
+  const [forceOverride, setForceOverride] = useState(false);
+  const [forceReason, setForceReason] = useState('');
+  const [incompatWarning, setIncompatWarning] = useState(null);
 
   // Modal de Finalizar Todos
   const { isOpen: isFinishAllOpen, onOpen: onFinishAllOpen, onClose: onFinishAllClose } = useDisclosure();
@@ -360,6 +365,11 @@ function AdminControlPanel() {
         turnId: selectedTurn.id,
         [reassignType === 'cubicle' ? 'cubicleId' : 'phlebotomistId']: parseInt(reassignValue)
       };
+      // v2.8.55: para assign-patient, enviar override si el admin lo marcó
+      if (reassignType === 'assign-phlebotomist' && forceOverride) {
+        body.force = true;
+        body.forceReason = forceReason || 'Override admin sin razón especificada';
+      }
 
       const response = await fetch(`/api/admin/${endpoint}`, {
         method: 'POST',
@@ -371,6 +381,23 @@ function AdminControlPanel() {
       });
 
       const data = await response.json();
+
+      // v2.8.55: 409 = incompatibilidad cubículo↔prioridad sin force. Mostrar warning inline.
+      if (response.status === 409 && data.incompatible) {
+        setIncompatWarning({
+          message: data.error,
+          turnTipoAtencion: data.turnTipoAtencion,
+          phlebCubicleType: data.phlebCubicleType
+        });
+        toast({
+          title: 'Incompatibilidad detectada',
+          description: 'Marca "Asignar de todos modos" abajo si es decisión consciente.',
+          status: 'warning',
+          duration: 6000
+        });
+        setActionLoading(false);
+        return;
+      }
 
       if (data.success) {
         const isPhlebAssign = reassignType === 'assign-phlebotomist';
@@ -597,6 +624,9 @@ function AdminControlPanel() {
     setSelectedTurn(turn);
     setReassignType(type);
     setReassignValue('');
+    setForceOverride(false);
+    setForceReason('');
+    setIncompatWarning(null);
     onReassignOpen();
   };
 
@@ -1386,6 +1416,11 @@ function AdminControlPanel() {
                   <Box>
                     <Text fontWeight="bold">Turno #{selectedTurn.assignedTurn}</Text>
                     <Text>{selectedTurn.patientName}</Text>
+                    {selectedTurn.tipoAtencion && (
+                      <Text fontSize="xs" color="gray.600">
+                        Prioridad: <strong>{selectedTurn.tipoAtencion}</strong>
+                      </Text>
+                    )}
                   </Box>
 
                   <FormControl isRequired>
@@ -1394,20 +1429,54 @@ function AdminControlPanel() {
                     </FormLabel>
                     <Select
                       value={reassignValue}
-                      onChange={(e) => setReassignValue(e.target.value)}
+                      onChange={(e) => { setReassignValue(e.target.value); setIncompatWarning(null); }}
                       placeholder="Seleccionar..."
                     >
                       {reassignType === 'cubicle'
                         ? filters.cubicles.map(c => (
-                            <option key={c.id} value={c.id}>{c.name}</option>
+                            <option key={c.id} value={c.id}>{c.name}{c.type ? ` [${c.type}]` : ''}</option>
                           ))
-                        : (filters.activePhlebotomists || []).map(p => (
-                            <option key={p.id} value={p.id}>
-                              {p.name}{p.cubicleName ? ` — Cub ${p.cubicleName}` : ''}
-                            </option>
-                          ))
+                        : (filters.activePhlebotomists || []).map(p => {
+                            const typeLabel = p.cubicleType ? ` [${p.cubicleType}]` : '';
+                            return (
+                              <option key={p.id} value={p.id}>
+                                {p.name}{p.cubicleName ? ` — Cub ${p.cubicleName}${typeLabel}` : ''}
+                              </option>
+                            );
+                          })
                       }
                     </Select>
+                    {reassignType === 'assign-phlebotomist' && (filters.activePhlebotomists || []).length <= 1 && (
+                      <Text fontSize="xs" color="orange.600" mt={1}>
+                        Solo {(filters.activePhlebotomists || []).length} flebotomista(s) con sesión activa. Si esperabas más opciones, pídele al personal que haga login en su cubículo.
+                      </Text>
+                    )}
+                    {/* v2.8.55: warning de incompatibilidad cubículo↔prioridad */}
+                    {incompatWarning && (
+                      <Box mt={3} p={3} bg="orange.50" border="1px solid" borderColor="orange.300" borderRadius="md">
+                        <Text fontSize="sm" color="orange.800" fontWeight="bold">⚠️ Incompatibilidad detectada</Text>
+                        <Text fontSize="xs" color="orange.700" mt={1}>{incompatWarning.message}</Text>
+                        <FormControl mt={3}>
+                          <Checkbox
+                            isChecked={forceOverride}
+                            onChange={(e) => setForceOverride(e.target.checked)}
+                            colorScheme="orange"
+                            size="sm"
+                          >
+                            Asignar de todos modos (override consciente)
+                          </Checkbox>
+                        </FormControl>
+                        {forceOverride && (
+                          <Input
+                            mt={2}
+                            size="sm"
+                            placeholder="Razón del override (opcional pero recomendado)"
+                            value={forceReason}
+                            onChange={(e) => setForceReason(e.target.value)}
+                          />
+                        )}
+                      </Box>
+                    )}
                   </FormControl>
                 </VStack>
               )}

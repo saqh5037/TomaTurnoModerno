@@ -387,11 +387,11 @@ export async function GET(request) {
       },
       orderBy: { lastActivity: 'desc' }
     });
-    const activeCubicleNames = await prisma.cubicle.findMany({
+    const activeCubicleInfo = await prisma.cubicle.findMany({
       where: { id: { in: activeSessionsForAssign.map(s => s.selectedCubicleId) } },
-      select: { id: true, name: true }
+      select: { id: true, name: true, type: true }
     });
-    const cubicleNameById = Object.fromEntries(activeCubicleNames.map(c => [c.id, c.name]));
+    const cubicleInfoById = Object.fromEntries(activeCubicleInfo.map(c => [c.id, c]));
     const seenUserIds = new Set();
     const activePhlebotomists = activeSessionsForAssign
       .filter(s => s.user?.isActive)
@@ -400,12 +400,16 @@ export async function GET(request) {
         seenUserIds.add(s.userId);
         return true;
       })
-      .map(s => ({
-        id: s.user.id,
-        name: s.user.name,
-        cubicleId: s.selectedCubicleId,
-        cubicleName: cubicleNameById[s.selectedCubicleId] || null
-      }));
+      .map(s => {
+        const cub = cubicleInfoById[s.selectedCubicleId] || null;
+        return {
+          id: s.user.id,
+          name: s.user.name,
+          cubicleId: s.selectedCubicleId,
+          cubicleName: cub?.name || null,
+          cubicleType: cub?.type || null
+        };
+      });
 
     // Obtener lista de cubículos activos para filtros
     const cubicles = await prisma.cubicle.findMany({

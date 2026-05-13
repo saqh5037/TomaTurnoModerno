@@ -37,6 +37,9 @@ jest.mock('../../lib/prioridadUtils.js', () => ({
     PrioritarioRiesgo: ['1', '2'],
   },
   saltaFila: (tipo) => ['MuyEspecial', 'Prioritario', 'PrioritarioRiesgo'].includes(tipo),
+  // v2.8.55: solo MuyEspecial requiere cubículo SPECIAL
+  requiresSpecialCubicle: (tipo) => tipo === 'MuyEspecial',
+  isEspecialTurn: (tipo) => tipo === 'MuyEspecial',
 }));
 
 const { assignNextHolding } = require('../../lib/holdingUtils.js');
