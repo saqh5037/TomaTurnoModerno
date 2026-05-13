@@ -37,9 +37,9 @@ jest.mock('../../lib/prioridadUtils.js', () => ({
     PrioritarioRiesgo: ['1', '2'],
   },
   saltaFila: (tipo) => ['MuyEspecial', 'Prioritario', 'PrioritarioRiesgo'].includes(tipo),
-  // v2.8.55: solo MuyEspecial requiere cubículo SPECIAL
-  requiresSpecialCubicle: (tipo) => tipo === 'MuyEspecial',
-  isEspecialTurn: (tipo) => tipo === 'MuyEspecial',
+  // v2.8.56: MuyEspecial y Prioritario requieren cubículo SPECIAL (alineado al diagrama)
+  requiresSpecialCubicle: (tipo) => tipo === 'MuyEspecial' || tipo === 'Prioritario',
+  isEspecialTurn: (tipo) => tipo === 'MuyEspecial' || tipo === 'Prioritario',
 }));
 
 const { assignNextHolding } = require('../../lib/holdingUtils.js');
@@ -114,7 +114,9 @@ describe('forcedAssign respeta asignación manual del admin', () => {
       .mockResolvedValueOnce(higherPriorityTurn) // higher priority disponible
       .mockResolvedValueOnce(null); // no inProgress
     mockPrisma.turnRequest.update.mockResolvedValue({});
-    mockPrisma.session.findFirst.mockResolvedValue(null);
+    // v2.8.56: Prioritario requiere SPECIAL — flebo debe estar en cubículo SPECIAL para tomarlo
+    mockPrisma.session.findFirst.mockResolvedValue({ selectedCubicleId: 6 });
+    mockPrisma.cubicle.findUnique.mockResolvedValue({ name: '6', type: 'SPECIAL' });
     mockPrisma.$transaction.mockImplementation(async (cb) => {
       const tx = {
         $queryRaw: jest.fn().mockResolvedValue([{ id: 300, tipoAtencion: 'Prioritario' }]),

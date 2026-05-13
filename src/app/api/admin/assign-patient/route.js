@@ -105,7 +105,7 @@ export async function POST(request) {
 
     if (needsSpecial && phlebCubicleType !== 'SPECIAL') {
       compatible = false;
-      incompatibilityReason = `Paciente MuyEspecial requiere cubículo SPECIAL. Flebotomista está en cubículo ${phlebCubicle?.name || '(sin cubículo)'} de tipo ${phlebCubicleType || 'desconocido'}.`;
+      incompatibilityReason = `Paciente ${turn.tipoAtencion} requiere cubículo SPECIAL. Flebotomista está en cubículo ${phlebCubicle?.name || '(sin cubículo)'} de tipo ${phlebCubicleType || 'desconocido'}.`;
     }
 
     if (!compatible && !force) {
