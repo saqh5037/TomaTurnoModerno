@@ -228,7 +228,46 @@ function transformTubesDetails(labsisTubesDetails) {
 export async function POST(request) {
   try {
     // 1. Parsear body de la solicitud
-    const labsisData = await request.json();
+    // v2.8.58: Labsis a veces envía JSON con caracteres de control sin escapar
+    //          (\n literal en clinicalInfo, etc). Leemos como texto y sanitizamos
+    //          antes de parsear para evitar 500 "Bad control character in string".
+    const rawBody = await request.text();
+    let labsisData;
+    try {
+      labsisData = JSON.parse(rawBody);
+    } catch (parseErr) {
+      // Intento de rescate: escapar caracteres de control dentro de strings JSON
+      const sanitized = rawBody.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, ' ').replace(/(?<!\\)\n/g, '\\n').replace(/(?<!\\)\r/g, '\\r').replace(/(?<!\\)\t/g, '\\t');
+      try {
+        labsisData = JSON.parse(sanitized);
+        console.warn('[/api/turnos] JSON de Labsis tenía caracteres de control sin escapar — parseo rescatado.', {
+          originalError: parseErr.message,
+          bodyPreview: rawBody.substring(0, 200)
+        });
+      } catch (secondErr) {
+        console.error('[/api/turnos] JSON malformado de Labsis, sin rescate posible:', {
+          parseError: parseErr.message,
+          rescueError: secondErr.message,
+          bodyPreview: rawBody.substring(0, 500)
+        });
+        // Log a LabsisInboundLog para reprocess manual
+        try {
+          await prisma.labsisInboundLog.create({
+            data: {
+              payload: { rawBody: rawBody.substring(0, 4000), parseError: parseErr.message },
+              status: 'FAILED',
+              error: JSON.stringify({ type: 'JSON_PARSE_ERROR', message: parseErr.message })
+            }
+          });
+        } catch (logErr) {
+          console.error('[/api/turnos] No se pudo registrar log de fallo:', logErr.message);
+        }
+        return NextResponse.json(
+          { success: false, error: 'JSON inválido de Labsis', details: parseErr.message },
+          { status: 400 }
+        );
+      }
+    }
 
     console.log('[/api/turnos] Solicitud recibida de LABSIS:', {
       patientID: labsisData.patientID,
