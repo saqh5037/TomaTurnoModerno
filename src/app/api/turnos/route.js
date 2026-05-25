@@ -348,7 +348,10 @@ export async function POST(request) {
 
     // 6. Reenviar solicitud a /api/turns/create con retry
     const baseUrl = request.headers.get('host') || 'localhost:3006';
-    const protocol = baseUrl.includes('localhost') ? 'http' : 'https';
+    // Internal self-forward to /api/turns/create: always HTTP. This call targets the
+    // local Node port directly (not the TLS proxy), and INER's internal network uses
+    // HTTP. Captures a live production hotfix that previously lived only on the server.
+    const protocol = 'http';
     const createTurnUrl = `${protocol}://${baseUrl}/api/turns/create`;
 
     console.log('[/api/turnos] Reenviando a:', createTurnUrl);

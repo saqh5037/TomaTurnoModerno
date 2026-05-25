@@ -140,6 +140,15 @@ export async function POST(req) {
         }
       });
     } else {
+      // Propagate selectedCubicleId from the most recent previous session so
+      // the phlebotomist stays visible in the admin assignment dropdown after
+      // a token refresh creates a new session row.
+      const prevSession = await prisma.session.findFirst({
+        where: { userId: user.id, selectedCubicleId: { not: null } },
+        orderBy: { lastActivity: 'desc' },
+        select: { selectedCubicleId: true }
+      });
+
       // Crear nueva sesión si no existe
       await prisma.session.create({
         data: {
@@ -148,7 +157,8 @@ export async function POST(req) {
           refreshToken: newRefreshToken,
           ipAddress: req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown',
           userAgent: req.headers.get('user-agent') || 'unknown',
-          expiresAt: expiresAt
+          expiresAt: expiresAt,
+          selectedCubicleId: prevSession?.selectedCubicleId ?? null
         }
       });
     }

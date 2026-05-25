@@ -70,6 +70,10 @@ const Queue = memo(function Queue() {
     const [audioEnabled, setAudioEnabled] = useState(false);
     const [callingPaused, setCallingPaused] = useState(false);
     const errorCountRef = useRef(0);
+    // Timestamp of the last successful fetch — used by the heartbeat watchdog
+    const lastSuccessfulFetchRef = useRef(Date.now());
+    // Tracks which patient id was set as callingPatient — used by safety dismiss to avoid double-close
+    const callingPatientIdRef = useRef(null);
 
     // Frases motivacionales que rotan
     const phrases = [
@@ -155,8 +159,13 @@ const Queue = memo(function Queue() {
 
     // Función para obtener datos de la cola
     const fetchQueueData = useCallback(async () => {
+        // Abort stale fetches after 10 s — a hung fetch counts as a consecutive error
+        const controller = new AbortController();
+        const abortTimer = setTimeout(() => controller.abort(), 10000);
+
         try {
-            const response = await fetch("/api/queue/list");
+            const response = await fetch("/api/queue/list", { signal: controller.signal });
+            clearTimeout(abortTimer);
             if (!response.ok) throw new Error("Error al obtener los turnos");
             const data = await response.json();
 
@@ -166,6 +175,7 @@ const Queue = memo(function Queue() {
             setInProgressTurns(data.inProgressTurns || []);
             setCallingPaused(!!data.callingPaused);
             errorCountRef.current = 0; // Reset error counter on success
+            lastSuccessfulFetchRef.current = Date.now(); // Heartbeat timestamp
             if (error) setError(null); // Clear any previous error
 
             // Si llamados están pausados, limpiar estado local de audio inmediatamente
@@ -211,6 +221,7 @@ const Queue = memo(function Queue() {
                 }
             }
         } catch (err) {
+            clearTimeout(abortTimer);
             console.error("Error al cargar los turnos:", err);
             // Auto-recovery para modo kiosco: contar errores consecutivos
             errorCountRef.current = (errorCountRef.current || 0) + 1;
@@ -512,6 +523,69 @@ const Queue = memo(function Queue() {
             }
         };
     }, [mounted, callingPatient, isCalling, audioEnabled, speakAnnouncement, updateCallStatus]);
+
+    // E1 — Safety dismiss at 13 s (independent of audioEnabled)
+    // Guarantees the modal closes even when audio is blocked (audioEnabled === false),
+    // because the announcement effect returns early in that case and never calls updateCallStatus.
+    // 13 s = audio cycle ~12 s + 1 s margin. If the audio effect already closed the modal,
+    // callingPatient will have changed and the patientId guard prevents a double-close.
+    useEffect(() => {
+        if (!mounted || !callingPatient) return;
+        const patientId = callingPatient.id;
+        callingPatientIdRef.current = patientId;
+        const safetyTimeout = setTimeout(() => {
+            if (callingPatientIdRef.current === patientId) {
+                console.log('[Queue] E1 safety dismiss: closing modal for patient', patientId);
+                updateCallStatus();
+            }
+        }, 13000);
+        return () => clearTimeout(safetyTimeout);
+    }, [mounted, callingPatient, updateCallStatus]);
+
+    // E2c — Overlay watchdog at 30 s (belt-and-suspenders)
+    // If callingPatient is still the same after 30 s (E1 and audio both failed),
+    // force-clear state directly without going through updateCallStatus to avoid
+    // an extra API call on an already-stale state.
+    useEffect(() => {
+        if (!mounted || !callingPatient) return;
+        const patientId = callingPatient.id;
+        const watchdogTimeout = setTimeout(() => {
+            if (callingPatientIdRef.current === patientId) {
+                console.warn('[Queue] E2c watchdog: force-clearing overlay for patient', patientId);
+                callingPatientIdRef.current = null;
+                setCallingPatient(null);
+                setIsCalling(false);
+            }
+        }, 30000);
+        return () => clearTimeout(watchdogTimeout);
+    }, [mounted, callingPatient]);
+
+    // E2a — Heartbeat watchdog: reload if no successful fetch in the last 60 s
+    // Catches cases where the network is up but the poller silently stopped.
+    useEffect(() => {
+        if (!mounted) return;
+        const heartbeat = setInterval(() => {
+            if (Date.now() - lastSuccessfulFetchRef.current > 60000) {
+                console.warn('[Queue] E2a heartbeat: no successful fetch in 60 s, reloading...');
+                window.location.reload();
+            }
+        }, 15000);
+        return () => clearInterval(heartbeat);
+    }, [mounted]);
+
+    // E2b — Visibility change: re-fetch immediately when the tab/display wakes up
+    // TV screens can go to sleep or the browser can throttle background tabs.
+    useEffect(() => {
+        if (!mounted) return;
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'visible') {
+                console.log('[Queue] E2b visibilitychange: tab visible, fetching queue...');
+                fetchQueueData();
+            }
+        };
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+        return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+    }, [mounted, fetchQueueData]);
 
     // Función para formatear la hora
     const formatTime = useCallback((date) => {

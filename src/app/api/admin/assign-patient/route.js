@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import jwt from "jsonwebtoken";
 import prisma from "../../../../../lib/prisma.js";
-import { requiresSpecialCubicle } from "../../../../../lib/prioridadUtils.js";
+import { requiresSpecialCubicle, cubicleNumberFromName } from "../../../../../lib/prioridadUtils.js";
 
 const JWT_SECRET = process.env.NEXTAUTH_SECRET || process.env.JWT_SECRET;
 
@@ -106,6 +106,14 @@ export async function POST(request) {
     if (needsSpecial && phlebCubicleType !== 'SPECIAL') {
       compatible = false;
       incompatibilityReason = `Paciente ${turn.tipoAtencion} requiere cubículo SPECIAL. Flebotomista está en cubículo ${phlebCubicle?.name || '(sin cubículo)'} de tipo ${phlebCubicleType || 'desconocido'}.`;
+    }
+
+    if (turn.tipoAtencion === 'RiesgoCaida') {
+      const num = cubicleNumberFromName(phlebCubicle?.name);
+      if (![1, 2].includes(num)) {
+        compatible = false;
+        incompatibilityReason = `Paciente en silla de ruedas (RiesgoCaida) solo puede asignarse a cubículos 1 o 2. Flebotomista está en ${phlebCubicle?.name || '(sin cubículo)'}.`;
+      }
     }
 
     if (!compatible && !force) {
