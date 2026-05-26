@@ -374,17 +374,20 @@ export async function GET(request) {
       select: { id: true, name: true }
     });
 
-    // Personal para MODAL de reasignación: flebotomistas con sesión activa (cubículo opcional).
-    // Fix: no filtrar por selectedCubicleId — cubicleCleanup lo borra tras 20 min de inactividad
-    // incluso cuando el flebo está trabajando activamente. Se deduplica por userId prefiriendo
-    // la sesión con cubículo cuando existe alguna, para mostrar el cubículo si se conoce.
+    // Personal para MODAL de reasignación: usuarios con sesión activa que pueden atender
+    // (cubículo opcional). Se incluye a quien sea rol 'flebotomista' O tenga un cubículo
+    // seleccionado (cubre cuentas rol 'admin' usadas como flebotomista que están en un
+    // cubículo). No se filtra solo por selectedCubicleId porque cubicleCleanup lo borra
+    // tras 20 min de inactividad aunque el flebo esté trabajando. Se deduplica por userId
+    // prefiriendo la sesión con cubículo cuando existe.
     const activeSessionsForAssign = await prisma.session.findMany({
       where: {
         expiresAt: { gt: now },
-        user: {
-          isActive: true,
-          role: { equals: 'flebotomista', mode: 'insensitive' }
-        }
+        user: { isActive: true },
+        OR: [
+          { user: { role: { equals: 'flebotomista', mode: 'insensitive' } } },
+          { selectedCubicleId: { not: null } }
+        ]
       },
       select: {
         userId: true,

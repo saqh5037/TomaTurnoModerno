@@ -396,6 +396,32 @@ export default function Attention() {
         }
       }
 
+      // Idle recovery: si el flebo no está atendiendo y no tiene holding, pero hay
+      // pacientes esperando, (re)intentar asignar holding. Corrige el bug del "lull":
+      // tras unos minutos sin pacientes, al llegar nuevos el holding no se asignaba
+      // hasta cerrar sesión y volver a entrar. Este poll (cada 10s) lo recupera solo.
+      if (userId && selectedCubicle && !activePatient && !heldTurn && !holdingAssignedRef.current) {
+        const hasAvailable = (data.pendingTurns || []).some(t => !t.holdingBy);
+        if (hasAvailable) {
+          holdingAssignedRef.current = true;
+          fetch("/api/queue/assignHolding", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ userId }),
+          })
+            .then(res => res.json())
+            .then(result => {
+              if (result.success && result.turn) {
+                setHeldTurn(result.turn);
+                console.log("[Attention] Holding (recuperación por poll):", result.turn.id, result.turn.patientName);
+              } else {
+                holdingAssignedRef.current = false;
+              }
+            })
+            .catch(() => { holdingAssignedRef.current = false; });
+        }
+      }
+
       // NUEVO: Marcar que la carga inicial terminó (para que assignHolding pueda ejecutarse)
       if (!initialFetchDone) {
         console.log("[Attention] Primera carga de turnos completada");
@@ -416,7 +442,7 @@ export default function Attention() {
         setInitialFetchDone(true);
       }
     }
-  }, [toast, userId, activePatient, heldTurn, initialFetchDone]);
+  }, [toast, userId, activePatient, heldTurn, initialFetchDone, selectedCubicle]);
 
   // Función para asignar holding automáticamente
   const assignHolding = useCallback(async (forceAssign = false) => {
@@ -445,8 +471,10 @@ export default function Attention() {
           console.log("[Attention] Turno asignado en holding:", data.turn.id, data.turn.patientName);
           return data.turn;
         } else {
-          // No hay turnos disponibles
+          // No hay turnos disponibles — reset the guard so a later poll can pick up a
+          // patient that arrives after a quiet period (lull) without requiring re-login.
           setHeldTurn(null);
+          holdingAssignedRef.current = false;
           console.log("[Attention] No hay turnos disponibles para holding");
         }
       }
