@@ -140,21 +140,24 @@ export async function GET(request) {
       where.tipoAtencion = priority;
     }
 
-    // Búsqueda por nombre o número de turno — usar andConditions para no sobrescribir
+    // Búsqueda por nombre, OT (workOrder), expediente (patientID) o número de turno.
+    // IMPORTANTE: assignedTurn es INT4. Las OT de LABSIS son de 10 dígitos (ej. 2605260133)
+    // y desbordan INT4 (máx 2,147,483,647), rompiendo count()+findMany(). Por eso las OT/
+    // expedientes se buscan en sus campos String, y assignedTurn solo se consulta cuando el
+    // término es puramente numérico y cabe en el rango INT4.
     if (search) {
-      const searchNum = parseInt(search);
-      if (!isNaN(searchNum)) {
-        andConditions.push({
-          OR: [
-            { patientName: { contains: search, mode: 'insensitive' } },
-            { assignedTurn: searchNum }
-          ]
-        });
-      } else {
-        andConditions.push({
-          patientName: { contains: search, mode: 'insensitive' }
-        });
+      const term = String(search).trim();
+      const orConditions = [
+        { patientName: { contains: term, mode: 'insensitive' } },
+        { workOrder: { contains: term, mode: 'insensitive' } },
+        { patientID: { contains: term, mode: 'insensitive' } },
+        { labsisOrderId: { contains: term, mode: 'insensitive' } },
+      ];
+      const searchNum = parseInt(term, 10);
+      if (!isNaN(searchNum) && String(searchNum) === term && searchNum >= 1 && searchNum <= 2147483647) {
+        orConditions.push({ assignedTurn: searchNum });
       }
+      andConditions.push({ OR: orConditions });
     }
 
     // Combinar todas las condiciones AND
