@@ -1,4 +1,5 @@
 import prisma from '../../../../../lib/prisma.js';
+import { touchSessionActivity } from '../../../../../lib/sessionActivity.js';
 
 /**
  * POST /api/queue/defer
@@ -26,7 +27,8 @@ export async function POST(req) {
         status: true,
         patientName: true,
         tipoAtencion: true,  // Para filtrar por tipo al calcular deferredAt
-        createdAt: true
+        createdAt: true,
+        attendedBy: true,
       }
     });
 
@@ -108,7 +110,12 @@ export async function POST(req) {
       }
     });
 
-    console.log(`✅ Turno ${turnId} (${turn.patientName}) marcado como diferido - Llamados: ${turn.callCount}`);
+    console.log(`[defer] Turno ${turnId} (${turn.patientName}) marcado como diferido - Llamados: ${turn.callCount}`);
+
+    // Refresh session activity for the phlebotomist who deferred the patient.
+    if (turn.attendedBy) {
+      touchSessionActivity(turn.attendedBy).catch(() => {});
+    }
 
     return new Response(
       JSON.stringify({

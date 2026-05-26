@@ -1,5 +1,6 @@
 import prisma from "@/lib/prisma";
 import { assignNextHolding } from "@/lib/holdingUtils";
+import { touchSessionActivity } from "@/lib/sessionActivity";
 
 export async function POST(req) {
   try {
@@ -41,9 +42,9 @@ export async function POST(req) {
 
     console.log(`[complete] Turno ${turnId} (${currentTurn.patientName}) finalizado`);
 
-    // Asignar automáticamente el siguiente turno en holding
-    // Usar el userId del body o el attendedBy del turno finalizado
+    // Keep the phlebotomist's session alive on completion.
     const attendingUserId = userId || currentTurn.attendedBy;
+    touchSessionActivity(attendingUserId).catch(() => {});
     let nextTurn = null;
 
     if (attendingUserId) {

@@ -1,4 +1,5 @@
 import { assignNextHolding, getUserHoldingTurn } from "@/lib/holdingUtils";
+import { touchSessionActivity } from "@/lib/sessionActivity";
 
 /**
  * POST /api/queue/assignHolding
@@ -20,6 +21,9 @@ export async function POST(request) {
     }
 
     const userIdNum = parseInt(userId, 10);
+
+    // Refresh session activity — assigning holding means the phlebotomist is active.
+    touchSessionActivity(userIdNum).catch(() => {});
 
     // Intentar asignar siguiente turno (la función verifica si ya tiene uno)
     const turn = await assignNextHolding(userIdNum);

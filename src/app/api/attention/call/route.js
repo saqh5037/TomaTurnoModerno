@@ -1,4 +1,5 @@
 import prisma from "@/lib/prisma";
+import { touchSessionActivity } from "@/lib/sessionActivity";
 
 export async function POST(req) {
   try {
@@ -87,6 +88,10 @@ export async function POST(req) {
           { status: result.status, headers: { "Content-Type": "application/json" } }
         );
       }
+
+      // Keep the phlebotomist's session alive so cubicle-cleanup does not
+      // evict them while they are actively calling patients.
+      touchSessionActivity(userIdInt).catch(() => {});
 
       return new Response(JSON.stringify(result.turn), {
         status: 200,

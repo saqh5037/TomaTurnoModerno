@@ -1,5 +1,6 @@
 import prisma from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
+import { touchSessionActivity } from "@/lib/sessionActivity";
 
 /**
  * Transforma un turno agregando isSpecial derivado de tipoAtencion
@@ -33,6 +34,9 @@ export async function POST(request) {
     }
 
     const userIdNum = parseInt(userId, 10);
+
+    // Refresh session activity — skipping holding means the phlebotomist is active.
+    touchSessionActivity(userIdNum).catch(() => {});
 
     // Usar transacción para evitar race conditions
     const result = await prisma.$transaction(async (tx) => {
