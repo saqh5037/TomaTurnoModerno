@@ -374,11 +374,17 @@ export async function GET(request) {
       select: { id: true, name: true }
     });
 
-    // Personal para MODAL de reasignación: solo usuarios con sesión activa Y cubículo seleccionado AHORA
+    // Personal para MODAL de reasignación: flebotomistas con sesión activa (cubículo opcional).
+    // Fix: no filtrar por selectedCubicleId — cubicleCleanup lo borra tras 20 min de inactividad
+    // incluso cuando el flebo está trabajando activamente. Se deduplica por userId prefiriendo
+    // la sesión con cubículo cuando existe alguna, para mostrar el cubículo si se conoce.
     const activeSessionsForAssign = await prisma.session.findMany({
       where: {
         expiresAt: { gt: now },
-        selectedCubicleId: { not: null }
+        user: {
+          isActive: true,
+          role: { equals: 'flebotomista', mode: 'insensitive' }
+        }
       },
       select: {
         userId: true,
@@ -387,29 +393,41 @@ export async function GET(request) {
       },
       orderBy: { lastActivity: 'desc' }
     });
-    const activeCubicleInfo = await prisma.cubicle.findMany({
-      where: { id: { in: activeSessionsForAssign.map(s => s.selectedCubicleId) } },
-      select: { id: true, name: true, type: true }
-    });
+
+    // Collect non-null cubicle IDs to fetch in a single query
+    const cubicleIdsToFetch = [...new Set(
+      activeSessionsForAssign.map(s => s.selectedCubicleId).filter(Boolean)
+    )];
+    const activeCubicleInfo = cubicleIdsToFetch.length > 0
+      ? await prisma.cubicle.findMany({
+          where: { id: { in: cubicleIdsToFetch } },
+          select: { id: true, name: true, type: true }
+        })
+      : [];
     const cubicleInfoById = Object.fromEntries(activeCubicleInfo.map(c => [c.id, c]));
-    const seenUserIds = new Set();
-    const activePhlebotomists = activeSessionsForAssign
-      .filter(s => s.user?.isActive)
-      .filter(s => {
-        if (seenUserIds.has(s.userId)) return false;
-        seenUserIds.add(s.userId);
-        return true;
-      })
-      .map(s => {
-        const cub = cubicleInfoById[s.selectedCubicleId] || null;
-        return {
-          id: s.user.id,
-          name: s.user.name,
-          cubicleId: s.selectedCubicleId,
-          cubicleName: cub?.name || null,
-          cubicleType: cub?.type || null
-        };
-      });
+
+    // Dedup by userId: prefer the session that still has a cubicle assigned
+    const bestSessionByUser = new Map();
+    for (const s of activeSessionsForAssign) {
+      const prev = bestSessionByUser.get(s.userId);
+      if (!prev) {
+        bestSessionByUser.set(s.userId, s);
+      } else if (!prev.selectedCubicleId && s.selectedCubicleId) {
+        // Upgrade: prefer session with known cubicle
+        bestSessionByUser.set(s.userId, s);
+      }
+    }
+
+    const activePhlebotomists = Array.from(bestSessionByUser.values()).map(s => {
+      const cub = s.selectedCubicleId ? (cubicleInfoById[s.selectedCubicleId] || null) : null;
+      return {
+        id: s.user.id,
+        name: s.user.name,
+        cubicleId: s.selectedCubicleId || null,
+        cubicleName: cub?.name || null,
+        cubicleType: cub?.type || null
+      };
+    });
 
     // Obtener lista de cubículos activos para filtros
     const cubicles = await prisma.cubicle.findMany({

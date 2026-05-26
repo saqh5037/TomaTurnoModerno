@@ -1438,17 +1438,20 @@ function AdminControlPanel() {
                           ))
                         : (filters.activePhlebotomists || []).map(p => {
                             const typeLabel = p.cubicleType ? ` [${p.cubicleType}]` : '';
+                            const cubicleLabel = p.cubicleName
+                              ? ` — Cub ${p.cubicleName}${typeLabel}`
+                              : ' — sin cubículo';
                             return (
                               <option key={p.id} value={p.id}>
-                                {p.name}{p.cubicleName ? ` — Cub ${p.cubicleName}${typeLabel}` : ''}
+                                {p.name}{cubicleLabel}
                               </option>
                             );
                           })
                       }
                     </Select>
-                    {reassignType === 'assign-phlebotomist' && (filters.activePhlebotomists || []).length <= 1 && (
+                    {reassignType === 'assign-phlebotomist' && (filters.activePhlebotomists || []).length === 0 && (
                       <Text fontSize="xs" color="orange.600" mt={1}>
-                        Solo {(filters.activePhlebotomists || []).length} flebotomista(s) con sesión activa. Si esperabas más opciones, pídele al personal que haga login en su cubículo.
+                        No hay flebotomistas con sesión activa. Pídele al personal que inicie sesión.
                       </Text>
                     )}
                     {/* v2.8.55: warning de incompatibilidad cubículo↔prioridad */}

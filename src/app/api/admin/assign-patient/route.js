@@ -108,11 +108,13 @@ export async function POST(request) {
       incompatibilityReason = `Paciente ${turn.tipoAtencion} requiere cubículo SPECIAL. Flebotomista está en cubículo ${phlebCubicle?.name || '(sin cubículo)'} de tipo ${phlebCubicleType || 'desconocido'}.`;
     }
 
-    if (turn.tipoAtencion === 'RiesgoCaida') {
-      const num = cubicleNumberFromName(phlebCubicle?.name);
+    // RiesgoCaida check: only block when the cubicle is KNOWN and not 1 or 2.
+    // If phlebCubicle is null the admin is assigning consciously without cubicle info — allow it.
+    if (turn.tipoAtencion === 'RiesgoCaida' && phlebCubicle) {
+      const num = cubicleNumberFromName(phlebCubicle.name);
       if (![1, 2].includes(num)) {
         compatible = false;
-        incompatibilityReason = `Paciente en silla de ruedas (RiesgoCaida) solo puede asignarse a cubículos 1 o 2. Flebotomista está en ${phlebCubicle?.name || '(sin cubículo)'}.`;
+        incompatibilityReason = `Paciente en silla de ruedas (RiesgoCaida) solo puede asignarse a cubículos 1 o 2. Flebotomista está en ${phlebCubicle.name}.`;
       }
     }
 
