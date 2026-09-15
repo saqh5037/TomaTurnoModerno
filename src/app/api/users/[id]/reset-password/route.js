@@ -2,29 +2,9 @@ import { NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import { generateTemporaryPassword } from "../../../../../../lib/temporaryPassword.js";
 
 const prisma = new PrismaClient();
-
-// Generar contraseña aleatoria segura
-function generateRandomPassword() {
-  const length = 12;
-  const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*";
-  let password = "";
-
-  // Asegurar que tenga al menos uno de cada tipo
-  password += "ABCDEFGHIJKLMNOPQRSTUVWXYZ"[Math.floor(Math.random() * 26)];
-  password += "abcdefghijklmnopqrstuvwxyz"[Math.floor(Math.random() * 26)];
-  password += "0123456789"[Math.floor(Math.random() * 10)];
-  password += "!@#$%^&*"[Math.floor(Math.random() * 8)];
-
-  // Completar el resto
-  for (let i = password.length; i < length; i++) {
-    password += charset.charAt(Math.floor(Math.random() * charset.length));
-  }
-
-  // Mezclar caracteres
-  return password.split('').sort(() => Math.random() - 0.5).join('');
-}
 
 // POST - Generar nueva contraseña temporal
 export async function POST(request, { params }) {
@@ -91,7 +71,7 @@ export async function POST(request, { params }) {
     }
 
     // Generar nueva contraseña temporal
-    const temporaryPassword = generateRandomPassword();
+    const temporaryPassword = generateTemporaryPassword();
     const hashedPassword = await bcrypt.hash(temporaryPassword, 10);
 
     // Actualizar usuario con nueva contraseña

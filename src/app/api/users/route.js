@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import { validatePassword } from "../../../../lib/passwordPolicy.js";
 
 const prisma = new PrismaClient();
 
@@ -248,14 +249,11 @@ export async function POST(request) {
       );
     }
 
-    // Validar contraseña (mínimo 8 caracteres, al menos una mayúscula, una minúscula, un número)
-    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
-    if (!passwordRegex.test(password)) {
+    // Validar contraseña (misma política que edición de usuario)
+    const passwordCheck = validatePassword(password);
+    if (!passwordCheck.valid) {
       return NextResponse.json(
-        {
-          success: false,
-          error: "La contraseña debe tener al menos 8 caracteres, una mayúscula, una minúscula y un número"
-        },
+        { success: false, error: passwordCheck.message },
         { status: 400 }
       );
     }

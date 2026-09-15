@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
-import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import { validatePassword } from "../../../../../lib/passwordPolicy.js";
+import { buildPasswordUpdateData } from "../../../../../lib/userPasswordUpdate.js";
 
 const prisma = new PrismaClient();
 
@@ -213,18 +214,16 @@ export async function PUT(request, { params }) {
 
     // Si se proporciona nueva contraseña
     if (password) {
-      const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
-      if (!passwordRegex.test(password)) {
+      const { valid, message } = validatePassword(password);
+      if (!valid) {
         return NextResponse.json(
-          {
-            success: false,
-            error: "La contraseña debe tener al menos 8 caracteres, una mayúscula, una minúscula y un número"
-          },
+          { success: false, error: message },
           { status: 400 }
         );
       }
-      updateData.password = await bcrypt.hash(password, 10);
-      updateData.passwordChangedAt = new Date();
+      // Al fijar una contraseña nueva, también se limpia cualquier bloqueo
+      // por intentos fallidos (un admin no tenía forma de desbloquear).
+      Object.assign(updateData, await buildPasswordUpdateData(password));
     }
 
     updateData.updatedAt = new Date();
