@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 import jwt from "jsonwebtoken";
+import { buildAuditLogData } from "../../../../../lib/auditLogData.js";
 
 const prisma = new PrismaClient();
 const JWT_SECRET = process.env.NEXTAUTH_SECRET || process.env.JWT_SECRET;
@@ -112,20 +113,20 @@ export async function PUT(req) {
     // Registrar en auditoría
     try {
       await prisma.auditLog.create({
-        data: {
+        data: buildAuditLogData({
           userId: decodedToken.userId,
           action: 'UPDATE_PROFILE',
           entity: 'User',
-          entityId: String(decodedToken.userId),
-          details: JSON.stringify({
+          entityId: decodedToken.userId,
+          newValue: {
             updatedFields: {
               name: name !== existingUser.name,
               email: email !== existingUser.email,
               phone: phone !== existingUser.phone
             }
-          }),
+          },
           ipAddress: req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown'
-        }
+        })
       });
     } catch (auditError) {
       console.warn('Error creating audit log:', auditError);

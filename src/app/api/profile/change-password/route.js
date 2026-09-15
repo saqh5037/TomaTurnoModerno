@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
+import { buildAuditLogData } from "../../../../../lib/auditLogData.js";
 
 const prisma = new PrismaClient();
 const JWT_SECRET = process.env.NEXTAUTH_SECRET || process.env.JWT_SECRET;
@@ -90,14 +91,14 @@ export async function PUT(req) {
       // Registrar intento fallido
       try {
         await prisma.auditLog.create({
-          data: {
+          data: buildAuditLogData({
             userId: user.id,
             action: 'FAILED_PASSWORD_CHANGE',
             entity: 'User',
-            entityId: String(user.id),
-            details: JSON.stringify({ reason: 'Invalid current password' }),
+            entityId: user.id,
+            newValue: { reason: 'Invalid current password' },
             ipAddress: req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown'
-          }
+          })
         });
       } catch (auditError) {
         console.warn('Error creating audit log:', auditError);
@@ -137,17 +138,17 @@ export async function PUT(req) {
     // Registrar cambio exitoso en auditoría
     try {
       await prisma.auditLog.create({
-        data: {
+        data: buildAuditLogData({
           userId: user.id,
           action: 'CHANGE_PASSWORD',
           entity: 'User',
-          entityId: String(user.id),
-          details: JSON.stringify({
+          entityId: user.id,
+          newValue: {
             success: true,
             changedAt: new Date().toISOString()
-          }),
+          },
           ipAddress: req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown'
-        }
+        })
       });
     } catch (auditError) {
       console.warn('Error creating audit log:', auditError);

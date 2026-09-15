@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 import jwt from "jsonwebtoken";
+import { buildAuditLogData } from "../../../../../lib/auditLogData.js";
 
 const prisma = new PrismaClient();
 const JWT_SECRET = process.env.NEXTAUTH_SECRET || process.env.JWT_SECRET;
@@ -126,9 +127,10 @@ export async function POST(req) {
 
     const expiresAt = new Date(Date.now() + 8 * 60 * 60 * 1000); // 8 horas
 
+    let session;
     if (existingSession) {
       // Actualizar sesión existente con nuevos tokens
-      await prisma.session.update({
+      session = await prisma.session.update({
         where: { id: existingSession.id },
         data: {
           token: newToken,
@@ -150,7 +152,7 @@ export async function POST(req) {
       });
 
       // Crear nueva sesión si no existe
-      await prisma.session.create({
+      session = await prisma.session.create({
         data: {
           userId: user.id,
           token: newToken,
@@ -163,20 +165,25 @@ export async function POST(req) {
       });
     }
 
-    // Registrar renovación en auditoría
-    await prisma.auditLog.create({
-      data: {
-        userId: user.id,
-        action: 'REFRESH_TOKEN',
-        entity: 'Session',
-        entityId: existingSession ? String(existingSession.id) : 'new',
-        details: {
-          oldTokenExp: decodedToken.exp,
-          newTokenExp: Math.floor(expiresAt.getTime() / 1000)
-        },
-        ipAddress: req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown'
-      }
-    });
+    // Registrar renovación en auditoría. Los tokens nuevos ya están guardados en
+    // la sesión, así que un fallo aquí no debe impedir entregarlos al cliente.
+    try {
+      await prisma.auditLog.create({
+        data: buildAuditLogData({
+          userId: user.id,
+          action: 'REFRESH_TOKEN',
+          entity: 'Session',
+          entityId: session.id,
+          newValue: {
+            oldTokenExp: decodedToken.exp,
+            newTokenExp: Math.floor(expiresAt.getTime() / 1000)
+          },
+          ipAddress: req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown'
+        })
+      });
+    } catch (auditError) {
+      console.error('Error registrando auditoría de renovación:', auditError);
+    }
 
     // Limpiar sesiones expiradas del usuario
     await prisma.session.deleteMany({
