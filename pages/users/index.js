@@ -71,7 +71,15 @@ import {
   Wrap,
   WrapItem,
   Center,
-  extendTheme
+  extendTheme,
+  Modal,
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+  ModalCloseButton,
+  useClipboard
 } from '@chakra-ui/react';
 import {
   FaPlus,
@@ -110,6 +118,7 @@ import ProtectedRoute from '../../components/ProtectedRoute';
 import { fadeInUp, slideInFromLeft, slideInFromRight, GlassCard, ModernContainer, ModernHeader } from '../../components/theme/ModernTheme';
 import { useAuth } from '../../contexts/AuthContext';
 import { useRouter } from 'next/router';
+import { validatePassword } from '../../lib/passwordPolicy.js';
 
 // Componente de indicador de fortaleza de contraseña
 const PasswordStrengthIndicator = ({ password }) => {
@@ -139,7 +148,7 @@ const PasswordStrengthIndicator = ({ password }) => {
 };
 
 // Componente de Badge de Estado de Usuario
-const UserStatusBadge = ({ status, isActive, isLocked }) => {
+const UserStatusBadge = ({ status, isActive, isLocked, lockedUntil }) => {
   if (status === 'BLOCKED') {
     return (
       <Badge colorScheme="red" variant="solid">
@@ -149,10 +158,13 @@ const UserStatusBadge = ({ status, isActive, isLocked }) => {
     );
   }
   if (isLocked) {
+    const lockedUntilTime = lockedUntil
+      ? new Date(lockedUntil).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })
+      : null;
     return (
       <Badge colorScheme="orange" variant="solid">
         <FaExclamationTriangle style={{ marginRight: '4px' }} />
-        Bloqueada por seguridad
+        {lockedUntilTime ? `Bloqueada hasta ${lockedUntilTime}` : 'Bloqueada por seguridad'}
       </Badge>
     );
   }
@@ -256,6 +268,8 @@ function UsersManagement() {
   const [deletingUser, setDeletingUser] = useState(null);
   const [viewingUser, setViewingUser] = useState(null);
   const [resetPasswordUser, setResetPasswordUser] = useState(null);
+  const [isResettingPassword, setIsResettingPassword] = useState(false);
+  const [temporaryPasswordResult, setTemporaryPasswordResult] = useState(null);
 
   // Referencias
   const cancelRef = useRef();
@@ -266,6 +280,14 @@ function UsersManagement() {
   const { isOpen: isDeleteOpen, onOpen: onDeleteOpen, onClose: onDeleteClose } = useDisclosure();
   const { isOpen: isViewOpen, onOpen: onViewOpen, onClose: onViewClose } = useDisclosure();
   const { isOpen: isResetOpen, onOpen: onResetOpen, onClose: onResetClose } = useDisclosure();
+  const { isOpen: isTempPasswordOpen, onOpen: onTempPasswordOpen, onClose: onTempPasswordClose } = useDisclosure();
+
+  // Al cerrar el modal se descarta la contraseña temporal para no dejarla en memoria
+  const closeTempPasswordModal = () => {
+    onTempPasswordClose();
+    setTemporaryPasswordResult(null);
+  };
+  const { hasCopied, onCopy } = useClipboard(temporaryPasswordResult?.temporaryPassword || '');
   const toast = useToast();
   const bgColor = useColorModeValue('white', 'gray.800');
   const borderColor = useColorModeValue('gray.200', 'gray.600');
@@ -443,8 +465,11 @@ function UsersManagement() {
 
     if (!editingUser && !formData.password) {
       errors.password = 'La contraseña es requerida';
-    } else if (formData.password && formData.password.length < 8) {
-      errors.password = 'La contraseña debe tener al menos 8 caracteres';
+    } else if (formData.password) {
+      const { valid, message } = validatePassword(formData.password);
+      if (!valid) {
+        errors.password = message;
+      }
     }
 
     if (!formData.name) {
@@ -619,6 +644,7 @@ function UsersManagement() {
   const handleResetPassword = async () => {
     if (!resetPasswordUser) return;
 
+    setIsResettingPassword(true);
     try {
       const token = localStorage.getItem('token');
       const response = await fetch(`/api/users/${resetPasswordUser.id}/reset-password`, {
@@ -632,20 +658,55 @@ function UsersManagement() {
       const data = await response.json();
 
       if (response.ok && data.success) {
-        toast({
-          title: 'Contraseña temporal generada',
-          description: `Nueva contraseña para ${data.data.username}: ${data.data.temporaryPassword}`,
-          status: 'success',
-          duration: 10000,
-          isClosable: true,
-        });
         onResetClose();
         setResetPasswordUser(null);
+        setTemporaryPasswordResult(data.data);
+        onTempPasswordOpen();
       } else {
         throw new Error(data.error || 'Error al resetear contraseña');
       }
     } catch (error) {
       console.error('Error resetting password:', error);
+      toast({
+        title: 'Error',
+        description: error.message,
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+    } finally {
+      setIsResettingPassword(false);
+    }
+  };
+
+  // Función para desbloquear una cuenta bloqueada por intentos fallidos
+  const handleUnlock = async (user) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`/api/users/${user.id}/unlock`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        toast({
+          title: 'Cuenta desbloqueada',
+          description: `${user.name} ya puede iniciar sesión nuevamente`,
+          status: 'success',
+          duration: 5000,
+          isClosable: true,
+        });
+        fetchUsers();
+      } else {
+        throw new Error(data.error || 'Error al desbloquear la cuenta');
+      }
+    } catch (error) {
+      console.error('Error unlocking user:', error);
       toast({
         title: 'Error',
         description: error.message,
@@ -1074,7 +1135,7 @@ function UsersManagement() {
                           </Td>
                           <Td>
                             <VStack align="start" spacing={1}>
-                              <UserStatusBadge status={user.status} isActive={user.isActive} isLocked={user.isLocked} />
+                              <UserStatusBadge status={user.status} isActive={user.isActive} isLocked={user.isLocked} lockedUntil={user.lockedUntil} />
                               {user.status !== 'BLOCKED' && (
                                 <Switch
                                   isChecked={user.isActive}
@@ -1130,6 +1191,11 @@ function UsersManagement() {
                                 }}>
                                   Resetear contraseña
                                 </MenuItem>
+                                {user.isLocked && user.status !== 'BLOCKED' && (
+                                  <MenuItem icon={<FaUnlock />} color="orange.500" onClick={() => handleUnlock(user)}>
+                                    Desbloquear cuenta
+                                  </MenuItem>
+                                )}
                                 <MenuDivider />
                                 {user.status !== 'BLOCKED' ? (
                                   <MenuItem icon={<FaTrash />} color="red.500" onClick={() => {
@@ -1139,7 +1205,7 @@ function UsersManagement() {
                                     Eliminar Usuario
                                   </MenuItem>
                                 ) : (
-                                  <MenuItem icon={<FaUnlock />} color="green.500" onClick={() => handleToggleStatus(user.id, true)}>
+                                  <MenuItem icon={<FaUnlock />} color="green.500" onClick={() => handleToggleStatus(user.id, false)}>
                                     Restaurar Usuario
                                   </MenuItem>
                                 )}
@@ -1367,16 +1433,62 @@ function UsersManagement() {
                 </AlertDialogBody>
 
                 <AlertDialogFooter>
-                  <Button ref={cancelRef} onClick={onResetClose}>
+                  <Button ref={cancelRef} onClick={onResetClose} isDisabled={isResettingPassword}>
                     Cancelar
                   </Button>
-                  <Button colorScheme="orange" onClick={handleResetPassword} ml={3}>
+                  <Button
+                    colorScheme="orange"
+                    onClick={handleResetPassword}
+                    ml={3}
+                    isLoading={isResettingPassword}
+                    loadingText="Generando..."
+                  >
                     Generar Contraseña
                   </Button>
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialogOverlay>
           </AlertDialog>
+
+          {/* Modal con la contraseña temporal generada */}
+          <Modal isOpen={isTempPasswordOpen} onClose={closeTempPasswordModal} isCentered closeOnOverlayClick={false}>
+            <ModalOverlay />
+            <ModalContent>
+              <ModalHeader>Contraseña temporal generada</ModalHeader>
+              <ModalCloseButton />
+              <ModalBody>
+                <Text mb={4}>
+                  Nueva contraseña para <strong>{temporaryPasswordResult?.name}</strong> (@{temporaryPasswordResult?.username}):
+                </Text>
+                <Box
+                  className="notranslate"
+                  bg="gray.100"
+                  borderRadius="md"
+                  p={4}
+                  textAlign="center"
+                  mb={3}
+                >
+                  <Text
+                    fontFamily="mono"
+                    fontSize="2xl"
+                    fontWeight="bold"
+                    letterSpacing="0.15em"
+                  >
+                    {temporaryPasswordResult?.temporaryPassword}
+                  </Text>
+                </Box>
+                <Button size="md" onClick={onCopy} colorScheme={hasCopied ? 'green' : 'blue'} mb={3}>
+                  {hasCopied ? 'Copiada' : 'Copiar'}
+                </Button>
+                <Text fontSize="sm" color="orange.600">
+                  Cópiela y péguela; no la teclee.
+                </Text>
+              </ModalBody>
+              <ModalFooter>
+                <Button onClick={closeTempPasswordModal}>Cerrar</Button>
+              </ModalFooter>
+            </ModalContent>
+          </Modal>
         </ModernContainer>
       </ProtectedRoute>
   );
