@@ -134,7 +134,18 @@ export default function SurveyGateModal({ isOpen, onClose, turn, config, onResol
           {/* Kept mounted (hidden) while refusing so going back does not reload the iframe and fake a load */}
           {mode === 'iframe' && (
             <VStack align="stretch" spacing={2} display={refusing ? 'none' : 'flex'}>
-              <Box h="62vh" borderWidth="1px" borderRadius="md" overflow="hidden">
+              {/* Fallback sits above the iframe so it stays visible when the survey fails to load */}
+              <Link
+                as="button"
+                type="button"
+                fontSize="sm"
+                color="blue.600"
+                alignSelf="flex-end"
+                onClick={() => setMode('qr')}
+              >
+                ¿No carga? Usar código QR
+              </Link>
+              <Box h={{ base: '48vh', md: '54vh' }} minH="280px" borderWidth="1px" borderRadius="md" overflow="hidden">
                 <iframe
                   src={url}
                   title="Encuesta de satisfacción del paciente"
@@ -142,16 +153,6 @@ export default function SurveyGateModal({ isOpen, onClose, turn, config, onResol
                   style={{ width: '100%', height: '100%', border: 0 }}
                 />
               </Box>
-              <Link
-                as="button"
-                type="button"
-                fontSize="sm"
-                color="blue.600"
-                alignSelf="flex-start"
-                onClick={() => setMode('qr')}
-              >
-                ¿No carga? Usar código QR
-              </Link>
             </VStack>
           )}
 

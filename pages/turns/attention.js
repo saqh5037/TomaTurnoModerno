@@ -1542,7 +1542,7 @@ export default function Attention() {
               {patient.patientName}
             </Text>
             {isActive && surveyByTurn[patient.id]?.required && (
-              <Badge colorScheme="yellow" variant="solid" fontSize="sm" px={3} py={1} mt={2} borderRadius="md">
+              <Badge bg="yellow.300" color="gray.900" fontSize="sm" px={3} py={1} mt={2} borderRadius="md">
                 <HStack spacing={1}>
                   <FaClipboardList aria-hidden="true" />
                   <span>Encuesta requerida</span>

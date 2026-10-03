@@ -65,7 +65,7 @@ export default function SurveyGateDemo() {
       <Heading size="md" mb={4}>Survey gate demo ({mode})</Heading>
       <Box textAlign="center" p={6} borderWidth="1px" borderRadius="lg" maxW="lg">
         <Text fontSize="3xl" fontWeight="semibold">{TURN.patientName}</Text>
-        <Badge colorScheme="yellow" variant="solid" fontSize="sm" px={3} py={1} mt={2} borderRadius="md">
+        <Badge bg="yellow.300" color="gray.900" fontSize="sm" px={3} py={1} mt={2} borderRadius="md">
           <HStack spacing={1}>
             <FaClipboardList aria-hidden="true" />
             <span>Encuesta requerida</span>
