@@ -1,5 +1,7 @@
 import prisma from '../../../../../lib/prisma.js';
 import { touchSessionActivity } from '../../../../../lib/sessionActivity.js';
+import { statusOnDefer } from '../../../../../lib/surveyGate.js';
+import { writeAudit } from '../../../../../lib/surveyGateRepo.js';
 
 /**
  * POST /api/queue/defer
@@ -111,6 +113,31 @@ export async function POST(req) {
     });
 
     console.log(`[defer] Turno ${turnId} (${turn.patientName}) marcado como diferido - Llamados: ${turn.callCount}`);
+
+    // Survey gate: returning to the queue releases a PENDING survey (best effort, never blocks the defer)
+    try {
+      const assignment = await prisma.surveyAssignment.findUnique({ where: { turnId: turn.id } });
+      const nextStatus = statusOnDefer(assignment);
+      if (nextStatus) {
+        await prisma.surveyAssignment.update({
+          where: { id: assignment.id },
+          data: { status: nextStatus, resolvedAt: now, resolvedBy: turn.attendedBy }
+        });
+        if (turn.attendedBy) {
+          await writeAudit(prisma, {
+            request: req,
+            userId: turn.attendedBy,
+            action: 'SURVEY_RELEASED',
+            entity: 'SurveyAssignment',
+            entityId: assignment.id,
+            oldValue: { status: assignment.status },
+            newValue: { status: nextStatus, turnId: turn.id }
+          });
+        }
+      }
+    } catch (surveyError) {
+      console.error('[defer] Error al liberar encuesta pendiente:', surveyError);
+    }
 
     // Refresh session activity for the phlebotomist who deferred the patient.
     if (turn.attendedBy) {

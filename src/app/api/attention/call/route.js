@@ -1,5 +1,6 @@
 import prisma from "@/lib/prisma";
 import { touchSessionActivity } from "@/lib/sessionActivity";
+import { evaluateSurveyForCall } from "@/lib/surveyGateRepo";
 
 export async function POST(req) {
   try {
@@ -93,7 +94,28 @@ export async function POST(req) {
       // evict them while they are actively calling patients.
       touchSessionActivity(userIdInt).catch(() => {});
 
-      return new Response(JSON.stringify(result.turn), {
+      // Survey gate (best effort, AFTER the call committed): a failure here must never
+      // roll back or fail the patient call. Inert unless surveyConfig.enabled.
+      // Own SERIALIZABLE transaction (retried once on P2034) so two concurrent calls by
+      // the same user cannot both be flagged.
+      let survey = { surveyRequired: false, surveyAssignmentId: null, surveyConfig: { enabled: false, mode: "iframe", url: null } };
+      const evaluateSurvey = () =>
+        prisma.$transaction(
+          (tx) => evaluateSurveyForCall(tx, { turnId: turnIdInt, userId: userIdInt }),
+          { isolationLevel: 'Serializable', timeout: 10000 }
+        );
+      try {
+        try {
+          survey = await evaluateSurvey();
+        } catch (firstError) {
+          if (firstError?.code !== 'P2034') throw firstError;
+          survey = await evaluateSurvey();
+        }
+      } catch (surveyError) {
+        console.error("[call] Error al evaluar encuesta de satisfacción:", surveyError);
+      }
+
+      return new Response(JSON.stringify({ ...result.turn, ...survey }), {
         status: 200,
         headers: { "Content-Type": "application/json" },
       });

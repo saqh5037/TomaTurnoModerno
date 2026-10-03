@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import jwt from "jsonwebtoken";
 import prisma from "../../../../../lib/prisma.js";
+import { statusOnAdminComplete } from "../../../../../lib/surveyGate.js";
+import { writeAudit } from "../../../../../lib/surveyGateRepo.js";
 
 const JWT_SECRET = process.env.NEXTAUTH_SECRET || process.env.JWT_SECRET;
 
@@ -125,6 +127,29 @@ export async function POST(request) {
         ipAddress: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown'
       }
     });
+
+    // Survey gate: forcing completion bypasses a PENDING survey (best effort, never blocks the completion)
+    try {
+      const assignment = await prisma.surveyAssignment.findUnique({ where: { turnId: turn.id } });
+      const nextStatus = statusOnAdminComplete(assignment);
+      if (nextStatus) {
+        await prisma.surveyAssignment.update({
+          where: { id: assignment.id },
+          data: { status: nextStatus, resolvedAt: now, resolvedBy: decodedToken.userId }
+        });
+        await writeAudit(prisma, {
+          request,
+          userId: decodedToken.userId,
+          action: "SURVEY_ADMIN_BYPASS",
+          entity: "SurveyAssignment",
+          entityId: assignment.id,
+          oldValue: { status: assignment.status },
+          newValue: { status: nextStatus, turnId: turn.id, reason: reason.trim() }
+        });
+      }
+    } catch (surveyError) {
+      console.error("[Admin Force Complete] Error al registrar bypass de encuesta:", surveyError);
+    }
 
     console.log(`[Admin] Turno forzado a finalizado: ${turn.assignedTurn} por ${decodedToken.name || decodedToken.userId}. Razón: ${reason}`);
 
