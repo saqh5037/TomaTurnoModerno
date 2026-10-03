@@ -12,7 +12,8 @@ export async function POST(request) {
     if (auth.error) return fail(auth.error.status, auth.error.message);
     const { decoded } = auth;
 
-    const body = await request.json();
+    const body = await request.json().catch(() => null);
+    if (!body || typeof body !== "object" || Array.isArray(body)) return fail(400, "Cuerpo inválido");
     const turnId = parseInt(body.turnId);
     const { outcome } = body;
 

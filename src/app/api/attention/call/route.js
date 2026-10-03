@@ -77,10 +77,7 @@ export async function POST(req) {
 
         console.log(`[call] Turno ${turnIdInt} (${turn.patientName}) llamado por usuario ${userIdInt} en cubículo ${cubicleIdInt}`);
 
-        // Survey gate: inert unless surveyConfig.enabled; flags this call when due.
-        const survey = await evaluateSurveyForCall(tx, { turnId: turnIdInt, userId: userIdInt });
-
-        return { success: true, turn: updatedTurn, survey };
+        return { success: true, turn: updatedTurn };
       }, {
         isolationLevel: 'Serializable', // Máximo nivel de aislamiento
         timeout: 10000 // 10 segundos de timeout
@@ -97,7 +94,16 @@ export async function POST(req) {
       // evict them while they are actively calling patients.
       touchSessionActivity(userIdInt).catch(() => {});
 
-      return new Response(JSON.stringify({ ...result.turn, ...result.survey }), {
+      // Survey gate (best effort, AFTER the call committed): a failure here must never
+      // roll back or fail the patient call. Inert unless surveyConfig.enabled.
+      let survey = { surveyRequired: false, surveyAssignmentId: null, surveyConfig: { enabled: false, mode: "iframe", url: null } };
+      try {
+        survey = await evaluateSurveyForCall(prisma, { turnId: turnIdInt, userId: userIdInt });
+      } catch (surveyError) {
+        console.error("[call] Error al evaluar encuesta de satisfacción:", surveyError);
+      }
+
+      return new Response(JSON.stringify({ ...result.turn, ...survey }), {
         status: 200,
         headers: { "Content-Type": "application/json" },
       });

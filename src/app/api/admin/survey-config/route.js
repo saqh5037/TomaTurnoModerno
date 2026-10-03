@@ -34,8 +34,9 @@ export async function POST(request) {
     if (!isAdminToken(auth.decoded)) {
       return NextResponse.json({ success: false, error: "Acceso denegado" }, { status: 403 });
     }
+    // admin / administrador only (supervisors are intentionally excluded from writes)
 
-    const body = await request.json();
+    const body = await request.json().catch(() => null);
     const { error, patch } = validateSurveyConfigUpdate(body);
     if (error) {
       return NextResponse.json({ success: false, error }, { status: 400 });

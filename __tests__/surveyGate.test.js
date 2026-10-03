@@ -105,6 +105,11 @@ describe('shouldFlagTurn', () => {
     expect(r.flag).toBe(false);
   });
 
+  test('maxRefusalsPerDay=0 with no refusals still flags at K', () => {
+    const config = enabled({ maxRefusalsPerDay: 0, windowMax: 1 });
+    expect(flag({ config, callsToday: 1 })).toEqual({ flag: true, reason: 'target_reached' });
+  });
+
   test('releases do not count towards the refusal cap', () => {
     const rel = [{ status: 'RELEASED' }, { status: 'RELEASED' }, { status: 'RELEASED' }, { status: 'RELEASED' }];
     expect(flag({ callsToday: 9, assignmentsToday: rel }).flag).toBe(true);
