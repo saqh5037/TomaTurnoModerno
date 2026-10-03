@@ -52,7 +52,8 @@ Strategy: ask-on-risk. Forecast ~900 authored lines → slicing decision require
 - RDD slice T4+T5 (base ac8f5f5): medium, granted, lineage review-e0fab4775cdcf2c6 approved + acknowledged. Fixed: stale settings save after failed reload (form reset + Guardar disabled on loadError); report range desync (shows loaded range + hint). Verified in browser with mocked 500. Not applied: migration edited in place (never applied to any DB, branch unpushed); UI component tests remain debt.
 - RDD final slice (base eb5faf9): medium, granted, lineage review-b26163d639d34b79 approved + acknowledged. R3-report-range-format-coupling refuted (API echoes validated YYYY-MM-DD from/to, route.js:33-40,62); UI component tests remain debt.
 - Final checks: full suite 316 pass / 5 fail (labsisTubeMapping only; files untouched since base d86add6, diff 0 lines). Not run: migration against a real DB, `next build`, Phase 0 at INER.
+- Post-PR checks (2026-10-03): `next build` exit 0 (/statistics/surveys, /turns/attention built). Throwaway postgres:14 container: `prisma migrate deploy` applied all migrations; unique turnId rejects duplicate; default status PENDING; FK rejects unknown turn; delete TurnRequest cascades. `migrate diff` DB→schema shows only pre-existing drift: User.status column/index absent from migrations since before base d86add6 (not introduced here; production must already have it — verify before deploy).
 - Decision: report GET open to admin/administrador/supervisor; config POST admin/administrador only.
 
 ## Next step
-Push + PR (base fix/auth-refresh-auditlog-v2.8.65). Then Phase 0 at INER, staging migration test, deploy outside 7–19h with flag off.
+Human-gated only: approve PR #3, merge v2.8.65 lineage first, confirm prod has User.status, Phase 0 at INER, deploy outside 7–19h with DB backup and flag off, then enable.
