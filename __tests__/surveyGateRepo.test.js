@@ -83,6 +83,20 @@ describe('evaluateSurveyForCall', () => {
     expect(where.OR).toContainEqual({ turnId: 10, status: 'RELEASED' });
   });
 
+  test('re-called deferred turn with RELEASED row is untouched when the gate says no (refusal cap)', async () => {
+    const tx = makeTx({
+      config: { enabled: true, windowMax: 20, maxRefusalsPerDay: 1 },
+      calls: 1,
+      assignments: [{ status: 'RELEASED' }, { status: 'REFUSED' }],
+      existing: { id: 55, status: 'RELEASED' }
+    });
+    tx.surveyAssignment.update = jest.fn();
+    const r = await evaluateSurveyForCall(tx, { turnId: 10, userId: 7, now: NOW });
+    expect(r).toMatchObject({ surveyRequired: false, surveyAssignmentId: null });
+    expect(tx.surveyAssignment.upsert).not.toHaveBeenCalled();
+    expect(tx.surveyAssignment.update).not.toHaveBeenCalled();
+  });
+
   test.each(['COMPLETED', 'REFUSED', 'ADMIN_BYPASS'])('never overwrites an existing %s row', async (status) => {
     const tx = makeTx({
       config: { enabled: true, windowMax: 1 },

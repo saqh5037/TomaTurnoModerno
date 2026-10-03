@@ -8,11 +8,13 @@ const mockPrisma = {
     findUnique: jest.fn(),
     findMany: jest.fn(),
     update: jest.fn(),
-    updateMany: jest.fn()
+    updateMany: jest.fn(),
+    upsert: jest.fn()
   },
-  turnRequest: { findUnique: jest.fn(), update: jest.fn() },
+  turnRequest: { findUnique: jest.fn(), update: jest.fn(), count: jest.fn() },
   auditLog: { create: jest.fn() },
-  $queryRaw: jest.fn()
+  $queryRaw: jest.fn(),
+  $transaction: jest.fn()
 };
 
 jest.mock('../lib/prisma.js', () => ({ __esModule: true, default: mockPrisma }));
@@ -22,6 +24,7 @@ jest.mock('../lib/holdingUtils.js', () => ({ assignNextHolding: jest.fn().mockRe
 process.env.NEXTAUTH_SECRET = 'test-secret';
 const jwt = require('jsonwebtoken');
 
+const { POST: callPOST } = require('../src/app/api/attention/call/route.js');
 const { POST: completePOST } = require('../src/app/api/attention/complete/route.js');
 const { POST: deferPOST } = require('../src/app/api/queue/defer/route.js');
 const { POST: forceCompletePOST } = require('../src/app/api/admin/force-complete/route.js');
@@ -53,6 +56,50 @@ beforeEach(() => {
 });
 
 afterEach(() => jest.restoreAllMocks());
+
+describe('attention/call survey evaluation', () => {
+  const callBody = { turnId: 5, userId: 7, cubicleId: 2 };
+  const call = () => callPOST(req('/api/attention/call', { body: callBody }));
+
+  beforeEach(() => {
+    mockPrisma.$transaction.mockImplementation((fn) => fn(mockPrisma));
+    mockPrisma.$queryRaw.mockResolvedValue([{ id: 5, status: 'Pending', holdingBy: null, patientName: 'P' }]);
+    mockPrisma.turnRequest.update.mockResolvedValue({ id: 5, status: 'In Progress' });
+    mockPrisma.turnRequest.count.mockResolvedValue(1);
+    mockPrisma.surveyAssignment.findMany.mockResolvedValue([]);
+    mockPrisma.surveyAssignment.upsert.mockResolvedValue({ id: 42, status: 'PENDING' });
+    mockPrisma.systemState.findUnique.mockResolvedValue(enabledConfig({ windowMax: 1 }));
+  });
+
+  test('evaluation succeeds -> response merges surveyRequired and assignment id', async () => {
+    const res = await call();
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({ id: 5, status: 'In Progress', surveyRequired: true, surveyAssignmentId: 42 });
+    expect(mockPrisma.$transaction).toHaveBeenCalledTimes(2);
+    expect(mockPrisma.$transaction.mock.calls[1][1]).toMatchObject({ isolationLevel: 'Serializable' });
+  });
+
+  test('evaluation rejects -> 200, call result intact, surveyRequired false', async () => {
+    mockPrisma.systemState.findUnique.mockRejectedValue(new Error('db down'));
+    const res = await call();
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({
+      id: 5, status: 'In Progress', surveyRequired: false, surveyAssignmentId: null,
+      surveyConfig: { enabled: false, mode: 'iframe', url: null }
+    });
+  });
+
+  test('P2034 once then success -> retried and flagged', async () => {
+    mockPrisma.$transaction
+      .mockImplementationOnce((fn) => fn(mockPrisma)) // patient call
+      .mockRejectedValueOnce(Object.assign(new Error('serialization'), { code: 'P2034' }))
+      .mockImplementationOnce((fn) => fn(mockPrisma));
+    const res = await call();
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({ surveyRequired: true, surveyAssignmentId: 42 });
+    expect(mockPrisma.$transaction).toHaveBeenCalledTimes(3);
+  });
+});
 
 describe('attention/complete', () => {
   beforeEach(() => {
