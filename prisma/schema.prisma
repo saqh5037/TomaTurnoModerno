@@ -8,26 +8,27 @@ datasource db {
 }
 
 model User {
-  id                Int           @id @default(autoincrement())
+  id                Int                @id @default(autoincrement())
   name              String
   role              String
   password          String
-  username          String        @unique
-  createdAt         DateTime      @default(now())
+  username          String             @unique
+  createdAt         DateTime           @default(now())
   email             String?
-  failedAttempts    Int           @default(0)
-  isActive          Boolean       @default(true)
-  status            UserStatus    @default(ACTIVE)
+  failedAttempts    Int                @default(0)
+  isActive          Boolean            @default(true)
+  status            UserStatus         @default(ACTIVE)
   lastLogin         DateTime?
   lockedUntil       DateTime?
   passwordChangedAt DateTime?
   phone             String?
-  updatedAt         DateTime      @updatedAt
+  updatedAt         DateTime           @updatedAt
   auditLogs         AuditLog[]
   sessions          Session[]
-  turnRequests      TurnRequest[] @relation("UserTurnRequests")
-  suggestedTurns    TurnRequest[] @relation("SuggestedTurnRequests")
-  holdingTurns      TurnRequest[] @relation("HoldingTurnRequests")
+  turnRequests      TurnRequest[]      @relation("UserTurnRequests")
+  suggestedTurns    TurnRequest[]      @relation("SuggestedTurnRequests")
+  holdingTurns      TurnRequest[]      @relation("HoldingTurnRequests")
+  surveyAssignments SurveyAssignment[]
 
   @@index([isActive])
   @@index([status])
@@ -42,45 +43,46 @@ enum UserStatus {
 }
 
 model TurnRequest {
-  id               Int       @id @default(autoincrement())
+  id               Int               @id @default(autoincrement())
   patientName      String
   age              Int
   gender           String
   contactInfo      String?
-  studies          String                       // MANTENER String temporalmente para compatibilidad durante migración
-  studies_json     Json?                        // NUEVO: Json nativo para almacenar objetos estructurados (reemplazará studies)
-  tubesRequired    Int                          // Mantener para compatibilidad (se calcula automáticamente desde tubesDetails)
-  tubesDetails     Json?                        // Array detallado de tubos [{ type: "sst", quantity: 2 }]
+  studies          String // MANTENER String temporalmente para compatibilidad durante migración
+  studies_json     Json? // NUEVO: Json nativo para almacenar objetos estructurados (reemplazará studies)
+  tubesRequired    Int // Mantener para compatibilidad (se calcula automáticamente desde tubesDetails)
+  tubesDetails     Json? // Array detallado de tubos [{ type: "sst", quantity: 2 }]
   observations     String?
   clinicalInfo     String?
-  status           String    @default("Pending")
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+  status           String            @default("Pending")
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
   assignedTurn     Int?
   attendedAt       DateTime?
   attendedBy       Int?
   calledAt         DateTime?
-  tipoAtencion     String    @default("General")
+  tipoAtencion     String            @default("General")
   cubicleId        Int?
-  isCalled         Boolean   @default(false)
+  isCalled         Boolean           @default(false)
   finishedAt       DateTime?
-  callCount        Int       @default(0)      // Contador de veces que se ha llamado al paciente
-  isDeferred       Boolean   @default(false)  // Indica si es una toma diferida (regresado a cola)
-  deferredAt       DateTime?                  // Timestamp de cuando se difirió (para ordenamiento correcto)
-  suggestedFor     Int?                       // ID del flebotomista al que se sugiere este paciente (DEPRECATED - usar holdingBy)
-  suggestedAt      DateTime?                  // Timestamp de cuando se hizo la sugerencia (DEPRECATED - usar holdingAt)
-  holdingBy        Int?                       // ID del flebotomista que tiene este turno en holding (reservado)
-  holdingAt        DateTime?                  // Timestamp de cuando se puso en holding (para timeout de 5 min)
-  forcedAssign     Boolean   @default(false)  // True si holdingBy fue seteado manualmente por admin (no se hace swap por prioridad ni timeout)
-  labsisOrderId    String?                    // NUEVO: ID de orden en sistema LABSIS para trazabilidad
-  samplesGenerated Json?                      // NUEVO: Array de muestras físicas generadas con barcodes y correlativos
-  patientID        String?   @map("patient_id")   // CI/Expediente del paciente enviado por HIS
-  workOrder        String?   @map("work_order")   // Número de orden de trabajo (OT) enviado por HIS
-  codigoAtencion   String?   @map("codigo_atencion")  // Código del departamento de laboratorio (KAB-7378)
-  user             User?     @relation("UserTurnRequests", fields: [attendedBy], references: [id])
-  suggestedUser    User?     @relation("SuggestedTurnRequests", fields: [suggestedFor], references: [id])
-  holdingUser      User?     @relation("HoldingTurnRequests", fields: [holdingBy], references: [id])
-  cubicle          Cubicle?  @relation("TurnRequestToCubicle", fields: [cubicleId], references: [id])
+  callCount        Int               @default(0) // Contador de veces que se ha llamado al paciente
+  isDeferred       Boolean           @default(false) // Indica si es una toma diferida (regresado a cola)
+  deferredAt       DateTime? // Timestamp de cuando se difirió (para ordenamiento correcto)
+  suggestedFor     Int? // ID del flebotomista al que se sugiere este paciente (DEPRECATED - usar holdingBy)
+  suggestedAt      DateTime? // Timestamp de cuando se hizo la sugerencia (DEPRECATED - usar holdingAt)
+  holdingBy        Int? // ID del flebotomista que tiene este turno en holding (reservado)
+  holdingAt        DateTime? // Timestamp de cuando se puso en holding (para timeout de 5 min)
+  forcedAssign     Boolean           @default(false) // True si holdingBy fue seteado manualmente por admin (no se hace swap por prioridad ni timeout)
+  labsisOrderId    String? // NUEVO: ID de orden en sistema LABSIS para trazabilidad
+  samplesGenerated Json? // NUEVO: Array de muestras físicas generadas con barcodes y correlativos
+  patientID        String?           @map("patient_id") // CI/Expediente del paciente enviado por HIS
+  workOrder        String?           @map("work_order") // Número de orden de trabajo (OT) enviado por HIS
+  codigoAtencion   String?           @map("codigo_atencion") // Código del departamento de laboratorio (KAB-7378)
+  user             User?             @relation("UserTurnRequests", fields: [attendedBy], references: [id])
+  suggestedUser    User?             @relation("SuggestedTurnRequests", fields: [suggestedFor], references: [id])
+  holdingUser      User?             @relation("HoldingTurnRequests", fields: [holdingBy], references: [id])
+  cubicle          Cubicle?          @relation("TurnRequestToCubicle", fields: [cubicleId], references: [id])
+  surveyAssignment SurveyAssignment?
 
   @@index([status])
   @@index([isCalled])
@@ -115,17 +117,17 @@ model Cubicle {
 }
 
 model Session {
-  id                 Int      @id @default(autoincrement())
-  userId             Int
-  token              String
-  ipAddress          String?
-  userAgent          String?
-  createdAt          DateTime @default(now())
-  expiresAt          DateTime
-  lastActivity       DateTime @default(now())
-  refreshToken       String?
-  selectedCubicleId  Int?     // Cubículo seleccionado por el usuario en esta sesión
-  user               User     @relation(fields: [userId], references: [id])
+  id                Int      @id @default(autoincrement())
+  userId            Int
+  token             String
+  ipAddress         String?
+  userAgent         String?
+  createdAt         DateTime @default(now())
+  expiresAt         DateTime
+  lastActivity      DateTime @default(now())
+  refreshToken      String?
+  selectedCubicleId Int? // Cubículo seleccionado por el usuario en esta sesión
+  user              User     @relation(fields: [userId], references: [id])
 
   @@index([userId])
   @@index([token])
@@ -158,6 +160,28 @@ model SatisfactionSurvey {
   createdAt DateTime @default(now())
 }
 
+// Mandatory random satisfaction survey per phlebotomist per day (survey-gate).
+// workDate is the America/Mexico_City calendar day as 'YYYY-MM-DD'.
+model SurveyAssignment {
+  id            Int         @id @default(autoincrement())
+  turnId        Int         @unique
+  userId        Int
+  workDate      String
+  status        String      @default("PENDING") // PENDING | COMPLETED | REFUSED | RELEASED | ADMIN_BYPASS
+  mode          String // iframe | qr
+  refusalReason String?
+  iframeLoads   Int?
+  createdAt     DateTime    @default(now())
+  resolvedAt    DateTime?
+  resolvedBy    Int?
+  turn          TurnRequest @relation(fields: [turnId], references: [id])
+  user          User        @relation(fields: [userId], references: [id])
+
+  @@index([userId, workDate])
+  @@index([workDate])
+  @@index([status])
+}
+
 model SystemState {
   id        Int      @id @default(autoincrement())
   key       String   @unique
@@ -167,11 +191,11 @@ model SystemState {
 }
 
 model LabsisInboundLog {
-  id          Int      @id @default(autoincrement())
+  id          Int       @id @default(autoincrement())
   payload     Json
   status      String
   error       String?
-  createdAt   DateTime @default(now())
+  createdAt   DateTime  @default(now())
   processedAt DateTime?
   turnId      Int?
 
