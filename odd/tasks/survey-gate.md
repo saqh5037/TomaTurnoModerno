@@ -24,9 +24,9 @@ Strategy: ask-on-risk. Forecast ~900 authored lines → slicing decision require
 - [x] T2 APIs: gate in `attention/call` + `attention/complete` (409 SURVEY_REQUIRED), release on `queue/defer`, ADMIN_BYPASS on `admin/force-complete`, new `surveys/resolve`, `surveys/report`, `admin/survey-config`. Route: delegated.
 - [x] T2b Hardening from review R3 findings (refusal cap 0, re-called RELEASED turn, best-effort call, route tests, 400 on bad JSON, report range, supervisor read). Route: delegated.
 - [x] T2c Survey flag in its own Serializable tx + call route tests. Route: delegated.
-- [ ] T3 Phlebotomist UI: `components/survey/SurveyGateModal.jsx` (iframe|qr), badge + modal hook in `pages/turns/attention.js`. Route: delegated (serial UI) + /visual-iterate.
-- [ ] T4 Admin UI: `pages/statistics/surveys.js` report + link in `pages/statistics/index.js`, config toggle in `pages/admin/control-panel.js`. Route: delegated (serial UI) + /visual-iterate.
-- [ ] T5 Release: bump `lib/version.js`, document feature + Phase 0 checklist in `docs/SURVEY_GATE.md`.
+- [x] T3 Phlebotomist UI: `components/survey/SurveyGateModal.jsx` (iframe|qr), badge + modal hook in `pages/turns/attention.js`. Route: delegated (serial UI) + /visual-iterate.
+- [x] T4 Admin UI: `pages/statistics/surveys.js` report + link in `pages/statistics/index.js`, config toggle in `pages/admin/control-panel.js`. Route: delegated (serial UI) + /visual-iterate.
+- [x] T5 Release: bump `lib/version.js`, document feature + Phase 0 checklist in `docs/SURVEY_GATE.md`.
 
 ## Acceptance criteria
 - With `windowMax=1`, the first call of the day flags the patient (`surveyRequired: true`).
@@ -45,7 +45,11 @@ Strategy: ask-on-risk. Forecast ~900 authored lines → slicing decision require
 - RDD slice T1+T2 (base d86add6): risk medium, consent granted, lineage review-9d283328a20b54c9 approved + acknowledged. 6 advisory findings → T2b.
 - T2b `75f9d63`: survey suites 87/87 (parent spot check); full suite 280/285 (5 pre-existing). RDD slice base 13accc8: medium, granted, lineage review-07af9c84c84dda1f approved + acknowledged; 3 advisory findings → T2c.
 - T2c `d5fff85`: own Serializable tx + one P2034 retry (best effort); call handler tests (success/reject/retry) + RELEASED-untouched repo test. Full suite 284 pass / 5 pre-existing fail. Gap: real Serializable isolation not exercised against Postgres.
+- T3 `a00861a` (delegated) + `ac8f5f5` (parent, visual fixes): /visual-iterate on /dev/survey-gate-demo at 360/768/1280 (dev server :3006). Found + fixed: QR fallback link hidden below modal footer (moved above iframe); badge white-on-yellow.500 contrast ~2.3:1 → yellow.300/gray.900 13.1:1. Flows exercised: iframe submit enables "Encuesta terminada" → resolve {COMPLETED, iframeLoads:2}; QR refusal with reason → {REFUSED}. /turns/attention compiles (200). Survey suites 99/99.
+- RDD slice T2c+T3 (base 75f9d63): medium, granted, lineage review-d3821457c3c8ba2a approved + acknowledged. Advisory: R3-stale-409-processing-lock refuted (finally block at attention.js:1155 clears processingTurns); R3-ui-flow-untested → follow-up; R3-iframe-load-heuristic → document in T5.
+- T4 `167d801` (delegated) + `fa32576` (parent): /visual-iterate with Playwright API mocks (fake admin session, mocked report/config/dashboard) on /statistics/surveys and /admin/control-panel at 360/768/1280. Report: no overflow, refusal detail expands. Control panel: header actions overflowed 474px at 360 (277px pre-existing + new button) → header wraps, overflow 0 at all widths. Settings modal renders with Fase 0 warning.
+- T5: `lib/version.js` v2.8.66 (2026-10-03); `docs/SURVEY_GATE.md` (behavior, config, evidence limits incl. iframe-load heuristic, Phase 0 checklist, deploy/rollback, debt). Migration FK `turnId` changed RESTRICT → CASCADE (seed scripts `generate-50-patients.js`, `seedFullYearData.js` delete TurnRequest); `prisma migrate diff` from base schema matches migration.sql (only `public.` qualifier differs).
 - Decision: report GET open to admin/administrador/supervisor; config POST admin/administrador only.
 
 ## Next step
-T3. T2c slice assessed medium/under_budget (base 75f9d63) — review pending until slice budget reached.
+RDD on slice ac8f5f5..HEAD; then delivery decision (push/PR) is the user's. Phase 0 at INER pending before enabling.

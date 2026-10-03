@@ -31,7 +31,7 @@ CREATE INDEX "SurveyAssignment_workDate_idx" ON "SurveyAssignment"("workDate");
 CREATE INDEX "SurveyAssignment_status_idx" ON "SurveyAssignment"("status");
 
 -- AddForeignKey
-ALTER TABLE "SurveyAssignment" ADD CONSTRAINT "SurveyAssignment_turnId_fkey" FOREIGN KEY ("turnId") REFERENCES "TurnRequest"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "SurveyAssignment" ADD CONSTRAINT "SurveyAssignment_turnId_fkey" FOREIGN KEY ("turnId") REFERENCES "TurnRequest"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "SurveyAssignment" ADD CONSTRAINT "SurveyAssignment_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

@@ -174,7 +174,7 @@ model SurveyAssignment {
   createdAt     DateTime    @default(now())
   resolvedAt    DateTime?
   resolvedBy    Int?
-  turn          TurnRequest @relation(fields: [turnId], references: [id])
+  turn          TurnRequest @relation(fields: [turnId], references: [id], onDelete: Cascade)
   user          User        @relation(fields: [userId], references: [id])
 
   @@index([userId, workDate])
