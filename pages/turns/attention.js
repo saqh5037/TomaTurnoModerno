@@ -76,8 +76,11 @@ import {
   FaChartLine,
   FaExchangeAlt,
   FaVial,
-  FaSignOutAlt
+  FaSignOutAlt,
+  FaClipboardList
 } from "react-icons/fa";
+import SurveyGateModal from '../../components/survey/SurveyGateModal';
+import { toSurveyState } from '../../lib/surveyUi';
 import { useAuth } from '../../contexts/AuthContext';
 import { useRouter } from 'next/router';
 import { fadeInUp, slideInFromLeft, slideInFromRight, GlassCard, ModernContainer, pulseGlow } from '../../components/theme/ModernTheme';
@@ -176,6 +179,10 @@ export default function Attention() {
   const [isMobile, setIsMobile] = useState(false);
   const [sidePanelTabIndex, setSidePanelTabIndex] = useState(0);
   const [activePatient, setActivePatient] = useState(null); // Paciente actualmente en atención
+
+  // Survey gate: per-turn survey state ({required, assignmentId, config}) or null once checked
+  const [surveyByTurn, setSurveyByTurn] = useState({});
+  const [surveyModalTurn, setSurveyModalTurn] = useState(null);
 
   // Estado para modal de confirmación de toma diferida
   const { isOpen: isConfirmDeferOpen, onOpen: onConfirmDeferOpen, onClose: onConfirmDeferClose } = useDisclosure();
@@ -844,6 +851,9 @@ export default function Attention() {
       });
 
       if (response.ok) {
+        const callData = await response.json().catch(() => ({}));
+        setSurveyState(turnId, toSurveyState(callData));
+
         // Mostrar solo un mensaje de éxito
         toast({
           title: "✓ Paciente llamado",
@@ -978,7 +988,43 @@ export default function Attention() {
     }
   };
 
-  const handleCompleteAttention = async (turnId) => {
+  const setSurveyState = (turnId, state) =>
+    setSurveyByTurn(prev => ({ ...prev, [turnId]: state }));
+
+  const clearSurveyState = (turnId) =>
+    setSurveyByTurn(prev => {
+      const next = { ...prev };
+      delete next[turnId];
+      return next;
+    });
+
+  const loadSurveyStatus = async (turnId) => {
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`/api/surveys/status?turnId=${turnId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) return null;
+      const json = await res.json();
+      return toSurveyState(json.data);
+    } catch (e) {
+      console.error("[Attention] Error al consultar estado de encuesta:", e);
+      return null;
+    }
+  };
+
+  // Recover the survey flag after reload / re-login for the patient currently in progress
+  useEffect(() => {
+    const turnId = activePatient?.id;
+    if (!turnId || !activePatient?.attendedBy || turnId in surveyByTurn) return;
+    let cancelled = false;
+    loadSurveyStatus(turnId).then(state => {
+      if (!cancelled) setSurveyState(turnId, state);
+    });
+    return () => { cancelled = true; };
+  }, [activePatient?.id]);
+
+  const handleCompleteAttention = async (turnId, { skipSurvey = false } = {}) => {
     // Validar que hay un turno válido
     if (!turnId) {
       toast({
@@ -995,6 +1041,13 @@ export default function Attention() {
     // Prevenir clicks duplicados
     if (processingTurns.has(turnId)) return;
 
+    // Survey gate: pending survey blocks completion (checked BEFORE the optimistic hide)
+    const survey = surveyByTurn[turnId];
+    if (!skipSurvey && survey?.required) {
+      setSurveyModalTurn(inProgressTurns.find(t => t.id === turnId) || activePatient);
+      return;
+    }
+
     // Marcar como en proceso
     setProcessingTurns(prev => new Set(prev).add(turnId));
     
@@ -1002,7 +1055,7 @@ export default function Attention() {
     setHidingTurns(prev => new Set(prev).add(turnId));
     
     // Esperar un momento para la animación antes de remover
-    setTimeout(() => {
+    const hideTimer = setTimeout(() => {
       setInProgressTurns(prev => prev.filter(turn => turn.id !== turnId));
       setHidingTurns(prev => {
         const newSet = new Set(prev);
@@ -1033,6 +1086,7 @@ export default function Attention() {
 
         // Limpiar paciente activo después de completar
         setActivePatient(null);
+        clearSurveyState(turnId);
 
         // Actualizar el turno en holding con el siguiente asignado por el backend
         if (data.nextHoldingTurn) {
@@ -1049,6 +1103,29 @@ export default function Attention() {
           return newSet;
         });
       } else {
+        // Stale state: the backend still has a pending survey -> undo optimistic hide and open the gate
+        if (response.status === 409) {
+          const conflict = await response.json().catch(() => ({}));
+          if (conflict.code === "SURVEY_REQUIRED") {
+            clearTimeout(hideTimer);
+            setHidingTurns(prev => {
+              const newSet = new Set(prev);
+              newSet.delete(turnId);
+              return newSet;
+            });
+            const state = await loadSurveyStatus(turnId);
+            if (state) {
+              setSurveyState(turnId, state);
+              setSurveyModalTurn(inProgressTurns.find(t => t.id === turnId) || activePatient);
+              const listRes = await fetch("/api/attention/list");
+              if (listRes.ok) {
+                const listData = await listRes.json();
+                setInProgressTurns(listData.inProgressTurns || []);
+              }
+              return;
+            }
+          }
+        }
         // Si falla, restaurar el paciente en la lista
         throw new Error("Error al finalizar la atención.");
       }
@@ -1139,6 +1216,7 @@ export default function Attention() {
         // Limpiar paciente activo
         setActivePatient(null);
         setPatientToDefer(null);
+        clearSurveyState(turnId);
 
         // Resetear el ref para permitir nueva asignación de holding
         holdingAssignedRef.current = false;
@@ -1463,6 +1541,14 @@ export default function Attention() {
             <Text fontSize={{ base: "2xl", sm: "3xl", md: "4xl" }} fontWeight="semibold" color="gray.800">
               {patient.patientName}
             </Text>
+            {isActive && surveyByTurn[patient.id]?.required && (
+              <Badge colorScheme="yellow" variant="solid" fontSize="sm" px={3} py={1} mt={2} borderRadius="md">
+                <HStack spacing={1}>
+                  <FaClipboardList aria-hidden="true" />
+                  <span>Encuesta requerida</span>
+                </HStack>
+              </Badge>
+            )}
             {/* Información de expediente y orden de trabajo */}
             {(patient.patientID || patient.workOrder) && (
               <HStack justify="center" spacing={4} mt={2} flexWrap="wrap">
@@ -2243,6 +2329,21 @@ export default function Attention() {
               </VStack>
             </HStack>
           </Box>
+        )}
+
+        {surveyModalTurn && surveyByTurn[surveyModalTurn.id]?.required && (
+          <SurveyGateModal
+            isOpen
+            onClose={() => setSurveyModalTurn(null)}
+            turn={surveyModalTurn}
+            config={surveyByTurn[surveyModalTurn.id].config}
+            onResolved={() => {
+              const turnId = surveyModalTurn.id;
+              setSurveyModalTurn(null);
+              setSurveyState(turnId, null);
+              handleCompleteAttention(turnId, { skipSurvey: true });
+            }}
+          />
         )}
 
         {/* Modal de confirmación para toma diferida */}

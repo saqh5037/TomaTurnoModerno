@@ -18,7 +18,9 @@ const PUBLIC_ROUTES = [
   '/turns/queue_video',
   '/turns/queue-tv',
   '/announce',
-  '/satisfaction-survey'
+  '/satisfaction-survey',
+  // Dev-only visual harness for the survey gate (the page itself also 404s in production)
+  ...(process.env.NODE_ENV !== 'production' ? ['/dev/survey-gate-demo'] : [])
 ];
 
 // Rutas que requieren roles específicos
