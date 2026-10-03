@@ -45,6 +45,9 @@ const PRESETS = [
   { key: "month", label: "Este mes" }
 ];
 
+// "YYYY-MM-DD" -> "DD/MM/YYYY" without timezone shifts
+const formatDay = (ymd) => (ymd ? ymd.split("-").reverse().join("/") : "");
+
 const formatTime = (iso) => {
   if (!iso) return "-";
   const d = new Date(iso);
@@ -239,9 +242,19 @@ export default function SurveysReport() {
 
       {/* Table */}
       <GlassCard p={{ base: 3, md: 6 }} mb={6}>
-        <Heading size="md" color="secondary.800" mb={4}>
+        <Heading size="md" color="secondary.800" mb={report ? 1 : 4}>
           Detalle por flebotomista y día
         </Heading>
+        {report && (
+          <Text fontSize="sm" color="secondary.600" mb={4}>
+            Mostrando del {formatDay(report.from)} al {formatDay(report.to)}
+            {(from !== report.from || to !== report.to) && (
+              <Text as="span" color="orange.700" fontWeight="semibold">
+                {" "}· Cambiaste el periodo: presiona Consultar para actualizar
+              </Text>
+            )}
+          </Text>
+        )}
 
         {(loading || !mounted) && (
           <Flex justify="center" align="center" py={12} gap={3} role="status">

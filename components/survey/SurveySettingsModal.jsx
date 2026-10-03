@@ -56,6 +56,8 @@ export default function SurveySettingsModal({ isOpen, onClose, canEdit }) {
   useEffect(() => {
     if (!isOpen) return undefined;
     let cancelled = false;
+    // Drop the previous session's values so a failed reload can never be saved over newer config
+    setForm(null);
     setLoading(true);
     setLoadError(null);
     setFormError(null);
@@ -207,7 +209,7 @@ export default function SurveySettingsModal({ isOpen, onClose, canEdit }) {
             {canEdit ? 'Cancelar' : 'Cerrar'}
           </Button>
           {canEdit && (
-            <Button colorScheme="blue" onClick={handleSave} isLoading={saving} isDisabled={!form || loading}>
+            <Button colorScheme="blue" onClick={handleSave} isLoading={saving} isDisabled={!form || loading || Boolean(loadError)}>
               Guardar
             </Button>
           )}
