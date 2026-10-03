@@ -76,6 +76,7 @@ import {
 import { useAuth } from '../../contexts/AuthContext';
 import { useRouter } from 'next/router';
 import ProtectedRoute from '../../components/ProtectedRoute';
+import SurveySettingsModal from '../../components/survey/SurveySettingsModal';
 
 // Componente de tarjeta de estadística
 const StatCard = ({ label, value, helpText, color, icon }) => (
@@ -174,6 +175,10 @@ function AdminControlPanel() {
   const [pauseReason, setPauseReason] = useState('');
   const [pauseResumeLoading, setPauseResumeLoading] = useState(false);
   const [callingPaused, setCallingPaused] = useState(false);
+
+  // Configuración de encuesta obligatoria (solo admin edita; supervisor consulta)
+  const { isOpen: isSurveyOpen, onOpen: onSurveyOpen, onClose: onSurveyClose } = useDisclosure();
+  const canEditSurvey = ['admin', 'administrador'].includes(String(user?.role || '').toLowerCase());
 
   // Estado para ocultar alertas temporalmente
   const [hideAlerts, setHideAlerts] = useState(false);
@@ -685,6 +690,14 @@ function AdminControlPanel() {
                 isLoading={loading}
                 aria-label="Refrescar"
               />
+              <Button
+                leftIcon={<FiStar />}
+                variant="outline"
+                size="sm"
+                onClick={onSurveyOpen}
+              >
+                Encuesta obligatoria
+              </Button>
               <Button
                 leftIcon={<FiSquare />}
                 colorScheme="orange"
@@ -1720,6 +1733,8 @@ function AdminControlPanel() {
             </ModalFooter>
           </ModalContent>
         </Modal>
+
+        <SurveySettingsModal isOpen={isSurveyOpen} onClose={onSurveyClose} canEdit={canEditSurvey} />
 
         {/* Modal de Detalle del Turno */}
         <Modal isOpen={isDetailOpen} onClose={onDetailClose} size="lg">

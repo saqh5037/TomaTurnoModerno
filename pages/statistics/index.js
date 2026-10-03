@@ -39,7 +39,8 @@ import {
   FaExclamationTriangle,
   FaChevronRight,
   FaUserMd,
-  FaArrowLeft
+  FaArrowLeft,
+  FaClipboardCheck
 } from 'react-icons/fa';
 import { useRouter } from 'next/router';
 import { useAuth } from '../../contexts/AuthContext';
@@ -294,6 +295,7 @@ const StatisticsDashboard = memo(function StatisticsDashboard() {
   // Configurar acceso según el rol
   const isAdmin = userRole === 'Administrador';
   const isFlebotomista = userRole === 'Flebotomista';
+  const canSeeSurveys = ['admin', 'administrador', 'supervisor'].includes(String(userRole || '').toLowerCase());
 
   return (
     <ModernContainer>
@@ -358,7 +360,7 @@ const StatisticsDashboard = memo(function StatisticsDashboard() {
         </Flex>
         
         {/* Métricas Principales */}
-        <SimpleGrid columns={{ base: 1, sm: 2, md: 3, lg: 5 }} spacing={{ base: 4, md: 6 }} mb={4}>
+        <SimpleGrid columns={{ base: 1, sm: 2, md: 3, lg: canSeeSurveys ? 3 : 5, xl: canSeeSurveys ? 6 : 5 }} spacing={{ base: 4, md: 6 }} mb={4}>
           {/* Total de Pacientes */}
           <GlassCard
             p={4}
@@ -668,6 +670,63 @@ const StatisticsDashboard = memo(function StatisticsDashboard() {
               </Text>
             </VStack>
           </GlassCard>
+
+          {/* Encuestas de satisfacción — solo administradores y supervisores */}
+          {canSeeSurveys && (
+            <GlassCard
+              p={4}
+              cursor="pointer"
+              onClick={() => navigateToDetail('surveys')}
+              _hover={{
+                transform: 'translateY(-4px)',
+                boxShadow: 'xl',
+                background: "rgba(255, 255, 255, 0.35)"
+              }}
+              transition="all 0.3s ease"
+              animation={`${fadeInUp} 1.6s ease-out`}
+              position="relative"
+              overflow="hidden"
+            >
+              <Box
+                position="absolute"
+                top={0}
+                left={0}
+                right={0}
+                height="3px"
+                background="linear-gradient(135deg, #ec4899 0%, #db2777 100%)"
+                borderTopRadius="2xl"
+              />
+
+              <Flex justify="space-between" align="center" mb={4}>
+                <Box
+                  w={12}
+                  h={12}
+                  borderRadius="xl"
+                  background="linear-gradient(135deg, #ec4899 0%, #db2777 100%)"
+                  display="flex"
+                  alignItems="center"
+                  justifyContent="center"
+                  color="white"
+                  boxShadow="lg"
+                >
+                  <Box as={FaClipboardCheck} fontSize="xl" />
+                </Box>
+                <Box as={FaChevronRight} color="secondary.400" fontSize="lg" />
+              </Flex>
+
+              <VStack align="start" spacing={2}>
+                <Text fontSize="sm" color="secondary.600" fontWeight="medium">
+                  Encuestas
+                </Text>
+                <Text fontSize={{ base: "lg", md: "xl" }} fontWeight="extrabold" color="secondary.800" lineHeight="1.1">
+                  Cumplimiento de satisfacción
+                </Text>
+                <Text fontSize="xs" color="secondary.500">
+                  Por flebotomista y día
+                </Text>
+              </VStack>
+            </GlassCard>
+          )}
         </SimpleGrid>
 
         {/* Gráficas Principales */}
