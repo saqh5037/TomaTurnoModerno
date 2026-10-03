@@ -660,7 +660,7 @@ function AdminControlPanel() {
       <Box minH="100vh" bg="gray.50">
         <Box px={{ base: 4, md: 6, lg: 8 }} py={6}>
           {/* Header */}
-          <Flex justify="space-between" align="center" mb={6}>
+          <Flex justify="space-between" align="center" mb={6} wrap="wrap" gap={3}>
             <HStack spacing={4}>
               <IconButton
                 icon={<FiArrowLeft />}
@@ -675,7 +675,7 @@ function AdminControlPanel() {
                 <Text color="gray.500">Gestión de turnos en tiempo real</Text>
               </Box>
             </HStack>
-            <HStack spacing={3}>
+            <HStack spacing={3} wrap="wrap">
               <HStack>
                 <Text fontSize="sm" color="gray.500">Auto-refresh</Text>
                 <Switch
