@@ -22,6 +22,8 @@ Strategy: ask-on-risk. Forecast ~900 authored lines → slicing decision require
 ## Tasks
 - [x] T1 Data + pure logic: `SurveyAssignment` model + migration, `lib/surveyGate.js`, `__tests__/surveyGate.test.js`. Route: delegated (writer trigger: 2+ non-trivial files).
 - [x] T2 APIs: gate in `attention/call` + `attention/complete` (409 SURVEY_REQUIRED), release on `queue/defer`, ADMIN_BYPASS on `admin/force-complete`, new `surveys/resolve`, `surveys/report`, `admin/survey-config`. Route: delegated.
+- [x] T2b Hardening from review R3 findings (refusal cap 0, re-called RELEASED turn, best-effort call, route tests, 400 on bad JSON, report range, supervisor read). Route: delegated.
+- [x] T2c Survey flag in its own Serializable tx + call route tests. Route: delegated.
 - [ ] T3 Phlebotomist UI: `components/survey/SurveyGateModal.jsx` (iframe|qr), badge + modal hook in `pages/turns/attention.js`. Route: delegated (serial UI) + /visual-iterate.
 - [ ] T4 Admin UI: `pages/statistics/surveys.js` report + link in `pages/statistics/index.js`, config toggle in `pages/admin/control-panel.js`. Route: delegated (serial UI) + /visual-iterate.
 - [ ] T5 Release: bump `lib/version.js`, document feature + Phase 0 checklist in `docs/SURVEY_GATE.md`.
@@ -40,7 +42,10 @@ Strategy: ask-on-risk. Forecast ~900 authored lines → slicing decision require
 - T2 `2c21a1c` (delegated writer). Contract: call → `surveyRequired`, `surveyAssignmentId`, `surveyConfig{enabled,mode,url}`; complete → 409 `SURVEY_REQUIRED`; `POST /api/surveys/resolve`, `GET /api/surveys/status?turnId=`, `GET /api/surveys/report?from=&to=`, `GET|POST /api/admin/survey-config`.
 - Checks: `npm test` 238/243 (5 failures in labsisTubeMapping, identical on base d86add6 — pre-existing); survey suites 45/45 (parent spot check); `npx prisma validate` OK; lint no new issues. Not run: migration against a DB, `next build`.
 - Accepted decisions: ADMIN_BYPASS does not satisfy the daily quota; disabling the flag stops enforcing PENDING; server records but does not enforce iframeLoads>=2.
-- Open: report/config access limited to admin (supervisors excluded) — resolve in T4.
+- RDD slice T1+T2 (base d86add6): risk medium, consent granted, lineage review-9d283328a20b54c9 approved + acknowledged. 6 advisory findings → T2b.
+- T2b `75f9d63`: survey suites 87/87 (parent spot check); full suite 280/285 (5 pre-existing). RDD slice base 13accc8: medium, granted, lineage review-07af9c84c84dda1f approved + acknowledged; 3 advisory findings → T2c.
+- T2c `d5fff85`: own Serializable tx + one P2034 retry (best effort); call handler tests (success/reject/retry) + RELEASED-untouched repo test. Full suite 284 pass / 5 pre-existing fail. Gap: real Serializable isolation not exercised against Postgres.
+- Decision: report GET open to admin/administrador/supervisor; config POST admin/administrador only.
 
 ## Next step
-RDD review of T1+T2 slice, then T3.
+T3. T2c slice assessed medium/under_budget (base 75f9d63) — review pending until slice budget reached.
