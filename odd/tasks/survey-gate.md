@@ -50,7 +50,9 @@ Strategy: ask-on-risk. Forecast ~900 authored lines → slicing decision require
 - T4 `167d801` (delegated) + `fa32576` (parent): /visual-iterate with Playwright API mocks (fake admin session, mocked report/config/dashboard) on /statistics/surveys and /admin/control-panel at 360/768/1280. Report: no overflow, refusal detail expands. Control panel: header actions overflowed 474px at 360 (277px pre-existing + new button) → header wraps, overflow 0 at all widths. Settings modal renders with Fase 0 warning.
 - T5: `lib/version.js` v2.8.66 (2026-10-03); `docs/SURVEY_GATE.md` (behavior, config, evidence limits incl. iframe-load heuristic, Phase 0 checklist, deploy/rollback, debt). Migration FK `turnId` changed RESTRICT → CASCADE (seed scripts `generate-50-patients.js`, `seedFullYearData.js` delete TurnRequest); `prisma migrate diff` from base schema matches migration.sql (only `public.` qualifier differs).
 - RDD slice T4+T5 (base ac8f5f5): medium, granted, lineage review-e0fab4775cdcf2c6 approved + acknowledged. Fixed: stale settings save after failed reload (form reset + Guardar disabled on loadError); report range desync (shows loaded range + hint). Verified in browser with mocked 500. Not applied: migration edited in place (never applied to any DB, branch unpushed); UI component tests remain debt.
+- RDD final slice (base eb5faf9): medium, granted, lineage review-b26163d639d34b79 approved + acknowledged. R3-report-range-format-coupling refuted (API echoes validated YYYY-MM-DD from/to, route.js:33-40,62); UI component tests remain debt.
+- Final checks: full suite 316 pass / 5 fail (labsisTubeMapping only; files untouched since base d86add6, diff 0 lines). Not run: migration against a real DB, `next build`, Phase 0 at INER.
 - Decision: report GET open to admin/administrador/supervisor; config POST admin/administrador only.
 
 ## Next step
-RDD on slice ac8f5f5..HEAD; then delivery decision (push/PR) is the user's. Phase 0 at INER pending before enabling.
+Push + PR (base fix/auth-refresh-auditlog-v2.8.65). Then Phase 0 at INER, staging migration test, deploy outside 7–19h with flag off.
