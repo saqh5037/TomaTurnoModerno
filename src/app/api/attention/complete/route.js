@@ -1,6 +1,8 @@
 import prisma from "@/lib/prisma";
 import { assignNextHolding } from "@/lib/holdingUtils";
 import { touchSessionActivity } from "@/lib/sessionActivity";
+import { getSurveyConfig } from "@/lib/surveyGateRepo";
+import { canComplete } from "@/lib/surveyGate";
 
 export async function POST(req) {
   try {
@@ -28,6 +30,23 @@ export async function POST(req) {
         JSON.stringify({ error: "Turno no encontrado" }),
         { status: 404, headers: { "Content-Type": "application/json" } }
       );
+    }
+
+    // Survey gate: a PENDING survey blocks completion (only when the feature is enabled)
+    const surveyConfig = await getSurveyConfig(prisma);
+    if (surveyConfig.enabled) {
+      const assignment = await prisma.surveyAssignment.findUnique({ where: { turnId: currentTurn.id } });
+      if (!canComplete(assignment)) {
+        return new Response(
+          JSON.stringify({
+            success: false,
+            code: "SURVEY_REQUIRED",
+            error: "Este paciente tiene una encuesta de satisfacción pendiente",
+            assignmentId: assignment.id,
+          }),
+          { status: 409, headers: { "Content-Type": "application/json" } }
+        );
+      }
     }
 
     // Actualizar el turno a Attended

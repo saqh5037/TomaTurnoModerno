@@ -1,5 +1,6 @@
 import prisma from "@/lib/prisma";
 import { touchSessionActivity } from "@/lib/sessionActivity";
+import { evaluateSurveyForCall } from "@/lib/surveyGateRepo";
 
 export async function POST(req) {
   try {
@@ -76,7 +77,10 @@ export async function POST(req) {
 
         console.log(`[call] Turno ${turnIdInt} (${turn.patientName}) llamado por usuario ${userIdInt} en cubículo ${cubicleIdInt}`);
 
-        return { success: true, turn: updatedTurn };
+        // Survey gate: inert unless surveyConfig.enabled; flags this call when due.
+        const survey = await evaluateSurveyForCall(tx, { turnId: turnIdInt, userId: userIdInt });
+
+        return { success: true, turn: updatedTurn, survey };
       }, {
         isolationLevel: 'Serializable', // Máximo nivel de aislamiento
         timeout: 10000 // 10 segundos de timeout
@@ -93,7 +97,7 @@ export async function POST(req) {
       // evict them while they are actively calling patients.
       touchSessionActivity(userIdInt).catch(() => {});
 
-      return new Response(JSON.stringify(result.turn), {
+      return new Response(JSON.stringify({ ...result.turn, ...result.survey }), {
         status: 200,
         headers: { "Content-Type": "application/json" },
       });

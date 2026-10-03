@@ -7,6 +7,7 @@ import {
   statusOnAdminComplete,
   workDateFor,
   workDateBounds,
+  validateSurveyConfigUpdate,
   DEFAULT_SURVEY_CONFIG
 } from '../lib/surveyGate.js';
 
@@ -157,5 +158,31 @@ describe('work date (America/Mexico_City)', () => {
     expect(workDateFor(start)).toBe('2026-10-02');
     expect(workDateFor(new Date(end.getTime() - 1))).toBe('2026-10-02');
     expect(workDateFor(end)).toBe('2026-10-03');
+  });
+});
+
+describe('validateSurveyConfigUpdate', () => {
+  test('accepts a valid partial patch', () => {
+    expect(validateSurveyConfigUpdate({ enabled: true, windowMax: 3 })).toEqual({ error: null, patch: { enabled: true, windowMax: 3 } });
+  });
+
+  test.each([
+    [{ enabled: 'yes' }],
+    [{ mode: 'popup' }],
+    [{ windowMax: 0 }],
+    [{ windowMax: 21 }],
+    [{ windowMax: 2.5 }],
+    [{ maxRefusalsPerDay: 11 }],
+    [{ maxRefusalsPerDay: -1 }],
+    [{ url: 'http://insecure.example' }],
+    [{ url: 'not a url' }],
+    [{}],
+    [null]
+  ])('rejects %j', (body) => {
+    expect(validateSurveyConfigUpdate(body).error).toEqual(expect.any(String));
+  });
+
+  test('maxRefusalsPerDay=0 and windowMax bounds are valid', () => {
+    expect(validateSurveyConfigUpdate({ maxRefusalsPerDay: 0, windowMax: 20 }).error).toBeNull();
   });
 });
