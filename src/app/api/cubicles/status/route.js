@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
+// Shared singleton: a per-request $disconnect() raced with the 5-second polling
+// from every tablet and left the engine permanently in "Engine is not yet
+// connected" (prod 2026-11-09).
+import prisma from "../../../../../lib/prisma.js";
 import { cleanupCubicles } from "@/lib/cubicleCleanup";
-
-const prisma = new PrismaClient();
 
 // Timeout de inactividad: 20 minutos
 const INACTIVITY_TIMEOUT_MS = 20 * 60 * 1000;
@@ -112,7 +113,5 @@ export async function GET(request) {
       { success: false, error: "Error al obtener estado de cubículos" },
       { status: 500 }
     );
-  } finally {
-    await prisma.$disconnect();
   }
 }
